@@ -699,15 +699,33 @@ window.Tempester.panel = (function () {
   function bandeau() {
     const b = document.createElement("div");
     b.className = "bandeau";
-    b.innerHTML = `<div class="bt clair"><button type="button" aria-label="Shift" data-key="Shift 1"></button><span>Shift</span></div><span class="marque"><b>TEMPESTER</b> · for the Tempest</span>`;
+    /* As on the machine, Shift, BPM and Main Out each sit on their own panel. */
+    const boite = (titre) => {
+      const s = document.createElement("div");
+      s.className = "sec boite" + (titre ? "" : " sanstitre");
+      if (titre) s.innerHTML = `<h2>${titre}</h2>`;
+      return s;
+    };
+    const shift = boite("");
+    shift.innerHTML = `<div class="bt clair"><button type="button" aria-label="Shift" data-key="Shift 1"></button><span>Shift</span></div>`;
+    b.append(shift);
+    b.insertAdjacentHTML("beforeend", `<span class="marque"><b>TEMPESTER</b> · for the Tempest</span>`);
     const sortie = document.createElement("div");
     sortie.className = "sortie";
-    sortie.append(
-      pot("BPM", "bpm", "grand"),
+    /* The machine's BPM encoder (Shift: Swing), then the app's own clock, which only matters when the app is the clock
+       master. */
+    const clock = pot("BPM", "bpm", "grand");
+    clock.insertAdjacentHTML("beforeend", `<small class="l2">App clock</small>`);
+    const tempo = boite("");
+    tempo.insertAdjacentHTML("beforeend", slot("enc", 8, "BPM", "Swing"));
+    tempo.append(clock);
+    const mainOut = boite("Main Out");
+    mainOut.append(
       pot("Distort", "distort", "grand"),
       pot("Compress", "compress", "grand"),
       pot("Volume", "volume", "grand"),
     );
+    sortie.append(tempo, mainOut);
     b.append(sortie);
     return b;
   }
@@ -739,10 +757,12 @@ window.Tempester.panel = (function () {
       "flex:1",
     );
   }
+  /* The oscillators' mix inside the sound ("Mixer" in the parameter table): not the machine's Mixer section, which is
+     the pads' mix in the beat (secMachineMixer). */
   function secMixer() {
     const g = [30, 31, 32, 33];
     return sec(
-      "Mixer",
+      "Osc Mix",
       (s) =>
         s.append(
           ligne(
@@ -859,12 +879,34 @@ window.Tempester.panel = (function () {
       ),
     );
   }
+  /* A control of the machine that is not a sound parameter, reached only through the remote panel: an empty slot
+     with its printed label; page-panel.js puts the Machine view's own knob in it (`fvslot`). */
+  const slot = (kind, n, label, shifted) =>
+    `<div class="fvslot" data-kind="${kind}" data-n="${n}"><span class="l1">${label}</span>${shifted ? `<small>${shifted}</small>` : ""}</div>`;
+  const touche = (l, shifted) =>
+    `<div class="bt"><button type="button" aria-label="${l}" data-key="${l}"></button><span>${l}${shifted ? `<small>${shifted}</small>` : ""}</span></div>`;
+  /* The machine's Mixer section: the pads' mix in the beat (Level, Pan, Delay Send; Mute, Solo, Delay On), as on the
+     face: Level and Pan are absolute knobs, Delay Send an encoder (refs/panel_controls.tsv). */
+  function secMachineMixer() {
+    return sec("Mixer", (s) => {
+      const g = document.createElement("div");
+      g.className = "mixer";
+      g.innerHTML =
+        slot("abs", 7, "Level") +
+        slot("abs", 6, "Pan") +
+        slot("enc", 9, "Delay Send", "Delay Time") +
+        touche("Mute", "Show") +
+        touche("Solo") +
+        touche("Delay On");
+      s.append(g);
+    });
+  }
   /* The eight Mod Paths, one per line; on their right, as on the machine, the screen above the screen keys and
-     the transport. */
+     the transport, then the machine's Mixer. */
   function rangeeRoutes() {
     const droite = document.createElement("div");
     droite.className = "empile droite";
-    droite.append(ecranBloc(), touchesEcran());
+    droite.append(ecranBloc(), touchesEcran(), secMachineMixer());
     return rang(secRoutes(), droite);
   }
   function secRoutes() {
@@ -969,6 +1011,8 @@ window.Tempester.panel = (function () {
       ["◀", "Cursor Left"],
       ["▼", "Cursor Down"],
       ["▶", "Cursor Right"],
+      ["Select", "Select"],
+      ["Mod Paths", "Mod Paths"],
     ]
       .map(
         ([l, key]) =>

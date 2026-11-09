@@ -357,7 +357,7 @@ window.Tempester.panelMachine = (function () {
     function knob(kind, n, cx, cy) {
       const def = CONTROLS.find((c) => c.kind === kind && c.n === n);
       const d = el("div", "pot mvpot");
-      at(d, cx - F.KNOB.box / 2, cy - F.KNOB.box / 2, F.KNOB.box, F.KNOB.box);
+      if (cx !== undefined) at(d, cx - F.KNOB.box / 2, cy - F.KNOB.box / 2, F.KNOB.box, F.KNOB.box);
       const svg = document.createElementNS(NS, "svg");
       svg.setAttribute("viewBox", "0 0 40 40");
       svg.setAttribute("tabindex", "0");
@@ -656,9 +656,18 @@ window.Tempester.panelMachine = (function () {
         shown.name || "No sound fetched";
       display.querySelector(".mode").textContent = shown.mode;
     }
+    /* The same knob for another drawing (the Full view's machine-only controls): it shares this view's controls, so
+       its state, greying and count follow the Machine view's; a box of the machine's knob size. */
+    function knobFor(kind, n) {
+      const box = el("div", "mv fvknob");
+      box.append(knob(kind, n));
+      refreshGrey();
+      return box;
+    }
     setScreen({});
     setRemote(false);
     return {
+      knobFor,
       setRemote,
       setParam,
       setValues,

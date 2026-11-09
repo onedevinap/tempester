@@ -162,12 +162,15 @@ struct Source {
     describers: [Describer; 2],
 }
 
-fn describers_for(notes: PadNotes) -> [Describer; 2] {
-    std::array::from_fn(|_| {
+/// The pads' channel applies to what comes in only: the app sends its own pad notes on Remote Pad IN.
+fn describers_for(notes: PadNotes, pad_channel: Option<u8>) -> [Describer; 2] {
+    let mut describers: [Describer; 2] = std::array::from_fn(|_| {
         let mut describer = Describer::new();
         describer.set_pad_notes(notes);
         describer
-    })
+    });
+    describers[Direction::In.index()].set_pad_channel(pad_channel);
+    describers
 }
 
 /// The worker's side of the monitor.
@@ -187,6 +190,8 @@ pub(super) struct Monitor {
     last_emit: Option<Instant>,
     /// The machine's pad of each note, so that a note line names the right pad.
     pad_notes: PadNotes,
+    /// The channel the machine sends its pads on (Remote Pad OUT), once known.
+    pad_channel: Option<u8>,
 }
 
 impl Monitor {
@@ -208,6 +213,7 @@ impl Monitor {
             announced: ([0; 2], 0),
             last_emit: None,
             pad_notes: PadNotes::default(),
+            pad_channel: None,
         }
     }
 
@@ -236,7 +242,15 @@ impl Monitor {
     }
 
     fn describers(&self) -> [Describer; 2] {
-        describers_for(self.pad_notes)
+        describers_for(self.pad_notes, self.pad_channel)
+    }
+
+    /// Incoming notes are named as pads only on `channel` (0-15), the machine's Remote Pad OUT, from now on.
+    pub(super) fn set_pad_channel(&mut self, channel: u8) {
+        self.pad_channel = Some(channel);
+        if let Some(source) = &mut self.source {
+            source.describers[Direction::In.index()].set_pad_channel(Some(channel));
+        }
     }
 
     /// The table that names the pad of a note line, from now on.
@@ -284,7 +298,7 @@ impl Monitor {
             // Whatever a racing sender queued around the switch belongs to the other state.
             while source.channel.try_recv().is_ok() {}
             source.parsers = Default::default();
-            source.describers = describers_for(self.pad_notes);
+            source.describers = describers_for(self.pad_notes, self.pad_channel);
         }
         if on {
             let state = if self.source.is_some() {

@@ -107,7 +107,9 @@ impl Describer {
         if status & 0xF0 == 0xB0 {
             return self.control_change(now, message);
         }
-        vec![other_channel_line(message, &self.pad_notes)]
+        let on_pad_channel = self.pad_channel.is_none_or(|c| c == status & 0x0F);
+        let pads = on_pad_channel.then_some(&self.pad_notes);
+        vec![other_channel_line(message, pads)]
     }
 
     fn control_change(&mut self, now: u64, message: &[u8]) -> Vec<Line> {
@@ -127,7 +129,7 @@ impl Describer {
     }
 }
 
-fn other_channel_line(message: &[u8], pads: &PadNotes) -> Line {
+fn other_channel_line(message: &[u8], pads: Option<&PadNotes>) -> Line {
     let status = message[0];
     let channel = (status & 0x0F) + 1;
     let (kind, text) = match status & 0xF0 {
@@ -164,10 +166,11 @@ fn other_channel_line(message: &[u8], pads: &PadNotes) -> Line {
     Line::new(kind, format!("Ch {channel} {text}"), message)
 }
 
-/// The pad is the one of the machine's own note table (`pad_notes`), as the app knows it.
-fn note_text(what: &str, note: u8, velocity: u8, pads: &PadNotes) -> String {
+/// The pad is the one of the machine's own note table (`pad_notes`), as the app knows it; none when the note is not on
+/// the pads' channel (`pads` is `None`).
+fn note_text(what: &str, note: u8, velocity: u8, pads: Option<&PadNotes>) -> String {
     let pad = pads
-        .pad_of(note)
+        .and_then(|p| p.pad_of(note))
         .map(|k| format!(", pad {}", pad_notes::pad_name(k)))
         .unwrap_or_default();
     format!(
@@ -311,6 +314,20 @@ mod tests {
             "Ch 1 Note off (velocity 0) G5 (79) velocity 0"
         );
         assert_eq!(label_of(&plain), "Ch 1 Note on G5 (79) velocity 5");
+    }
+
+    /// B1 as the Sequencer Sound plays its pitch (60) on the Sequencer Out channel: not a pad there.
+    #[test]
+    fn test_feed_when_pad_channel_set_returns_a_pad_only_on_that_channel() {
+        let mut d = Describer::new();
+        d.set_pad_channel(Some(1));
+        d.reset();
+
+        let other = d.feed(0, &[0x90, 36, 64]);
+        let pads = d.feed(0, &[0x91, 36, 64]);
+
+        assert_eq!(label_of(&other), "Ch 1 Note on C2 (36) velocity 64");
+        assert_eq!(label_of(&pads), "Ch 2 Note on C2 (36) velocity 64, pad A1");
     }
 
     #[test]

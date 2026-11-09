@@ -236,6 +236,7 @@ impl Machine {
                     };
                     match remote::led_change(short.status, controller, value) {
                         Some(change) => {
+                            self.observe_pad_channel(short.status);
                             self.observe_led(now, change);
                             leds.push(change);
                         }

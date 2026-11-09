@@ -55,8 +55,8 @@ back up what it holds. It has three parts that work together.
     <td width="50%" valign="top">
       <img src="docs/images/panel-machine.png" alt="Panel page, Machine view">
       <p><strong>Remote panel.</strong> The Machine view draws the real panel's controls in their places and plays
-      them over MIDI: 49 keys, 14 encoders, 10 knobs, 16 pads and the LEDs. The Full view shows all 127 sound
-      parameters as knobs, live in both directions.</p>
+      them over MIDI: 49 keys, 14 encoders, 10 knobs, 16 pads and the LEDs. The Full view has all of that plus the 127
+      sound parameters, live in both directions.</p>
     </td>
     <td width="50%" valign="top">
       <img src="docs/images/library.png" alt="Library page">

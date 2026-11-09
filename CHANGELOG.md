@@ -12,10 +12,13 @@ First public version.
 
 #### Added
 
-- **Panel page**: the 127 parameters of the selected sound, live both ways over NRPN (Full view); a Machine view that
-  draws only the real panel's controls at their place and drives them remotely (49 keys, 14 encoders with step display,
-  10 absolute knobs, 16 pads, the machine's LEDs); greying of the controls the firmware ignores in 16 Beats / 16 Mutes;
-  zoom 60-200 %; view and zoom remembered.
+- **Panel page**: a Machine view that draws only the real panel's controls at their place and drives them remotely
+  (49 keys, 14 encoders with step display, 10 absolute knobs, 16 pads, the FX ribbons, the machine's LEDs); a Full view
+  with every control of the Machine view (Mixer, BPM / Swing, Select, Mod Paths included) plus the 127 parameters of the
+  selected sound, live both ways over NRPN; knobs and encoders drawn as on the machine in both views; greying of the
+  controls the firmware ignores in 16 Beats / 16 Mutes; zoom 60-200 %; view and zoom remembered.
+- **Pad notes** taken only on the machine's Remote Pad OUT channel (the channel of its LED messages), so a Sequencer or
+  Synth Sound playing its pitch on another channel is never mistaken for a pad.
 - **Library page**: current sound, current beat and whole project (fetch, wait for the menu's Send Project, save, send
   back); library of sounds, beats and projects with search, filters, tags, favourites, details, history of older
   versions with compare and restore, rename (internal name and file together), trash; an index rebuilt from the files

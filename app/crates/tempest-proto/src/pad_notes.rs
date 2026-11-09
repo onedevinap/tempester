@@ -7,8 +7,10 @@
 //! white keys from C2 (36-60), A16 61, B1-B16 62-77. Whether a factory default exists is not known (no such table
 //! was found in the Main flash).
 //!
-//! The note a pad SENDS is not always its table entry: tapping B1 sent note 60 (A15's note) on Remote Pad OUT,
-//! twice, while the machine's screen shows B1 = 62 [P measured, cause not studied]. So learning never takes a note
+//! A note the machine sends is not always a pad's table entry: tapping B1 sent note 60 (A15's note) while the
+//! machine's screen shows B1 = 62 [P measured twice]. B1 was the Sequencer Sound with Sequencer Out on channel 1, so it
+//! also played its pitch there (`Docs/analyses/bugs-open-2026-11.md` §1, confirmed on the machine: Off, then 62 on
+//! Remote Pad OUT); the app now watches only the LEDs' channel (`machine/pad_map.rs`). So learning never takes a note
 //! that another pad already has: the table stays one note per pad and a wrong report does not move other pads.
 //!
 //! Pads are numbered 0-31: 0-15 are A1-A16, 16-31 are B1-B16 (the Sound Bank B key adds 16 to a pad,

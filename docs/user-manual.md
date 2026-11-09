@@ -33,8 +33,10 @@ press **System** and set:
 | *Remote Pad OUT* | any channel, **not Off** | the machine reports its parameter changes, LEDs and beat-wide positions on this channel; Off silences them |
 | *MIDI Clock* | slave, if you want the app to drive the tempo | for the Play page's clock master |
 
-The app's channel is set on the [Machine](#machine) page. Remote Pad OUT can be any channel: the app listens on all
-of them.
+The app's channel is set on the [Machine](#machine) page. Remote Pad OUT can be any channel: the app finds it by
+itself, as the channel the machine's LED messages arrive on, and takes pad notes only from that channel. A sound set as
+*Sequencer Sound* (or *Synth Sound*) also plays its pitch on the *Sequencer Out* (or *Synth IN*) channel; those notes
+are not taken for pads. If you do not use that output, set *Sequencer Out Channel* to *Off*.
 
 ## Connecting
 
@@ -64,10 +66,27 @@ explanations below.
 
 ![Full view](images/panel-full.png)
 
-One knob for each of the 127 sound parameters, grouped as on the machine (oscillators, mixer, filters, amp,
-envelopes, LFOs, modulation paths). Turning a knob sends an NRPN to the machine (Tempester 1.5.3.0 or later; the
-official OS ignores NRPN). Turning a knob on the machine moves the knob here (the machine sends NRPN on Remote Pad OUT).
-Distort and Compress are CC 12 and 13, BPM sets the app's clock tempo, Play and Stop send MIDI Start and Stop.
+Everything the Machine view has, plus one knob for each of the 127 sound parameters, grouped as on the machine
+(oscillators, oscillator mix, filters, amp, envelopes, LFOs, modulation paths). Turning a sound knob sends an NRPN to the
+machine (Tempester 1.5.3.0 or later; the official OS ignores NRPN). Turning a knob on the machine moves the knob here
+(the machine sends NRPN on Remote Pad OUT).
+
+- **Knob types follow the machine.** The controls that are absolute knobs on the Tempest (Feedback, Lowpass Frequency,
+  Resonance, Audio Mod, Highpass Frequency, Distort, Compress, Volume, Level, Pan) are drawn as knobs with a scale;
+  everything the machine sets with an endless encoder is drawn as an encoder (a dashed ring), with a dot at the value.
+  The four knobs above the screen are the machine's soft knobs: always encoders.
+- **Top bar**, on three panels as on the machine: **Shift**; **BPM** (the machine's tempo encoder, Shift: Swing) next to
+  the **App clock** knob (the tempo of the app's own clock, for the Play page); **Main Out**: Distort and Compress
+  (CC 12 and 13) and Volume.
+- **Mixer**, under the transport: the machine's mixer of the selected pad in the beat: **Level** and **Pan** (knobs),
+  **Delay Send** (encoder, Shift: Delay Time), and the **Mute**, **Solo** and **Delay On** keys with their LEDs.
+- **Select** and **Mod Paths** keys, with the screen keys.
+- Play and Stop send MIDI Start and Stop.
+
+The machine-only controls (Shift, BPM, Volume, the Mixer, Select, Mod Paths, the screen keys) go through the remote
+panel (Tempester 1.6.0.0 or later) and are greyed without it. They are the Machine view's own controls: both views show
+the same state. The machine does not report its mixer, tempo and volume yet, so turning them on the machine does not
+move them here (planned, see the [roadmap](roadmap.md)).
 
 In **16 Beats** and **16 Mutes** the machine's own sound knobs act on the whole beat. The Full view still edits the
 selected pad only, and a note under the panel says so; use the Machine view to turn the knobs as the machine does.
@@ -82,12 +101,12 @@ Only what the physical Tempest has, at the same place: the 10 absolute knobs, th
 
 - A key acts exactly like the machine's key: press and release are both sent, always (also when the pointer leaves the
   key, the window loses focus or the app closes).
-- An encoder shows each step as a moving dot and the count of a burst (`+3`, `-1`); the value it changed, reported by
-  the machine, appears under it (for example « LP Env Decay 64 »).
+- An encoder shows each step as a moving dot and, above it in yellow, the count of a burst (`+3`, `-1`), which fades
+  out when you stop turning.
 - The machine's LEDs light the keys and pads here.
 - In 16 Beats and 16 Mutes the controls the firmware ignores in that mode are greyed, with a tooltip.
-- The FX ribbons are drawn for reference only: the app does not play them yet. The firmware accepts them over MIDI
-  from Tempester 1.6.3.0 (see [MIDI protocol](midi-protocol.md#fx-ribbons)).
+- The FX ribbons play over MIDI with Tempester 1.6.3.0 or later: drag to touch, let go to release; a ribbon moved on
+  the machine moves here (see [MIDI protocol](midi-protocol.md#fx-ribbons)). Both views have them.
 - The Debug menu cannot be opened remotely (by design).
 
 ## Library
@@ -153,7 +172,8 @@ pad's note in the pad note table (Machine page), with the velocities and lengths
 - 16 on-screen pads (A1-A16) send, on the app's channel and with the chosen velocity, the note the machine plays each
   pad with: the **pad note table** of the Machine page (the « Pad notes » button). The Tempest has its own table
   (System > MIDI Note : Pad), not 36 + pad; the app starts with one machine's table (A1-A15 white keys from C2, A16 61, B 62-77) and learns
-  the real table when you tap the pads on the machine in 16 Sounds (Remote Pad OUT on, Tempester 1.6.0.0 or later). You
+  the real table when you tap the pads on the machine in 16 Sounds (Remote Pad OUT on, Tempester 1.6.0.0 or later; only
+  notes on the Remote Pad OUT channel are learned, and a note another pad already has is never taken). You
   can also type a note per pad, or reset. The Panel pads, the sequencer and the MIDI export use the same table.
 - **Clock master**: set the Tempest's MIDI clock to slave (System), choose a tempo, press **Start**. The app sends MIDI
   Start and 24 clocks per quarter note, and Stop when you press Stop. The clock cannot run during an OS update.

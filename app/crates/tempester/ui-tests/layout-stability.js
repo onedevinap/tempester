@@ -298,9 +298,12 @@ async function toolbar(page) {
 async function interactions(page, view, check, coverage) {
   await receive(page, { event: "remote", available: true });
   await check("remote answers");
-  for (const bpm of [99, 120, 300, 20, 100])
+  /* Measured after each value: a label that follows its value only moves something while its digit count differs from
+     the baseline's. */
+  for (const bpm of [99, 120, 300, 20, 100]) {
     await page.evaluate((v) => window.Tempester.panel.setLocal("bpm", v), bpm);
-  await check("BPM 99 / 120 / 300 / 20 / 100");
+    await check("BPM " + bpm);
+  }
   const values = window_values();
   await receive(page, {
     event: "sound",

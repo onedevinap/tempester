@@ -1004,21 +1004,26 @@ mod realtime {
     use super::*;
     use std::alloc::{GlobalAlloc, Layout, System};
     use std::cell::Cell;
-    use std::sync::atomic::{AtomicUsize, Ordering};
 
     struct Counting;
-    static ALLOCATIONS: AtomicUsize = AtomicUsize::new(0);
+    // Both per thread: a shared counter also counted the allocations of the counter-proof below when the test harness
+    // ran it at the same time on another thread (seen once, 09/11/2026: 1 allocation reported, none of this thread).
     thread_local! {
         static ARMED: Cell<bool> = const { Cell::new(false) };
+        static ALLOCATIONS: Cell<usize> = const { Cell::new(0) };
     }
 
-    // SAFETY: every call is forwarded unchanged to the system allocator; the only addition is an atomic counter bump,
-    // which neither allocates nor touches the returned memory.
+    fn count_one() {
+        if ARMED.try_with(Cell::get).unwrap_or(false) {
+            let _ = ALLOCATIONS.try_with(|n| n.set(n.get() + 1));
+        }
+    }
+
+    // SAFETY: every call is forwarded unchanged to the system allocator; the only addition is a thread-local counter
+    // bump (const-initialised, so it neither allocates nor touches the returned memory).
     unsafe impl GlobalAlloc for Counting {
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-            if ARMED.try_with(Cell::get).unwrap_or(false) {
-                ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
-            }
+            count_one();
             // SAFETY: same contract as the caller's.
             unsafe { System.alloc(layout) }
         }
@@ -1027,9 +1032,7 @@ mod realtime {
             unsafe { System.dealloc(ptr, layout) }
         }
         unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-            if ARMED.try_with(Cell::get).unwrap_or(false) {
-                ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
-            }
+            count_one();
             // SAFETY: same contract as the caller's.
             unsafe { System.realloc(ptr, layout, new_size) }
         }
@@ -1040,10 +1043,10 @@ mod realtime {
 
     fn count_allocations(work: impl FnOnce()) -> usize {
         ARMED.with(|a| a.set(true));
-        let before = ALLOCATIONS.load(Ordering::Relaxed);
+        let before = ALLOCATIONS.with(Cell::get);
         work();
         ARMED.with(|a| a.set(false));
-        ALLOCATIONS.load(Ordering::Relaxed) - before
+        ALLOCATIONS.with(Cell::get) - before
     }
 
     #[test]

@@ -159,6 +159,10 @@
       paramMax: (index) => maxOf[index],
       paramName: (index) => window.Tempester.panelLabels.NAMES[index],
     });
+    /* The Full view's machine-only controls are the Machine view's own knobs (panel.js `fvslot`): one state for both. */
+    fullHost.querySelectorAll(".fvslot").forEach((s) =>
+      s.prepend(machine.knobFor(s.dataset.kind, +s.dataset.n)),
+    );
     /* The editing tools (edit-tools.js): one slot of the bar and its popover; what they change is drawn on both views,
        and a learned controller moves a control through `link`, like a hand. */
     const tools = window.Tempester.editTools.create({

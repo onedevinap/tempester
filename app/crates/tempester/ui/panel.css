@@ -46,11 +46,16 @@
 .panel-root .sec > h2 { margin: 0; position: absolute; left: 7px; top: 6px; bottom: 6px; overflow: hidden; white-space: nowrap; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font: 600 15px/1 var(--f-seri); letter-spacing: .05em; color: var(--serigraphie); }
 .panel-root .ligne { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-around; gap: 4px; }
 /* Bandeau du haut */
-.panel-root .bandeau { display: flex; align-items: center; gap: 18px; min-height: 84px; padding: 0 6px; }
-.panel-root .marque { font: 600 18px/1 var(--f-seri); letter-spacing: .3em; color: var(--seri-2); }
+.panel-root .bandeau { display: flex; align-items: center; gap: 14px; min-height: 84px; padding: 0 0 0 6px; }
+.panel-root .marque { font: 600 18px/1 var(--f-seri); letter-spacing: .24em; color: var(--seri-2); white-space: nowrap; }
 .panel-root .marque b { color: var(--serigraphie); font-weight: 700; }
 .panel-root .etat { font: 500 13px/1 var(--f-seri); color: var(--seri-2); border: 1px solid rgba(255,255,255,.18); border-radius: 99px; padding: 4px 10px; white-space: nowrap; }
-.panel-root .bandeau .sortie { margin-left: auto; display: flex; gap: 8px; padding-left: 14px; border-left: 1px solid rgba(255,255,255,.1); }
+.panel-root .bandeau .sortie { margin-left: auto; display: flex; gap: 8px; padding: 8px 0; }
+.panel-root .sec.boite { flex-direction: row; align-items: flex-start; gap: 8px; padding: 8px 10px 8px 30px; }
+/* The machine's BPM encoder at the size of its neighbours (the app clock and Main Out knobs, 56 px), on their row. */
+.panel-root .bandeau .mv.fvknob { width: 56px; height: 56px; }
+.panel-root .bandeau .mv.fvknob svg { width: 56px; height: 56px; }
+.panel-root .sec.boite.sanstitre { padding-left: 10px; }
 /* Potards : capuchon gris sur jupe noire */
 .panel-root .pot { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 50px; padding: 0 1px; }
 /* Every knob sits in a slot 56 px tall whatever its size, so that the knobs of a row share one centre line. */
@@ -118,6 +123,13 @@
 .panel-root .route { display: flex; align-items: center; gap: 10px; }
 .panel-root .route b { width: 14px; text-align: right; font: 600 15px/1 var(--f-seri); color: var(--seri-2); }
 .panel-root .empile.droite { width: 400px; flex: none; }
+/* Machine-only controls in the Full view: the Machine view's own knob (its 64 px box, its count above it) in a slot with
+   its printed label; the machine's Mixer below the transport. */
+.panel-root .fvslot { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 70px; }
+.panel-root .mv.fvknob { position: relative; width: 64px; height: 64px; }
+.panel-root .fvslot .l1 { font: 600 14px/1.15 var(--f-seri); color: var(--serigraphie); white-space: nowrap; }
+.panel-root .fvslot small, .panel-root .pot .l2 { display: block; font: 500 12.5px/1.1 var(--f-seri); color: var(--seri-2); text-align: center; white-space: nowrap; }
+.panel-root .mixer { display: grid; grid-template-columns: repeat(3, 1fr); justify-items: center; align-items: start; gap: 14px 6px; }
 /* Bas : rubans, fonctions, pads, écran, transport */
 /* Function keys on the full width; the FX ribbons on the left of the pads */
 .panel-root .perf { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px; }

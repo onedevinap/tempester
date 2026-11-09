@@ -40,7 +40,7 @@
 .mv .mvosc[aria-pressed="true"] { background: #8fd0ff; box-shadow: 0 0 4px #2f8dff, 0 0 9px rgba(47,141,255,.7); }
 
 /* Knobs: the Full view's knob drawing in a fixed square (the knob, its ring and its pointer are all inside it); the
-   caption and the count hang over the neighbouring labels and have a fixed size, so they push nothing. */
+   count hangs over the neighbouring labels and has a fixed size, so it pushes nothing. */
 .panel-root .mv .pot.mvpot { display: block; min-width: 0; padding: 0; margin: 0; gap: 0; }
 .panel-root .mv .mvpot svg { display: block; width: 64px; height: 64px; margin: 0; overflow: visible; }
 .mv .mvpot.inconnu svg { opacity: .8; }
@@ -51,7 +51,6 @@
 /* The count of a burst of steps ("+3"), over the top of the knob; it fades out when the turning stops. */
 .mv .mvpot .cnt { position: absolute; left: 50%; top: -16px; width: 64px; height: 26px; margin-left: -32px; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 13px; background: #05080b; border: 1px solid #ffb340; color: #ffd98a; font: 700 17px/24px var(--f-ecran); font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; opacity: 0; transition: opacity .5s ease-in; }
 .mv .mvpot .cnt.on { opacity: 1; transition: none; }
-/* The parameter the machine reported for this control: name over value, like the OLED text. A fixed box. */
 @media (prefers-reduced-motion: reduce) { .mv .mvpot .cnt { transition: none; } }
 
 /* The screen: the Full view's green one, the sound's name at the top and the Pad Function mode at the bottom. */

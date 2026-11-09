@@ -89,6 +89,9 @@ pub struct Describer {
     channels: [ChannelState; 16],
     /// Which note is which pad: the machine's own table, as the app knows it.
     pad_notes: PadNotes,
+    /// The channel (0-15) whose notes are the machine's pads (its Remote Pad OUT); `None`: any channel. A note on
+    /// another channel is not a pad, whatever its number (the Sequencer or Synth Sound plays its pitch there).
+    pad_channel: Option<u8>,
 }
 
 impl Describer {
@@ -96,10 +99,11 @@ impl Describer {
         Self::default()
     }
 
-    /// Forgets every NRPN state (a new connection); the pad notes stay.
+    /// Forgets every NRPN state (a new connection); the pad notes and their channel stay.
     pub fn reset(&mut self) {
         *self = Self {
             pad_notes: self.pad_notes,
+            pad_channel: self.pad_channel,
             ..Self::default()
         };
     }
@@ -107,6 +111,11 @@ impl Describer {
     /// The table that names the pad of a note.
     pub fn set_pad_notes(&mut self, notes: PadNotes) {
         self.pad_notes = notes;
+    }
+
+    /// Only notes on `channel` (0-15) are named as pads; `None`: notes on any channel.
+    pub fn set_pad_channel(&mut self, channel: Option<u8>) {
+        self.pad_channel = channel;
     }
 
     /// The lines of one complete message (status byte first; a SysEx whole, `F0 ... F7`) seen at `now_ms`.

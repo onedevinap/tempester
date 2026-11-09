@@ -38,6 +38,11 @@ pub(super) struct PadLearn {
     lit: Option<LitPad>,
     /// The Sound Bank B LED as last reported; unknown counts as bank A.
     bank_b: bool,
+    /// The channel (0-15) the machine sends its LEDs on, which is its Remote Pad OUT, so also its pads' channel;
+    /// unknown until the first LED. A note on another channel is not a pad: the Sequencer Sound and the Synth Sound
+    /// play their pitch on their own channel (B1, the factory Sequencer Sound, sent 60 on channel 1 on the author's
+    /// machine, `Docs/analyses/bugs-open-2026-11.md` §1).
+    channel: Option<u8>,
 }
 
 impl PadLearn {
@@ -117,8 +122,21 @@ impl Machine {
         self.monitor.set_pad_notes(notes);
     }
 
-    /// A channel message from the machine: a note-on is remembered for pairing.
+    /// The channel of a LED message from the machine: its Remote Pad OUT, so the channel of its pads.
+    pub(super) fn observe_pad_channel(&mut self, status: u8) {
+        let channel = status & 0x0F;
+        if self.pad_learn.channel != Some(channel) {
+            self.pad_learn.channel = Some(channel);
+            self.monitor.set_pad_channel(channel);
+        }
+    }
+
+    /// A channel message from the machine: a note-on on the pads' channel (any channel while it is unknown) is
+    /// remembered for pairing.
     pub(super) fn observe_note(&mut self, now: Instant, status: u8, data: &[u8]) {
+        if self.pad_learn.channel.is_some_and(|c| c != status & 0x0F) {
+            return;
+        }
         if let (0x90, &[note, velocity]) = (status & 0xF0, data) {
             if velocity > 0 {
                 self.pad_learn.notes.push((note, now));
@@ -343,6 +361,27 @@ mod tests {
 
         assert_eq!(rig.machine.pad_notes, PadNotes::default());
         assert!(rig.events().iter().all(|e| e.name != "pad_learned"));
+    }
+
+    /// The author's machine: LEDs on channel 2 (Remote Pad OUT), B1 the Sequencer Sound playing 60 on channel 1.
+    #[test]
+    fn test_learn_when_note_is_not_on_the_leds_channel_returns_no_change_and_on_it_learns() {
+        let mut rig = TestRig::connected("pad-learn-channel");
+        let start = Instant::now();
+        let ms = |n| start + Duration::from_millis(n);
+        rig.machine.observe_pad_channel(0xB1);
+
+        rig.machine.observe_note(ms(0), 0x90, &[99, 100]);
+        rig.machine.observe_led(ms(5), led(FIRST_PAD_LED + 3, true));
+        rig.machine.settle_pad_learn(ms(100), false);
+        let ignored = rig.machine.pad_notes;
+        rig.machine.observe_note(ms(200), 0x91, &[99, 100]);
+        rig.machine
+            .observe_led(ms(205), led(FIRST_PAD_LED + 3, true));
+        rig.machine.settle_pad_learn(ms(300), false);
+
+        assert_eq!(ignored, PadNotes::default());
+        assert_eq!(rig.machine.pad_notes.note(3), Some(99));
     }
 
     #[test]
