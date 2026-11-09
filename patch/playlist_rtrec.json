@@ -1,0 +1,33 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°7b: Play List RT REC fills the step before moving to it",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "RT REC branch of [routine]: b2c++ left the new step empty (length 0) until the next bar, while the ISR divides by its length on every tick -> trap -> freeze (forum .960-.1000). The subroutine at 0x9d07b200 writes step[b2c+1] = new beat, repeats 0 ([routine], [routine]), recomputes the list ([routine]), then does b2c++ and returns a0 = list and s3 = b2c like the original code.",
+ "edits": [
+  {"at": "0x9d04db20", "jal": "0x9d07b200", "why": "hook: call of the subroutine that fills the next step then advances b2c (delay slot unchanged: lbu a0,0x6(s1) = list)"},
+  {"at": "0x9d04db28", "word": "00000000", "count": 2, "why": "former addiu s3,v0,0x1 (done in the subroutine) | former sw s3,0x68(s0) = b2c++ (done in the subroutine, after filling)"},
+  {"at": "0x9d07b200", "word": "e8ffbd27", "why": "addiu sp,sp,-0x18 (added code)"},
+  {"at": "0x9d07b204", "word": "1400bfaf", "why": "sw ra,0x14(sp) (added code)"},
+  {"at": "0x9d07b208", "word": "1000a4af", "why": "sw a0,0x10(sp) (added code)"},
+  {"at": "0x9d07b20c", "copy": "0x9d04db20", "set": {"rt": 5}, "why": "lw a1,0x68(s0) (added code)"},
+  {"at": "0x9d07b210", "word": "0100a524", "why": "addiu a1,a1,0x1 (added code)"},
+  {"at": "0x9d07b214", "word": "ff00a530", "why": "andi a1,a1,0xff (added code)"},
+  {"at": "0x9d07b218", "jal": "0x9d04fe8c", "why": "jal [address] (added code)"},
+  {"at": "0x9d07b21c", "word": "1d002692", "why": "lbu a2,0x1d(s1) (added code)"},
+  {"at": "0x9d07b220", "copy": "0x9d04db20", "set": {"rt": 5}, "why": "lw a1,0x68(s0) (added code)"},
+  {"at": "0x9d07b224", "word": "1000a48f", "why": "lw a0,0x10(sp) (added code)"},
+  {"at": "0x9d07b228", "word": "0100a524", "why": "addiu a1,a1,0x1 (added code)"},
+  {"at": "0x9d07b22c", "word": "ff00a530", "why": "andi a1,a1,0xff (added code)"},
+  {"at": "0x9d07b230", "jal": "0x9d04fb80", "why": "jal [address] (added code)"},
+  {"at": "0x9d07b234", "word": "25300000", "why": "or a2,zero,zero (added code)"},
+  {"at": "0x9d07b238", "jal": "0x9d050064", "why": "jal [address] (added code)"},
+  {"at": "0x9d07b23c", "word": "1000a48f", "why": "lw a0,0x10(sp) (added code)"},
+  {"at": "0x9d07b240", "copy": "0x9d04db20", "why": "lw v0,0x68(s0) (added code)"},
+  {"at": "0x9d07b244", "word": "1000a48f", "why": "lw a0,0x10(sp) (added code)"},
+  {"at": "0x9d07b248", "copy": "0x9d04db28", "count": 2, "why": "addiu s3,v0,0x1 (added code) | sw s3,0x68(s0) (added code)"},
+  {"at": "0x9d07b250", "word": "1400bf8f", "why": "lw ra,0x14(sp) (added code)"},
+  {"at": "0x9d07b254", "word": "0800e003", "why": "jr ra (added code)"},
+  {"at": "0x9d07b258", "word": "1800bd27", "why": "addiu sp,sp,0x18 (added code)"}
+ ]
+}

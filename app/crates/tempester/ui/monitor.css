@@ -1,0 +1,21 @@
+/* The MIDI monitor panel (monitor-ui.js). Same dark theme as app.css; text 16 px or more, controls 38 px or more.
+   In and out differ by form (arrow, wording, indent, border style) and by colour, never by colour alone. */
+.mon-panel { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px 12px; }
+.mon-panel h3 { margin: 0 6px 0 4px; font-size: 17px; }
+.mon-panel .toolbar { flex: none; flex-wrap: nowrap; height: 40px; }
+.mon-panel .toolbar .count { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: right; font-variant-numeric: tabular-nums; }
+.mon-list { flex: 1 1 auto; min-height: 0; overflow: auto; background: #0a0b0d; border: 1px solid var(--line); border-radius: 8px; padding: 6px 0; font: 16px/1.45 var(--mono); -webkit-user-select: text; user-select: text; }
+.mon-list:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mon-empty { padding: 12px 16px; margin: 0; font-family: var(--font); }
+.mon-line { display: flex; flex-wrap: wrap; column-gap: 14px; padding: 3px 14px 3px 12px; border-left: 6px solid transparent; }
+.mon-time { flex: none; width: 7ch; color: var(--mid); text-align: right; }
+.mon-dir { flex: none; width: 6.5ch; font-weight: 700; }
+.mon-text { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.mon-raw { flex: 1 1 24ch; min-width: 0; color: var(--mid); overflow-wrap: anywhere; }
+.mon-line.in { border-left-color: var(--ok); }
+.mon-line.in .mon-dir { color: var(--ok); }
+.mon-line.out { margin-left: 28px; border-left: 6px double var(--accent); background: #101a20; }
+.mon-line.out .mon-dir { color: var(--accent); }
+.mon-line.sys { border-left: 6px dotted var(--warn); color: var(--warn); font-style: italic; }
+.mon-line.sys .mon-dir { color: var(--warn); }
+.mon-line.k-nrpn .mon-text { font-weight: 700; }

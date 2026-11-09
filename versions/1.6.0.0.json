@@ -1,0 +1,52 @@
+{
+  "version": "1.6.0.0",
+  "name": "Tempester 1.6.0.0 — remote panel",
+  "kind": "release",
+  "date": "2026-11-08",
+  "summary": "The whole front panel can be played from a computer over MIDI.",
+  "changes": {
+    "additions": [
+      "Every panel key can be pressed and released over MIDI (the Debug menu stays out of reach).",
+      "The state of the panel LEDs is sent back as it changes, and on request.",
+      "The 14 encoders and 10 absolute controls can be turned over MIDI."
+    ]
+  },
+  "description": "1.5.6.0 plus n°21: remote panel keys (CC 102 press / CC 103 release on Remote Pad IN, Debug menu refused), n°22: LED states sent over MIDI (CC 104 on / CC 105 off on Remote Pad OUT, CC 107 = full state request) and n°23: remote encoders and controls (NRPN 200-213 steps, 220-229 absolute). Voice, Panel and SAM unchanged.",
+  "sha256_image": "fcff72e10dac34535767f2d2447afe6114386ca9af7e48ec33aec4e2a9a76e5f",
+  "sha256_image_written": "aaf3a4467c6ca9fcdf3f3be8d04e11a309223de264543f60715feba6d250f060",
+  "sha256_syx": "07d26ccf62af879d6431ac0c26290198b649d0a7681f82f3bf68693ef7511154",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/playlist_delete_step.json",
+    "patch/loop_counter.json",
+    "patch/dump_request.json",
+    "patch/nrpn_reception.json",
+    "patch/nrpn_emission.json",
+    "patch/project_send_frame.json",
+    "patch/copy_target.json",
+    "patch/fx_mask.json",
+    "patch/noteoff_table.json",
+    "patch/voice_assign_bound.json",
+    "patch/update_message.json",
+    "patch/os_send_merge.json",
+    "patch/sram_ring.json",
+    "patch/din_running_status.json",
+    "patch/sysex_abandon_screen.json",
+    "patch/beat_number_check.json",
+    "patch/lfo_restart_play_deferred.json",
+    "patch/remote_keys.json",
+    "patch/led_emission.json",
+    "patch/remote_controls.json",
+    "patch/version_1.6.0.0.json"
+  ]
+}

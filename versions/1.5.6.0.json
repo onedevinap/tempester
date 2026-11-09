@@ -1,0 +1,51 @@
+{
+  "version": "1.5.6.0",
+  "name": "Tempester 1.5.6.0 — fixes and small additions",
+  "kind": "corrections",
+  "date": "2026-11-07",
+  "summary": "Fixes and small additions only: every fix of 1.5.1.0 to 1.5.5.0, the dump requests and NRPN, plus stability fixes. No remote panel, project request or beat-wide positions.",
+  "changes": {
+    "fixes": [
+      "A received SysEx message (even an identity request) no longer corrupts Compare / Undo, and a beat copy no longer corrupts a message being received.",
+      "Voices no longer fall silent at random when LFO Restart is set to Play.",
+      "A SysEx sent over USB no longer causes lost or stuck notes from a keyboard on the DIN socket.",
+      "A SysEx reception that is abandoned closes the Receiving screen instead of leaving the machine looking frozen.",
+      "A project message naming a beat above 16 is refused instead of being written outside the project."
+    ]
+  },
+  "description": "1.5.5.0 plus stability fixes: n°16 SysEx rings out of the undo beat; n°17 LFO Restart = Play moved out of Timer 1 (muted voices); n°18 USB SysEx no longer clears the DIN running status; n°19 an abandoned SysEx closes the Receiving screen; n°20 SysEx 5C refused for beat > 15. Voice, Panel and SAM unchanged.",
+  "sha256_image": "7c5dbe2309cb6446acf4446891c70518ef35a06f84677ccf7181e46b6fc814e5",
+  "sha256_image_written": "9b0701b0365ab48eca32268273cb5f88d80096ca871f8fd4f86ca231dfd51d37",
+  "sha256_syx": "78698182b0e1ac5053ba3e95b11a9a5b488ac40fbe3d30d05f44326465cd25a2",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/playlist_delete_step.json",
+    "patch/loop_counter.json",
+    "patch/dump_request.json",
+    "patch/nrpn_reception.json",
+    "patch/nrpn_emission.json",
+    "patch/project_send_frame.json",
+    "patch/copy_target.json",
+    "patch/fx_mask.json",
+    "patch/noteoff_table.json",
+    "patch/voice_assign_bound.json",
+    "patch/update_message.json",
+    "patch/os_send_merge.json",
+    "patch/sram_ring.json",
+    "patch/din_running_status.json",
+    "patch/sysex_abandon_screen.json",
+    "patch/beat_number_check.json",
+    "patch/lfo_restart_play_deferred.json",
+    "patch/version_1.5.6.0.json"
+  ]
+}

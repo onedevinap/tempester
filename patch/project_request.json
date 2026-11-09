@@ -1,0 +1,21 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°24: SysEx request « send the whole project » (F0 01 28 42 F7)",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "The stock OS sends a project only from its menu (Save/Load, « Export Project over MIDI », key 0x21: [routine] calls [routine], which clears the screen and draws « Exporting Project », then [routine](cable) at [address]): F0 01 28 5E <project parameters and 4 play lists> F7, then F0 01 28 5C n <beat n> F7 for each beat n = 0-15 whose project word [address] + 2n is 0xFFFF. A request F0 01 28 42 F7 reached the « unknown command » exit of [routine] through the fall-through of n°1 (patch/dump_request.json, 0x9d07a060) and was dropped. Fix: that exit (also the jump-table target of 5D and 64-6F) jumps to a helper in free flash (0x9d07c900-0x9d07c92b): command 0x42 ([address]) calls [routine] with the cable set in System ([address]: 1 DIN, 2 USB), as n°1 answers 40/41, so the bytes are those of the menu; then, like every other command, it leaves through the original exit ([routine](0): SysEx state reset). Same acceptance as 40/41 (the hook is downstream of the same code), same context as the menu (main loop: [routine] -> USB / DIN parser -> [routine] -> [routine]), no guard the menu does not have (the menu has no sequencer guard). [routine] draws its progress lines (« Exporting Project Params... », « Exporting Project Beat n ») over the current screen; the menu's own title screen ([routine], which needs the file-menu context) is not drawn. Requires n°2a and n°2d (frames of [routine] and [routine] reduced: stack) and n°1 (its fall-through brings 0x42 here). No word of n°1 touched; no RAM added. Docs/analyses/feature-project-request.md.",
+ "edits": [
+  {"at": "0x9d0602e8", "j": "0x9d07c900", "why": "j 0x9d07c900 ; [routine] « unknown command » exit: was \"lw ra,0x10(sp)\" (redone at PROJECT_REQUEST). Delay slot \"clear a0\" kept (a0 = 0: argument of [routine])"},
+  {"at": "0x9d07c900", "word": "6c808893", "why": "lbu t0,-0x7f94(gp) ; command [address] (the byte after F0 01 28), stored by [routine] at [address]"},
+  {"at": "0x9d07c904", "word": "42000924", "why": "li t1,0x42"},
+  {"at": "0x9d07c908", "word": "06000915", "why": "bne t0,t1,0x9d07c924 ; any other command: original exit"},
+  {"at": "0x9d07c90c", "word": "1000bf8f", "why": "lw ra,0x10(sp) ; delay slot: the replaced instruction ([routine] frame of 0x18 bytes, ra at 0x10)"},
+  {"at": "0x9d07c910", "word": "01a00a3c", "why": "lui t2,0xa001"},
+  {"at": "0x9d07c914", "jal": "0x9d042aa8", "why": "jal [address] ; [routine](cable): what the menu « Export Project » calls"},
+  {"at": "0x9d07c918", "word": "e6cb4491", "why": "lbu a0,-0x341a(t2) ; delay slot: a0 = cable set in System ([address]: 1 DIN, 2 USB), as n°1"},
+  {"at": "0x9d07c91c", "word": "1000bf8f", "why": "lw ra,0x10(sp) ; ra of [routine] again (the call replaced it)"},
+  {"at": "0x9d07c920", "word": "21200000", "why": "clear a0 ; [routine](0), as the original exit"},
+  {"at": "0x9d07c924", "j": "0x9d03fa40", "why": "j [address] ; [routine]: the original exit, resets the SysEx state"},
+  {"at": "0x9d07c928", "word": "1800bd27", "why": "addiu sp,sp,0x18 ; delay slot: [routine] frame released"}
+ ]
+}

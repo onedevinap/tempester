@@ -1,0 +1,10 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°3: pressure of sliders 2 to 4 on the FX in real time",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "In [routine] (Panel messages), path « Realtime, sequencer running », pressure message: the expected source was computed as 2N+8 (copy of the position computation, 2N/2N+1) instead of N+8 (N = physical slider + 2 × bank, decoder [routine]: 8-11 = pressures). Only slider 1 (N=0) came out right. The doubled value is read back only at [address], for this comparison.",
+ "edits": [
+  {"at": "0x9d022ea8", "copy": "0x9d022ea8", "set": {"sa": 0}, "why": "sll t4,t5,0x1 -> sll t4,t5,0: compared source N+8 instead of 2N+8"}
+ ]
+}

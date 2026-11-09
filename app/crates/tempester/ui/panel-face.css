@@ -1,0 +1,71 @@
+/* ---------- Machine view: the top face of the physical Tempest ----------
+   The theme is the Full view's (panel.css): the same wood, sheet metal, blue-grey sections, silkscreen, knobs, keys,
+   pads, screen and ribbons; this file only places them. A fixed canvas of 1932 px (panel-face.js), scaled to the window
+   by panel-view.js (fit width, then the zoom). Every element is placed with `position: absolute` at a fixed place and
+   size: nothing flows, so nothing can move when a caption, a count or a LED changes. The font sizes below are canvas
+   pixels: at a 1,320 px window the canvas is drawn at about 0.67, so a main label of 19 px is 12.7 px on screen. */
+.mvnote { margin: 14px 0 0; padding: 10px 14px; border: 1px solid #5a4e14; background: #2e2809; color: #f2cf4a; border-radius: 8px; font: 17px/1.4 sans-serif; max-width: 110ch; }
+.mvnote[hidden] { display: none; }
+.panel-root .machine.mv { position: relative; display: block; width: 1932px; --s: 1; font-family: var(--f-seri); }
+.panel-root .mv > * { position: absolute; }
+.mv .mvlines { left: 0; top: 0; pointer-events: none; }
+.mv .mvlines polyline { fill: none; stroke: rgba(255,255,255,.3); stroke-width: 1.4; stroke-linejoin: round; }
+
+/* The wood sides and the sheet metal are the Full view's pieces; the sections are its `.sec`, only without padding. */
+.panel-root .mv > .mvbody { padding: 0; display: block; gap: 0; }
+.panel-root .mv > .mvzone { padding: 0; display: block; gap: 0; }
+.panel-root .mv > .mvzone.sunk { box-shadow: inset 0 2px 6px rgba(0,0,0,.45), inset 0 -1px 0 rgba(255,255,255,.05); }
+
+/* Silkscreen: a label is centred on its place. */
+.mv .mvt { transform: translate(-50%, -50%); white-space: nowrap; line-height: 1; pointer-events: none; user-select: none; font-size: 19px; font-weight: 600; color: var(--serigraphie); }
+.mv .mvt.s { font-size: 16px; font-weight: 500; color: var(--seri-2); }
+.mv .mvt.sw { font-size: 16px; font-weight: 600; color: var(--serigraphie); }
+.mv .mvt.g { font-size: 16.6px; font-weight: 600; letter-spacing: .14em; color: var(--seri-2); }
+.mv .mvt.big { font-size: 22px; font-weight: 600; }
+.mv .mvtitle { writing-mode: vertical-rl; transform: translate(-50%, -50%) rotate(180deg); white-space: nowrap; line-height: 1; pointer-events: none; user-select: none; font-size: 21px; font-weight: 600; letter-spacing: .05em; color: var(--serigraphie); }
+.panel-root .mv .mvbrand { transform: translate(-50%, -50%); white-space: nowrap; line-height: 1; pointer-events: none; user-select: none; font-size: 34px; }
+
+/* Keys: the Full view's black keys (panel.css .bt), here a box of the key's size; the LED sits beside it. */
+.panel-root .mv .mvk { display: block; min-width: 0; padding: 0; margin: 0; gap: 0; font: inherit; }
+.panel-root .mv .mvk button { display: block; width: 100%; height: 100%; margin: 0; }
+.panel-root .mv .mvk button::after { left: var(--lx, 0); top: var(--ly, 0); width: var(--lw, 6px); height: var(--lh, 14px); }
+.panel-root .mv .mvk button:not(.hasled)::after { content: none; }
+.panel-root .mv .mvk button.hasled.tiny::after { width: 4px; height: 10px; }
+.panel-root .mv .tb.mvk button { width: 100%; height: 100%; font-size: 26px; }
+/* The « |« » print between « and » (the LEDs of REC and PLAY are panel.css .tled, at the key LEDs' size). */
+.mv .mvt.rwmark { font-size: 15px; }
+
+/* The four oscillator LEDs beside "1 Ana 2" and "3 Digi 4": the key LED of the Full view. */
+.mv .mvosc { display: block; border-radius: 1px; background: #1c2026; }
+.mv .mvosc[aria-pressed="true"] { background: #8fd0ff; box-shadow: 0 0 4px #2f8dff, 0 0 9px rgba(47,141,255,.7); }
+
+/* Knobs: the Full view's knob drawing in a fixed square (the knob, its ring and its pointer are all inside it); the
+   caption and the count hang over the neighbouring labels and have a fixed size, so they push nothing. */
+.panel-root .mv .pot.mvpot { display: block; min-width: 0; padding: 0; margin: 0; gap: 0; }
+.panel-root .mv .mvpot svg { display: block; width: 64px; height: 64px; margin: 0; overflow: visible; }
+.mv .mvpot.inconnu svg { opacity: .8; }
+@media (prefers-reduced-motion: no-preference) {
+  .mv .mvpot svg .turnflash { animation: turnflash .45s ease-out forwards; }
+}
+@keyframes turnflash { from { opacity: 1; } to { opacity: 0; } }
+/* The count of a burst of steps ("+3"), over the top of the knob; it fades out when the turning stops. */
+.mv .mvpot .cnt { position: absolute; left: 50%; top: -16px; width: 64px; height: 26px; margin-left: -32px; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 13px; background: #05080b; border: 1px solid #ffb340; color: #ffd98a; font: 700 17px/24px var(--f-ecran); font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; opacity: 0; transition: opacity .5s ease-in; }
+.mv .mvpot .cnt.on { opacity: 1; transition: none; }
+/* The parameter the machine reported for this control: name over value, like the OLED text. A fixed box. */
+@media (prefers-reduced-motion: reduce) { .mv .mvpot .cnt { transition: none; } }
+
+/* The screen: the Full view's green one, the sound's name at the top and the Pad Function mode at the bottom. */
+.panel-root .mv .ecran.mvlcd { min-height: 0; padding: 14px 18px; font-size: 26px; line-height: 1.2; display: block; }
+.mv .mvlcd .nom { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv .mvlcd .mode { position: absolute; right: 18px; bottom: 12px; max-width: calc(100% - 36px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 20px; color: rgba(87,240,140,.65); }
+
+/* FX ribbons and pads: the Full view's, at the size of the machine's. */
+.panel-root .mv .ruban.mvribbon { position: absolute; margin: 0; min-height: 0; }
+.panel-root .mv .ruban.mvribbon::before { content: none; }
+.panel-root .mv .ruban .leds { left: 14px; top: 18px; bottom: 18px; width: 14px; background: repeating-linear-gradient(to top, #18304a 0 18px, transparent 18px 28px); }
+.panel-root .mv .ruban .leds::after { background: repeating-linear-gradient(to top, #7fd6ff 0 18px, transparent 18px 28px); }
+.panel-root .mv .sec.pads.mvpads { position: absolute; display: grid; grid-template-columns: repeat(8, var(--pad-w)); column-gap: var(--pad-col-gap); row-gap: var(--pad-row-gap); align-content: start; padding: 0; background: none; box-shadow: none; border-radius: 0; }
+.panel-root .mv .pad { width: var(--pad-w); height: var(--pad-h); aspect-ratio: auto; border-radius: 6px; }
+.panel-root .mv .pad .n { top: -30px; font-size: 20px; }
+/* The pads of the machine carry no text (their name is the label of the button for assistive technology). */
+.panel-root .mv .pad .nom { display: none; }

@@ -1,0 +1,11 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°7a: empty Play List step of length 1 (no more division by zero)",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "[routine] gave empty steps a length of 0; this length is used as a divisor (len*0x18) at 14 sites guarded by teq (timer 4 ISR [routine], timer 1 ISR [address], [routine], [routine], [routine], main loop). Empty current step -> trap -> exception loop [address], interrupts masked: Initialize Project freezes in Play List mode (forum p.30). The other readers of the length are bounded by the step count or test the beat first.",
+ "edits": [
+  {"at": "0x9d04fbf8", "word": "fdff0010", "why": "b [address] (instead of jr ra): common exit jr ra / sh a2,0x2e(a1)"},
+  {"at": "0x9d04fbfc", "word": "01000624", "why": "li a2,0x1 (delay slot, instead of sh zero,0x2e(a1)): stored length = 1"}
+ ]
+}

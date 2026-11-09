@@ -1,0 +1,175 @@
+# Tempester 1.5.3.0: NRPN test vectors over USB (tools/tempest_midi.swift + tools/tempest_sysex.py)
+#
+# NOTHING here may be sent before the author has approved it and the Main runs Tempester 1.5.3.0
+# (flashed by USB with the author's approval). Original OS: NRPN have no effect, so these tests are meaningless there.
+#
+# Machine settings (System menu, on the Tempest itself):
+#   - "MIDI: Sysex IN+OUT Cable" = USB              (needed for the dump request F0 01 28 40 F7)
+#   - "Remote Pad IN Channel"    = 1 (or All)        -> every SEND below uses status B0 = channel 1.
+#     Read it in System, entry "Remote Pad IN Channel" (0 = All, n = channel n). Its factory default
+#     is not known from the code (it is loaded from the settings file): read it, do not assume it. If it is not 1
+#     or All, either set it to 1, or replace B0 by B(n-1) in every line.
+#   - "MIDI: Synth IN Channel"   = Off or a channel other than 1, 3 (cases T9, T10 change it)
+#   - "Remote Pad OUT Channel"   = Off, except in T15 and T16
+#   - a pad selected on the panel (its sound is the target AND the sound returned by the dump), no beat change pending
+#
+# How to run one step (from the repo root):
+#   SEND "<hex>"  ->  swift tools/tempest_midi.swift request "<hex>" /tmp/nrpn_out.syx 1
+#                     (one line = one USB packet = one complete NRPN of 4 CCs; anything the Tempest sends back
+#                      during 1 s goes to /tmp/nrpn_out.syx: it must stay EMPTY in reception tests = no echo)
+#   DUMP          ->  swift tools/tempest_midi.swift request "F0 01 28 40 F7" /tmp/dump.syx 3
+#                     python3 -I tools/tempest_sysex.py /tmp/dump.syx
+#   EXPECT v[i]=x ->  in the decoded dump, 'values'[i] == x  (i = parameter index of sound_params.json)
+#   SAME AS <ref> ->  /tmp/dump.syx byte-identical to the dump saved as <ref> (cmp)
+#
+# NRPN message = B0 63 <n>>7> B0 62 <n&7F> B0 06 <v>>7> B0 26 <v&7F>   (value applied on CC 38 only)
+# Recipe points of the design report checkable by dump: 1-11 -> T1-T11. Points 12-17 (listening, load, LCD,
+# regression, emission) -> T12-T16 partly; the rest needs ears or a scope (see the end).
+
+## T0  baseline
+DUMP                                               ; save as base.syx
+
+## T1  (recipe 1) LP Freq (34) = 100
+SEND "B0 63 00 B0 62 22 B0 06 00 B0 26 64"
+DUMP
+EXPECT v[34]=100 ; all other values as in base.syx
+EXPECT /tmp/nrpn_out.syx empty                     ; no echo of a MIDI-originated change
+
+## T2  (recipe 2) clamp to the table max: LP Freq = 300 -> 164
+SEND "B0 63 00 B0 62 22 B0 06 02 B0 26 2C"
+DUMP
+EXPECT v[34]=164
+
+## T3  (recipe 3) Osc 3 Frequency (12): knob-path bounds 40..88 (table says 120)
+SEND "B0 63 00 B0 62 0C B0 06 00 B0 26 00"
+DUMP
+EXPECT v[12]=40
+SEND "B0 63 00 B0 62 0C B0 06 00 B0 26 78"
+DUMP
+EXPECT v[12]=88
+
+## T4  (recipe 4) Fine does not carry into Frequency
+SEND "B0 63 00 B0 62 00 B0 06 00 B0 26 3C"         ; Osc 1 Freq (0) = 60
+SEND "B0 63 00 B0 62 01 B0 06 00 B0 26 32"         ; Osc 1 Fine (1) = 50
+SEND "B0 63 00 B0 62 01 B0 06 00 B0 26 64"         ; Fine = 100 (= max)
+DUMP
+EXPECT v[1]=100 ; v[0]=60
+SEND "B0 63 00 B0 62 01 B0 06 00 B0 26 7F"         ; Fine = 127 -> clamped to 100, still no carry
+DUMP
+EXPECT v[1]=100 ; v[0]=60
+
+## T5  (recipe 5) LFO 1 Rate (47) / Sync (51) coupling
+SEND "B0 63 00 B0 62 33 B0 06 00 B0 26 00"         ; Sync = 0
+SEND "B0 63 00 B0 62 2F B0 06 01 B0 26 2A"         ; Rate = 170
+DUMP
+EXPECT v[51]=0 ; v[47]=162                         ; free-running rate max 0xA2
+SEND "B0 63 00 B0 62 33 B0 06 00 B0 26 01"         ; Sync = 1 -> firmware sets Rate = 163
+DUMP
+EXPECT v[51]=1 ; v[47]=163
+SEND "B0 63 00 B0 62 2F B0 06 00 B0 26 64"         ; Rate = 100 while synced -> min 163
+DUMP
+EXPECT v[47]=163
+SEND "B0 63 00 B0 62 33 B0 06 00 B0 26 00"         ; back to Sync = 0 (Rate = firmware default)
+
+## T6  (recipe 6) refused numbers change nothing (name characters included)
+DUMP                                               ; save as ref6.syx
+SEND "B0 63 00 B0 62 7F B0 06 00 B0 26 41"         ; 127 (1st name character) = 'A'
+SEND "B0 63 01 B0 62 0C B0 06 00 B0 26 41"         ; 140
+SEND "B0 63 01 B0 62 12 B0 06 00 B0 26 41"         ; 146 (last name character)
+SEND "B0 63 01 B0 62 1B B0 06 00 B0 26 01"         ; 155
+SEND "B0 63 01 B0 62 1E B0 06 00 B0 26 01"         ; 158
+SEND "B0 63 03 B0 62 0D B0 06 00 B0 26 01"         ; 397
+SEND "B0 63 7F B0 62 7E B0 06 00 B0 26 01"         ; 16382
+DUMP
+EXPECT SAME AS ref6.syx
+# manual part: select the next pad on the panel, DUMP, compare with a dump of that pad taken before T6: identical
+
+## T7  (recipe 7) RPN deselects; RPN data entry never reaches a parameter
+SEND "B0 63 00 B0 62 22 B0 06 00 B0 26 32"         ; LP Freq = 50
+SEND "B0 65 00 B0 64 00 B0 06 0C B0 26 00"         ; RPN 0 (pitch bend range) = 12
+SEND "B0 06 00 B0 26 0A"                           ; bare data entry
+DUMP
+EXPECT v[34]=50
+
+## T8  (recipe 8) nothing selected: at boot, and after NRPN null
+# power-cycle the Tempest (settings unchanged), select the same pad, then:
+DUMP                                               ; save as ref8.syx
+SEND "B0 06 00 B0 26 0A"
+DUMP
+EXPECT SAME AS ref8.syx
+SEND "B0 63 7F B0 62 7F B0 06 00 B0 26 0A"         ; NRPN null (16383) then data
+DUMP
+EXPECT SAME AS ref8.syx
+
+## T9  (recipe 9) other channel ignored
+# set Remote Pad IN Channel = 10 and MIDI: Synth IN Channel = Off
+DUMP                                               ; save as ref9.syx
+SEND "B2 63 00 B2 62 22 B2 06 00 B2 26 14"         ; channel 3
+DUMP
+EXPECT SAME AS ref9.syx
+
+## T10 (recipe 10) Synth IN channel -> Synth Sound
+# keep Remote Pad IN = 10; set MIDI: Synth IN Channel = 3 and MIDI: Synth Sound = B5 (any pad other than the selected one)
+SEND "B2 63 00 B2 62 22 B2 06 00 B2 26 14"         ; LP Freq = 20 on channel 3
+DUMP
+EXPECT SAME AS ref9.syx                            ; the selected pad is untouched
+# select pad B5 on the panel, then:
+DUMP
+EXPECT v[34]=20
+# restore Remote Pad IN = 1 (or All), Synth IN = Off, select the original pad
+
+## T11 (recipe 11) Osc 3 sample, 14-bit pseudo-parameter 156 (Osc 4: 157, fields 21/20)
+SEND "B0 63 01 B0 62 1C B0 06 02 B0 26 2C"         ; 156 = 300
+DUMP
+EXPECT v[15]=2 ; v[14]=44                          ; 2*128 + 44 = 300
+SEND "B0 63 01 B0 62 1C B0 06 07 B0 26 68"         ; 156 = 1000 -> clamped to 463
+DUMP
+EXPECT v[15]=3 ; v[14]=79
+SEND "B0 63 01 B0 62 1D B0 06 00 B0 26 05"         ; 157 = 5
+DUMP
+EXPECT v[21]=0 ; v[20]=5
+
+## T12 8-bit value split, applied on CC 38 only
+SEND "B0 63 00 B0 62 25 B0 06 01 B0 26 48"         ; LP Env Amount (37, max 254) = 200
+DUMP
+EXPECT v[37]=200
+SEND "B0 06 00"                                    ; MSB alone: nothing applied
+DUMP
+EXPECT v[37]=200
+SEND "B0 26 0A"                                    ; LSB now: 0*128 + 10 (selection kept)
+DUMP
+EXPECT v[37]=10
+
+## T13 CC 96/97 absorbed; matrix values clamped
+SEND "B0 60 01 B0 61 01"
+DUMP
+EXPECT v[37]=10
+SEND "B0 63 00 B0 62 5E B0 06 00 B0 26 64"         ; Mod 1 destination (94, max 57) = 100
+DUMP
+EXPECT v[94]=57
+
+## T14 parameter that a knob does not send live (Env Amp Delay, 71): stored now, heard from the next note
+SEND "B0 63 00 B0 62 47 B0 06 00 B0 26 40"
+DUMP
+EXPECT v[71]=64
+
+## T15 (recipe 17) emission: set Remote Pad OUT Channel = 2
+swift tools/tempest_midi.swift listen 10           ; turn the LP Freq knob of the selected sound during these 10 s
+EXPECT received "B1 63 00 B1 62 22 B1 06 0m B1 26 ll" with (m*128 + ll) = the value shown on the Tempest
+SEND "B0 63 00 B0 62 22 B0 06 00 B0 26 28"         ; reception still works with emission on
+EXPECT /tmp/nrpn_out.syx empty                     ; no echo of a MIDI-originated change
+DUMP
+EXPECT v[34]=40
+
+## T16 emission off
+# set Remote Pad OUT Channel = Off
+swift tools/tempest_midi.swift listen 10           ; turn the LP Freq knob
+EXPECT nothing received
+
+## Not checkable by dump (with the author, by ear or scope)
+# recipe 12: long note, LP Freq swept by NRPN at ~100 msg/s: the filter follows live
+# recipe 13: 16 Beats mode, CC 21 then NRPN 34 then CC 19 (Revert): behaves as with the knob
+# recipe 14: 60 s at 100 msg/s on 34 then on 156, plus a 1000 msg/s USB burst, sequencer running, clock master:
+#            clock stable (DAW), no muted voice, panel responsive
+# recipe 15: is the LCD updated while the sound edit page is open?
+# recipe 16: CC 1, 12, 13, 19-27, notes and SysEx on DIN and USB unchanged; DIN NRPN identical to USB (needs a DIN interface)

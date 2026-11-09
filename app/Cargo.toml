@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/tempest-proto", "crates/tempest-midi", "crates/tempester"]
+# The plugin has its own workspace (nih-plug git dependency, own lock file and target/): see its Cargo.toml.
+exclude = ["crates/tempester-plugin"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+publish = false
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

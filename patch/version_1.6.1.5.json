@@ -1,0 +1,15 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester: version number 1.6.1.5 (SysEx timeout)",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "The « Main OS Version » screens (System and Debug) show 1.6.1.5 instead of 1.5.0.2. A number never used by DSI. Exclusive of the other patch/version_*.json (same instructions).",
+ "edits": [
+  {"at": "0x9d007780", "copy": "0x9d007780", "set": {"imm": 6}, "why": "system screen, digit 2: 5 -> 6"},
+  {"at": "0x9d0077a0", "word": "01000424", "why": "system screen, digit 3: 0 -> 1"},
+  {"at": "0x9d0077c0", "copy": "0x9d0077c0", "set": {"imm": 5}, "why": "system screen, digit 4: 2 -> 5"},
+  {"at": "0x9d009dc8", "copy": "0x9d009dc8", "set": {"imm": 6}, "why": "debug screen, digit 2: 5 -> 6"},
+  {"at": "0x9d009de8", "word": "01000424", "why": "debug screen, digit 3: 0 -> 1"},
+  {"at": "0x9d009e08", "copy": "0x9d009e08", "set": {"imm": 5}, "why": "debug screen, digit 4: 2 -> 5"}
+ ]
+}

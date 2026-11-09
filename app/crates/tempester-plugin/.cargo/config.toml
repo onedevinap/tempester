@@ -1,0 +1,3 @@
+# `cargo xtask bundle tempester-plugin --release` builds the nih-plug bundler and runs it.
+[alias]
+xtask = "run --package xtask --release --"

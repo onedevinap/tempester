@@ -1,0 +1,31 @@
+# ISOLATED crate (its own [workspace], Cargo.lock and target/): the nih-plug git dependency never touches the app
+# workspace build (app/Cargo.toml lists this folder under `exclude`).
+# Bundles: `cargo xtask bundle tempester-plugin --release` -> target/bundled/ (.clap and .vst3).
+[workspace]
+members = ["xtask"]
+
+[package]
+name = "tempester-plugin"
+description = "Tempester Control: CLAP and VST3 plugin driving the DSI Tempest sound parameters from a DAW (nih-plug)."
+version = "0.1.0"
+edition = "2021"
+# The project's licence; GPL-3.0 is required here anyway: nih-plug's VST3 wrapper links the GPL-3.0 `vst3-sys`.
+license = "GPL-3.0-or-later"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+# Pinned revision, proven with these CLAP and VST3 wrappers and their state handling: a `cargo update` must not pull an
+# unproven master. Licence ISC; the `vst3` feature (default) adds the GPL-3.0 vst3-sys.
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "f36931f7af4646065488a9845d8f8c2f95252c23" }
+tempest-proto = { path = "../tempest-proto" }
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+
+[profile.release]
+opt-level = 3
+lto = "thin"

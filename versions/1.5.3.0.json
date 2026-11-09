@@ -1,0 +1,35 @@
+{
+  "version": "1.5.3.0",
+  "name": "Tempester 1.5.3.0 — NRPN",
+  "kind": "release",
+  "date": "2026-11-07",
+  "summary": "Adds NRPN control of the sound parameters, both ways.",
+  "changes": {
+    "additions": [
+      "Sound parameters (0 to 126, and the Osc 3 / Osc 4 sample) can be set live from MIDI with NRPN: the selected pad on Remote Pad IN, the Synth Sound on Synth IN.",
+      "Turning a knob on the panel sends the matching NRPN on Remote Pad OUT."
+    ]
+  },
+  "description": "1.5.2.0 plus NRPN reception (0-126 sound parameters, 156/157 Osc 3/4 sample; selected pad on Remote Pad IN, Synth Sound on Synth IN) and NRPN emission on Remote Pad OUT when a knob is turned (patches n°9a, 9b). Voice, Panel and SAM unchanged.",
+  "sha256_image": "8535d2ff26f97621926e03babc8f59a4d69f167773ae305ce32a2d212a7999db",
+  "sha256_image_written": "66a309f16da769317cd7b07b0a7147288861dbae94c12c4558d49d4a75a81442",
+  "sha256_syx": "b06ddcfa7ae04b7fc1663261219bca2345ff4de70275d820f4a7dfe5236a3a20",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/loop_counter.json",
+    "patch/dump_request.json",
+    "patch/nrpn_reception.json",
+    "patch/nrpn_emission.json",
+    "patch/version_1.5.3.0.json"
+  ]
+}

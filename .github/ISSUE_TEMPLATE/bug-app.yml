@@ -1,0 +1,52 @@
+name: Bug in the app
+description: Something in the Tempester app does not work as described.
+labels: [bug, app]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please **never attach DSI files** (`.syx` OS files, dumps, `.hex` backups) and remove
+        personal paths or names from logs and screenshots.
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: "`tempester --version`, or the release you installed"
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Computer
+      options: [macOS (Apple silicon), macOS (Intel), Windows 11, Windows 10, Linux (please say which below)]
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Tempest Main OS version
+      description: "System > Main OS Version (for example 1.5.0.2 or 1.6.1.0), or « simulated machine »"
+  - type: dropdown
+    id: cable
+    attributes:
+      label: Cable
+      options: [USB, DIN (MIDI interface), simulated machine (TEMPESTER_FAKE_MIDI=1)]
+  - type: dropdown
+    id: page
+    attributes:
+      label: Page
+      options: [Panel, Library, Play, Machine, Backup, OS update, top bar, other]
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: Steps to reproduce. The MIDI monitor (Machine page) can show what was sent and received.
+    validations:
+      required: true
+  - type: checkboxes
+    id: content
+    attributes:
+      label: Content
+      options:
+        - label: This report contains no DSI file, firmware dump or manual page, and no personal data.
+          required: true

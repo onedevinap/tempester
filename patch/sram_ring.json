@@ -1,0 +1,13 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°16: SysEx rings moved out of the undo beat (beat 16) in the external SRAM",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "The external SRAM (PMP, 16-bit data, CS = RA6, 18-bit word address: PMADDR + RA0/RA1) holds the events of beat 16 (the Revert/Compare/undo copy of the current beat, [routine](x,0x10) and [routine](x,0x10)) at words 0x3AA00-0x3D9FF. The received-SysEx ring (0x4000 bytes, 2 per word) sat at words 0x3C000-0x3DFFF: every received SysEx byte (DIN or USB, written from ring index 0 after each F0) overwrote beat 16 from step 176 on, and a copy into beat 16 during a SysEx reception overwrote the bytes not yet parsed. Both use the same word addresses through the same primitives ([routine] / [routine]), so the overlap is physical. Fix: the received ring moves to words 0x3E000-0x3FFFF (same size, same indexing, index & 0x3fff), and the send ring (0x800 bytes, DIN only), which used 0x3E000-0x3E3FF, moves to 0x3DC00-0x3DFFF. 0x3DA00-0x3FFFF is reached by no other code: the only SRAM chip-select sites are the four primitives, [routine], [routine], [routine], [routine] and [routine] (instruction scan), and their non-ring users address sounds (< 0xAA00) or events of beats 0-16 (< 0x3DA00); the OS updates write the image from word 0 (Main: the whole SRAM, then never return) and are unaffected. Four immediates changed in place, no code added. Beat 16 keeps whatever a previous SysEx left in it until the next beat selection or recording.",
+ "edits": [
+  {"at": "0x9d05fe34", "copy": "0x9d05fe34", "set": {"imm": 57344}, "why": "ori v0,a2,0xe000 ; was 0xc000: [routine] ([routine]) base 0x3C000 -> 0x3E000 (lui a2,0x3 at [address])"},
+  {"at": "0x9d05fea0", "copy": "0x9d05fea0", "set": {"imm": 57344}, "why": "ori v0,a1,0xe000 ; was 0xc000: [routine] ([routine]) base 0x3C000 -> 0x3E000 (lui a1,0x3 at [address])"},
+  {"at": "0x9d060c54", "copy": "0x9d060c54", "set": {"imm": 56320}, "why": "ori v0,a1,0xdc00 ; was 0xe000: [routine] ([routine]) base 0x3E000 -> 0x3DC00 (lui a1,0x3 at [address])"},
+  {"at": "0x9d060fb8", "copy": "0x9d060fb8", "set": {"imm": 56320}, "why": "ori v0,a2,0xdc00 ; was 0xe000: [routine] ([routine]) base 0x3E000 -> 0x3DC00 (lui a2,0x3 at [address])"}
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°12: crossed note-offs reach the right voice",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "[routine] releases, for a pad (and a note, or 0x7f = all), the voices started by the requested source or by a compatible one: request 1 (pad) also releases voices of source 2 (MIDI) and 3 (sequencer), request 2 also releases source 3. The same-source test reads the voice's own source byte (voice table [address] + v*0x70, byte 0). The compatibility test read instead byte 1 of note-list entry v ([address] + v*0x10, a 32-entry list unrelated to the voices), so crossed note-offs were lost or applied at random. The sibling [routine] applies the same rule to the note list itself, where byte 1 is the right field. One word: the test now reads the voice's source byte.",
+ "edits": [
+  {"at": "0x9d052c0c", "word": "00000d92", "why": "lbu t5,0x0(s0) ; was \"lbu t5,0x1(s3)\": byte 1 of note-list entry v ([address], 32 entries, unrelated to voices). The source-compatibility test (voice source 2 for request 1, voice source 3 for request 1 or 2) must read the source of the voice itself, byte 0 of the voice entry, written by every note-on ([routine], timer-4 sequencer). s3 stays incremented but is no longer read."}
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°27: last partial group of a packed SysEx message in the standard layout",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "Factory flaw of the 7-bit packer's final flush. [routine] looped \"while (n != 0 && (n++, n < 8)) [routine](0)\" on the packer's own counter n ([address]), which the packer increments too: each flush step moved the write position by 2, sent one byte and shifted the head byte once. For a message whose data length is not a multiple of 7 (last group of k = 1..6 bytes) the head bits of the last group were shifted by 3, 2, 2, 1, 1, 0, every other padding slot kept the byte the previous group left there, and for k = 6 one byte was written past the 8-byte group buffer ([address], the never-computed checksum word that [routine] sends; the stray byte is always 0). The machine's own receivers ([routine], [routine]) read head bit j for byte j, so they misread the high bits of the machine's own exports for k = 1..5. Every sender that packs ends with this flush: sound 60 ([routine], k = 2), beat 5F and project 5C n ([routine]), project 5E ([routine]), sound file 63 ([routine]), beat and project files 62 / 61 ([routine]). Fix: the store of the loop's own increment ([address], \"sh v0,-0x7f06(gp)\") becomes a nop. Each flush step is then one packer call (n + 1, head shifted once, slot n = 0) until the packer emits the group at n = 7 and resets n to 0: head bit j = MSB of data byte j, the data then zeros up to 7 bytes, nothing written past the buffer, n = 0 on return as before ([routine] relies on it). Whole groups and k = 0 are unchanged. 1 word in place, no free space.",
+ "edits": [
+  {"at": "0x9d043518", "word": "00000000", "why": "nop ; [routine] loop: was \"sh v0,-0x7f06(gp)\" (stored n + 1 before the packer's own increment: 2 slots per step, the cause of the shifted head, stale padding and the k = 6 overrun)"}
+ ]
+}

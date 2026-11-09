@@ -1,0 +1,16 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°13: Voice Assign bounded when a beat is loaded",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "[routine] (beat header deserializer, used for every beat load) copied each pad's Voice Assign byte into [address][(beat*0x30+pad)*8] without any check. A value above 6 later indexes outside the 6-entry voice table ([address], stride 0x70) in note-on ([routine], timer-4 sequencer) and [routine], and outside the voice-select table [address]. The load now keeps the low byte, as before, and replaces any value above 6 by 0 (None, the default). The editor already limits the value to 0..6 ([routine] with the maximum at [address]). One word in place (a jump; its delay slot is unchanged) plus a 6-word stub at 0x9D07A600.",
+ "edits": [
+  {"at": "0x9d033c88", "j": "0x9d07a600", "why": "j 0x9d07a600 ; was \"lhu a0,0x0(a2)\". Jump to the clamp stub; the delay slot (addu t2,ra,a1 = &[address][(beat*0x30+pad)*8]) is kept unchanged. The original store at [address] is skipped (the stub returns to [address])."},
+  {"at": "0x9d07a600", "copy": "0x9d033c88", "why": "original [address]: Voice Assign word read from the beat header"},
+  {"at": "0x9d07a604", "word": "ff008430", "why": "andi a0,a0,0xff ; the original code stored only the low byte (sb): keep exactly that byte"},
+  {"at": "0x9d07a608", "word": "0700882c", "why": "sltiu t0,a0,0x7 ; t0 = 1 for 0..6 (0 = None, 1..6 = Voice 1..6, the range of the Voice Assign editor, max at [address])"},
+  {"at": "0x9d07a60c", "word": "0a200800", "why": "movz a0,zero,t0 ; out of range (7..255) -> 0 = None, the default"},
+  {"at": "0x9d07a610", "j": "0x9d033c94", "why": "j [address] ; back to the instruction after the original store"},
+  {"at": "0x9d07a614", "word": "800044a1", "why": "sb a0,0x80(t2) ; delay slot, original [address]: store into [address][(beat*0x30+pad)*8]"}
+ ]
+}

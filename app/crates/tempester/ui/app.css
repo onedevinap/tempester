@@ -1,0 +1,147 @@
+/* Shell of the app: top bar, pages, cards, buttons, dialog, toast. The panel has its own file (panel.css).
+   Dark, like the panel; read at arm's length: body text 16 px, spacing on a 4 px grid, focus ring 2 px, click
+   targets at least 40 px; text contrast at least 7:1 on the cards. */
+:root {
+  --bg: #0d0f11;
+  --card: #16191d;
+  --line: #2b3037;
+  --text: #eef1f4;
+  --mid: #b0b7c0;
+  --accent: #39c3f2;
+  --ok: #4fd18b;
+  --warn: #f2cf4a;
+  --bad: #ff7468;
+  --font: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+  --top-h: 56px;
+  --banner-h: 0px;
+  --main-pad: 12px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 var(--font); }
+body { min-height: 100vh; }
+/* No text selection while dragging a knob or a pad. The -webkit- prefix is the one WKWebView reads. */
+html, body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* What the user may want to copy, and every field: an input under a "none" ancestor stays uneditable in WKWebView
+   unless it says "text" itself. */
+input, textarea, [contenteditable], .log, .hint, .mono, [role=status], table.list td, #confirm-body { -webkit-user-select: text; user-select: text; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+.topbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 12px; height: var(--top-h); padding: 0 16px; border-bottom: 1px solid var(--line); background: #111316; position: sticky; top: 0; z-index: 5; }
+.topbar h1 { margin: 0 8px 0 0; font-size: 19px; letter-spacing: .04em; }
+@media (max-width: 1260px) { .topbar h1 { display: none; } }
+#nav { display: flex; gap: 2px; flex-wrap: nowrap; }
+#nav button { background: none; border: 0; color: var(--mid); padding: 6px 12px; border-radius: 8px; font: 500 16px/1.2 var(--font); cursor: pointer; min-height: 40px; white-space: nowrap; }
+#nav button:hover { color: var(--text); background: #1f2328; }
+/* Rarely used pages (Backup, OS update) sit at the right end of the tabs, apart by a rule and a lighter colour. */
+#nav .tools-start { margin-left: 10px; position: relative; }
+#nav .tools-start::before { content: ""; position: absolute; left: -7px; top: 8px; bottom: 8px; width: 1px; background: var(--line); }
+#nav button.tool { font-size: 15px; }
+#nav button[aria-current="page"] { color: var(--text); background: #252a31; box-shadow: inset 0 -3px 0 var(--accent); }
+.pill { margin-left: auto; flex: none; width: 128px; height: 30px; line-height: 28px; text-align: center; overflow: hidden; text-overflow: ellipsis; border: 1px solid var(--line); border-radius: 99px; color: var(--mid); white-space: nowrap; font-size: 15px; }
+.pill.connected { color: var(--ok); border-color: var(--ok); }
+.pill.error { color: var(--bad); border-color: var(--bad); }
+.connbar { display: flex; align-items: center; gap: 4px; flex: none; }
+.connbar select { width: 150px; min-height: 38px; padding: 4px 8px; }
+.connbar .chip { width: 124px; justify-content: center; overflow: hidden; text-overflow: ellipsis; }
+.banner { display: flex; align-items: center; height: 32px; background: #2e2809; color: var(--warn); padding: 0 20px; border-bottom: 1px solid #5a4e14; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.banner[hidden] { display: none; }
+body.fake { --banner-h: 33px; }
+
+main { padding: var(--main-pad) 16px; max-width: 1480px; margin: 0 auto; }
+.page { display: none; }
+.page.shown { display: block; }
+.page > h2 { margin: 0 0 6px; font-size: 26px; }
+.lead { color: var(--mid); margin: 0 0 20px; max-width: 80ch; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
+.card h3 { margin: 0 0 10px; font-size: 19px; }
+.card p { margin: 0 0 10px; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 20px; align-items: start; }
+.mid { color: var(--mid); }
+.mono { font-family: var(--mono); font-size: 15px; }
+.hint { border-left: 4px solid var(--warn); padding: 10px 14px; background: #1f1d12; margin: 10px 0; }
+.hint.bad { border-color: var(--bad); background: #231615; }
+.hint.good { border-color: var(--ok); background: #122019; }
+
+.btn { background: #252a31; color: var(--text); border: 1px solid #3d444d; border-radius: 8px; padding: 8px 18px; font: 500 16px/1.2 var(--font); cursor: pointer; min-height: 42px; }
+.btn:hover:not(:disabled) { background: #313740; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: #1a6684; border-color: #2a8fb6; }
+.btn.primary:hover:not(:disabled) { background: #20779a; }
+.btn.danger { background: #8a2c25; border-color: #b0443b; }
+.btn.danger:hover:not(:disabled) { background: #a03830; }
+input[type=text], input[type=number], select { background: #0a0b0d; color: var(--text); border: 1px solid #3d444d; border-radius: 8px; padding: 8px 10px; font: inherit; min-height: 42px; }
+input[type=text] { min-width: 300px; }
+label { color: var(--mid); }
+
+table.list { width: 100%; border-collapse: collapse; }
+table.list th, table.list td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.list th { color: var(--mid); font-weight: 500; }
+table.list tr.group th { padding-top: 18px; color: var(--text); }
+.badge { display: inline-block; padding: 1px 10px; border-radius: 99px; font-size: 14px; border: 1px solid; }
+.badge.ok { color: var(--ok); border-color: var(--ok); }
+.badge.constant { color: var(--warn); border-color: var(--warn); }
+.badge.invalid { color: var(--bad); border-color: var(--bad); }
+
+.progress { height: 18px; background: #0a0b0d; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; margin: 10px 0; }
+.progress > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.versions { list-style: none; margin: 0; padding: 0; }
+.versions li { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 10px; }
+.versions label { color: var(--text); display: block; cursor: pointer; }
+.versions input[type=radio] { width: 18px; height: 18px; margin-right: 8px; vertical-align: -3px; }
+.versions .desc { color: var(--mid); margin: 6px 0 0 28px; }
+.log { font: 14px/1.5 var(--mono); color: var(--mid); max-height: 180px; overflow: auto; margin: 10px 0 0; white-space: pre-wrap; }
+
+.assign { display: grid; grid-template-columns: repeat(16, 1fr); gap: 6px; max-width: 800px; }
+.assign span { text-align: center; border: 1px solid var(--line); border-radius: 5px; padding: 4px 0; font-size: 16px; color: var(--mid); }
+.assign span.on { color: var(--text); border-color: var(--accent); }
+/* Play: the machine's 16 pads in two rows of eight (pads 1-8 on top), square, as wide as the page allows, in the look
+   of the Panel's pads; under each one its Euclidean controls (four numbers and the pattern as dots). Every part has a
+   fixed size, so nothing moves when a value changes. */
+.playpads { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); align-content: start; gap: 14px 12px; flex: 1 1 auto; min-height: 0; overflow: auto; width: 100%; padding: 4px 2px 8px; }
+.playcell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.playpad { display: block; width: 100%; aspect-ratio: 1; min-height: 0; padding: 8px 10px; border: 0; border-radius: 4px; text-align: left; vertical-align: top; background: radial-gradient(circle at 50% 50%, #cfe7ef 0 26%, transparent 40%), linear-gradient(#e8ecf6, #d9dfee); box-shadow: inset 0 1px 1px rgba(255, 255, 255, .9), inset 0 -4px 6px rgba(60, 70, 100, .18), 0 2px 4px rgba(0, 0, 0, .45); color: #24272b; font: 700 20px/1 var(--font); cursor: pointer; user-select: none; touch-action: none; }
+.playpad:disabled { opacity: .55; cursor: not-allowed; }
+.playpad.down { background: radial-gradient(circle at 50% 52%, #79f6ec 0 24%, #a7efee 32%, transparent 52%), linear-gradient(#e6edfb, #d4defa); }
+.seqctl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 8px; }
+.seqctl label { display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--mid); font-size: 14px; }
+.seqctl label span { flex: none; width: 26px; }
+.seqctl input { appearance: textfield; -moz-appearance: textfield; flex: 1 1 auto; min-width: 0; width: 100%; min-height: 30px; height: 30px; padding: 2px 4px; font-size: 15px; }
+.seqdots { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 1px; height: 8px; }
+.seqdots span { background: #2b3037; border-radius: 1px; }
+.seqdots span.on { background: var(--accent); }
+.seqctl input::-webkit-inner-spin-button, .seqctl input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+@media (max-width: 1200px) { .seqctl label span { display: none; } }
+.panelbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #262c34; color: #f3f6f9; padding: 12px 20px; border-radius: 10px; font-size: 16px; max-width: min(90vw, 760px); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 30; box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
+#toast.visible { opacity: 1; }
+dialog { background: var(--card); color: var(--text); border: 1px solid #3d444d; border-radius: 12px; padding: 24px; max-width: 620px; }
+dialog::backdrop { background: rgba(0, 0, 0, .7); }
+dialog h2 { margin: 0 0 14px; font-size: 22px; }
+dialog .buttons { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+
+/* Library page: three cards side by side when the window is wide, stacked (each card in two columns) otherwise. */
+.lib-top { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px; }
+@media (min-width: 1280px) { .lib-top { grid-template-columns: repeat(3, 1fr); } }
+.lib-top .card { margin-bottom: 0; }
+.lib-card h3 { font-size: 21px; }
+.lib-card .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 8px 32px; }
+.lib-card .block { min-width: 0; }
+.lib-card h4 { margin: 8px 0 0; font-size: 16px; font-weight: 600; color: var(--accent); }
+.lib-card .status { margin: 8px 0; font-size: 18px; color: var(--text); overflow-wrap: anywhere; }
+.lib-card .note { margin: 4px 0 0; font-size: 16px; color: var(--mid); }
+.lib-card input[type=text] { flex: 1 1 200px; min-width: 0; }
+.lib-card .assign { margin-top: 10px; }
+.seg { display: inline-flex; border: 1px solid #3d444d; border-radius: 10px; overflow: hidden; margin: 8px 0; }
+.seg button { min-height: 44px; padding: 8px 24px; background: #1b1f24; color: var(--mid); border: 0; font: 500 17px/1.2 var(--font); cursor: pointer; }
+.seg button + button { border-left: 1px solid #3d444d; }
+.seg button:hover { color: var(--text); background: #252a31; }
+.seg button[aria-pressed="true"] { background: #1a6684; color: var(--text); }
+.pane[hidden] { display: none; }
+.lib-scroll { max-height: 56vh; overflow: auto; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

@@ -1,0 +1,37 @@
+{
+  "version": "1.5.1.0",
+  "name": "Tempester 1.5.1.0 — bug fixes",
+  "kind": "release",
+  "date": "2026-11-07",
+  "summary": "DSI 1.5.0.2 with its bug fixes only; nothing is added.",
+  "changes": {
+    "fixes": [
+      "Sending or receiving a beat or a project no longer overwrites memory below the stack.",
+      "Sliders 2 to 4 react to pressure again for the real-time FX.",
+      "The compressor Peak Hold setting is kept with the sound, and the compressor envelope follows each beat you select.",
+      "A note length can be edited up to 255.",
+      "A SysEx import over USB is no longer disturbed by messages arriving on the DIN socket.",
+      "Play List: a one-step list no longer divides by zero, RT REC fills a step before moving on, and recording past the last step stops instead of writing outside the list.",
+      "The Loop screen no longer freezes in time signatures other than 4/4."
+    ]
+  },
+  "description": "DSI Main 1.5.0.2 with the bug fixes only (patches n°2a-2c, 3, 4a, 4b, 5, 6, 7a-7c, 8); no function added. Voice, Panel and SAM unchanged.",
+  "sha256_image": "8d574fdc90d40d7e7e6fc0e1b31961c7bb44ffe49f433dd914da86c3e8881edf",
+  "sha256_image_written": "a91c3f37ce814821675efe7adb91748e6f74ab2f0496d2b713b2a720b27c2794",
+  "sha256_syx": "e2e45e04e2a0cbb7d9e484c14e953445370def2eda5d631b4e03460fba80048f",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/loop_counter.json",
+    "patch/version_1.5.1.0.json"
+  ]
+}

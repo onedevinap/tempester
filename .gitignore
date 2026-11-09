@@ -1,0 +1,14 @@
+# DSI files are never committed: official OS files, decoded images, dumps, programmer backups
+*.syx
+*.bin
+*.hex
+work/
+
+# Build output
+app/target/
+dist/
+__pycache__/
+
+# System files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,10 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°7c: Play List RT REC stopped before writing past the table",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "The bound b2c < 100 let b2c reach 100 and write step n°101 outside the array (header of the next list); slot 99 must stay empty (terminator of [routine]). b2c < 98: beyond it, the existing DSI branch stops the transport.",
+ "edits": [
+  {"at": "0x9d04db14", "copy": "0x9d04db14", "set": {"imm": 98}, "why": "sltiu t8,t9,0x62 (au lieu de 0x64)"}
+ ]
+}

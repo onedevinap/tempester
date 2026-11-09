@@ -1,0 +1,50 @@
+code	dec	name	group	led
+0x00	0	Playback (FX1)	Real Time FX	0x00
+0x01	1	Playback (FX2)	Real Time FX	0x01
+0x02	2	AD Mode	Envelopes	0x02
+0x03	3	Lowpass (envelope select)	Envelopes	0x03
+0x04	4	Aux1 (envelope select)	Envelopes	0x04
+0x05	5	LFO2	LFO 1&2	0x05
+0x06	6	Mod Paths	LFO 1&2	none
+0x07	7	Solo	Mixer	0x07
+0x08	8	Latch On (FX1)	Real Time FX	0x08
+0x09	9	Latch On (FX2)	Real Time FX	0x09
+0x0A	10	Pitch (envelope select)	Envelopes	0x0A
+0x0B	11	Amp (envelope select)	Envelopes	0x0B
+0x0C	12	Aux2 (envelope select)	Envelopes	0x0C
+0x0D	13	4 Pole	Lowpass	0x0D
+0x0E	14	Mute	Mixer	0x0E
+0x0F	15	Delay On	Mixer	0x0F
+0x10	16	16 Beats	Pad Function	0x10
+0x11	17	16 Time Steps	Pad Function	0x11
+0x12	18	Sound Bank B	Pad Options	0x12
+0x13	19	Reverse	Pad Options	0x13
+0x14	20	Play List	Screens	0x14
+0x15	21	Events	Screens	0x16
+0x16	22	Click	Rec/Edit	0x15
+0x17	23	Undo Rec	Rec/Edit	0x17
+0x18	24	16 Sounds	Pad Function	0x18
+0x19	25	16 Mutes	Pad Function	0x19
+0x1A	26	Roll	Pad Options	0x1A
+0x1B	27	Fixed Level	Pad Options	0x1B
+0x1C	28	Pads	Screens	0x1C
+0x1D	29	Sounds	Screens	0x1D
+0x1E	30	Erase	Rec/Edit	0x1E
+0x1F	31	Copy	Rec/Edit	0x1F
+0x20	32	System	System	0x20
+0x21	33	Soft Key (unlabelled key left of Page Up, under the display)	Screen	none
+0x22	34	Page Up	Screen	none
+0x23	35	Cursor Up	Screen	none
+0x24	36	Page Down	Screen	none
+0x25	37	Rewind (<<)	Transport	none
+0x26	38	REC	Transport	0x23
+0x27	39	STOP	Transport	none
+0x28	40	Save/Load	System	0x25
+0x29	41	Shift (one of the two)	Shift	0x26+0x2B
+0x2A	42	Cursor Left	Screen	none
+0x2B	43	Cursor Down	Screen	none
+0x2C	44	Cursor Right	Screen	none
+0x2D	45	Fast Forward (>>)	Transport	none
+0x2E	46	PLAY	Transport	0x24
+0x2F	47	Shift (the other one)	Shift	0x26+0x2B
+0x30	48	Select (Oscillators)	Oscillators	0x27-0x2A

@@ -1,0 +1,23 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°2c: type 4 SysEx receive frame reduced from 8.2 KB to 2.1 KB",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "[routine] (type 4 of the SysEx file reader [routine]) reserved 0x2038 bytes of stack (~9.9 KB available) for a 4,096-word buffer that only receives a 43-word header (table [address]) then 4 blocks of 101 or 111 words (table [address]): reduced to 1,024 words, same layout, everything after the buffer shifted by -0x1800.",
+ "edits": [
+  {"at": "0x9d042f74", "copy": "0x9d042f74", "set": {"imm": 63432}, "why": "addiu sp,sp,-0x838 (cadre 0x2038 -> 0x838)"},
+  {"at": "0x9d042f78", "copy": "0x9d042f78", "set": {"imm": 2100}, "why": "offset 0x2034 -> 0x834"},
+  {"at": "0x9d042f7c", "copy": "0x9d042f7c", "set": {"imm": 2096}, "why": "offset 0x2030 -> 0x830"},
+  {"at": "0x9d042f80", "copy": "0x9d042f80", "set": {"imm": 2092}, "why": "offset 0x202c -> 0x82c"},
+  {"at": "0x9d042f84", "copy": "0x9d042f84", "set": {"imm": 2088}, "why": "offset 0x2028 -> 0x828"},
+  {"at": "0x9d043004", "copy": "0x9d043004", "set": {"imm": 2080}, "why": "offset 0x2020 -> 0x820"},
+  {"at": "0x9d043128", "copy": "0x9d043128", "set": {"imm": 2080}, "why": "offset 0x2020 -> 0x820"},
+  {"at": "0x9d043268", "copy": "0x9d043268", "set": {"imm": 2080}, "why": "offset 0x2020 -> 0x820"},
+  {"at": "0x9d04326c", "copy": "0x9d04326c", "set": {"imm": 2080}, "why": "offset 0x2020 -> 0x820"},
+  {"at": "0x9d043274", "copy": "0x9d043274", "set": {"imm": 2100}, "why": "offset 0x2034 -> 0x834"},
+  {"at": "0x9d043278", "copy": "0x9d043278", "set": {"imm": 2096}, "why": "offset 0x2030 -> 0x830"},
+  {"at": "0x9d04327c", "copy": "0x9d04327c", "set": {"imm": 2092}, "why": "offset 0x202c -> 0x82c"},
+  {"at": "0x9d043280", "copy": "0x9d043280", "set": {"imm": 2088}, "why": "offset 0x2028 -> 0x828"},
+  {"at": "0x9d043284", "copy": "0x9d043284", "set": {"imm": 2104}, "why": "offset 0x2038 -> 0x838"}
+ ]
+}

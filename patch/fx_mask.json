@@ -1,0 +1,13 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°11: Note FX values masked to 7 bits when written into an event (FX2 no longer sets the half-step bit)",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "The four event FX writers ([routine] FX1, [routine] FX2, [routine] FX3, [routine] FX4) masked their value with 0xff instead of 0x7f before a read-modify-write into a 7-bit field. Values come as signed chars from [routine] ([routine], -64..+63), so a negative value carried bit 7 into the neighbouring bit: FX1 -> FX2 bit 0, FX2 -> w2 bit 14 (half-step: the note is played 4 ticks off, [routine]), FX3 -> FX4 bit 0, FX4 -> w3 bit 14. Callers: note-on recording [routine], Playback overdub [routine] ([routine]), Beat Events editor (already masked & 0x7f) and the uncalled field dispatcher at [address]. Fix: the delay-slot 'andi s1,a3,0xff' of each writer becomes 'andi s1,a3,0x7f'. The 7 stored bits are unchanged for every value; only the leak into the neighbour bit disappears. The field masks (0xff80, 0xc07f) were already right. Beats recorded before the fix keep their polluted bits.",
+ "edits": [
+  {"at": "0x9d04c5d4", "copy": "0x9d04c5d4", "set": {"imm": 127}, "why": "andi s1,a3,0x7f ; FX4 writer (w3 bits 13-7): bit 7 of a negative value no longer reaches w3 bit 14"},
+  {"at": "0x9d04c648", "copy": "0x9d04c648", "set": {"imm": 127}, "why": "andi s1,a3,0x7f ; FX3 writer (w3 bits 6-0): bit 7 no longer reaches FX4 bit 0"},
+  {"at": "0x9d04c79c", "copy": "0x9d04c79c", "set": {"imm": 127}, "why": "andi s1,a3,0x7f ; FX2 writer (w2 bits 13-7): bit 7 no longer sets the half-step bit (w2 bit 14)"},
+  {"at": "0x9d04c810", "copy": "0x9d04c810", "set": {"imm": 127}, "why": "andi s1,a3,0x7f ; FX1 writer (w2 bits 6-0): bit 7 no longer reaches FX2 bit 0"}
+ ]
+}

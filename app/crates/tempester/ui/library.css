@@ -1,0 +1,131 @@
+/* Library page: a compact strip of three cards, the browser (toolbar, filters, dense list, details panel) and its
+   dialogs. Dark theme of app.css, base components of compact.css. Everything that could move has a fixed size: rows
+   44 px, columns of fixed width, one-line cells cut with an ellipsis, a status line of fixed height. */
+
+.lib-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.lib-title-row h2 { margin: 0; font-size: 22px; }
+
+/* The strip: sound, beat, project side by side; stacked when narrow. */
+.lib-top { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+@media (max-width: 1100px) { .lib-top { grid-template-columns: minmax(0, 1fr); } }
+.lib-card.compact { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; margin: 0; min-width: 0; }
+.lib-card-head { display: flex; align-items: center; gap: 8px; height: 36px; }
+.lib-card-head h3 { margin: 0; font-size: 18px; flex: 1; }
+.lib-card-status { margin: 0; height: 24px; line-height: 24px; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: text; -webkit-user-select: text; }
+.lib-card .toolbar { flex-wrap: nowrap; min-height: 42px; }
+/* The same rows in the three cards (head, one status line, actions), so they are the height of their content and of
+   each other, and nothing moves when a status text changes or the progress bar appears (it takes the room of the
+   spacer between the buttons). */
+.lib-meter { display: flex; align-items: center; min-width: 0; }
+.lib-meter .progress { flex: 1; margin: 0 8px; }
+.lib-card .toolbar input[type=text] { flex: 1 1 90px; min-width: 0; }
+.lib-assign { flex: 0 0 160px; height: 12px; }
+.assign.strip { display: grid; grid-template-columns: repeat(32, 1fr); gap: 2px; max-width: none; height: 12px; }
+.assign.strip span { padding: 0; border: 0; height: 12px; font-size: 0; border-radius: 2px; background: #2b3037; }
+.assign.strip span.on { background: var(--accent); }
+.progress.slim { height: 10px; margin: 2px 0; }
+
+/* The browser. */
+.lib-browser { padding: 12px 14px; margin-bottom: 0; }
+.lib-toolbar { gap: 6px; row-gap: 6px; }
+.lib-toolbar input[type=text] { min-width: 0; flex: 0 1 300px; }
+.lib-toolbar select, .lib-filters select, .lib-filters input[type=date] { min-height: 38px; padding: 4px 8px; font-size: 15px; max-width: 200px; }
+.lib-toolbar .seg { margin: 0; }
+.lib-toolbar .seg button { padding: 6px 16px; font-size: 16px; min-height: 40px; }
+.with-count { position: relative; display: inline-flex; }
+.with-count .chip { position: absolute; top: -4px; right: -4px; height: 18px; padding: 0 5px; font-size: 13px; pointer-events: none; }
+.with-count .chip[hidden] { display: none; }
+.lib-fcount { height: 22px; font-size: 13px; }
+.lib-fcount[hidden] { display: none; }
+.lib-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; }
+.lib-filters[hidden] { display: none; }
+.lib-bar { height: 44px; margin: 4px 0; flex-wrap: nowrap; }
+
+.lib-split { grid-template-columns: minmax(0, 1fr) 304px; gap: 12px; }
+@media (max-width: 1000px) { .lib-split { grid-template-columns: minmax(0, 1fr); } }
+.lib-listwrap { min-width: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.lib-head, .lib-row { display: grid; grid-template-columns: 30px 38px minmax(120px, 1fr) 96px 76px 136px 96px 112px; gap: 8px; align-items: center; padding: 0 8px; }
+.lib-head { height: 36px; background: #12151a; border-bottom: 1px solid var(--line); color: var(--mid); font-size: 14px; }
+.lib-head-btn { background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; height: 36px; padding: 0; }
+.lib-head-btn:hover, .lib-head [aria-sort="ascending"], .lib-head [aria-sort="descending"] { color: var(--text); }
+.lib-head [aria-sort="ascending"]::after { content: " \25B2"; font-size: 11px; }
+.lib-head [aria-sort="descending"]::after { content: " \25BC"; font-size: 11px; }
+.lib-list { height: clamp(340px, calc(100vh - 420px), 620px); overflow-x: hidden; overflow-y: auto; outline-offset: -2px; }
+.lib-row { cursor: default; }
+.lib-row .col-name { font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.lib-row .col-name .icon { width: 18px; height: 18px; }
+.lib-row .col-name .icon svg { width: 18px; height: 18px; }
+.lib-row .col-check input { width: 18px; height: 18px; margin: 0; }
+.lib-row .col-tags { display: flex; gap: 4px; }
+.lib-row .col-act { display: flex; gap: 2px; justify-content: flex-end; overflow: visible; }
+.lib-row .ibtn { width: 36px; height: 36px; }
+.lib-row .col-act .ibtn .icon, .lib-row .col-act .ibtn .icon svg { width: 20px; height: 20px; }
+.lib-empty { padding: 32px 16px; text-align: center; font-size: 16px; }
+@media (max-width: 1290px) { .lib-head, .lib-row { grid-template-columns: 30px 38px minmax(120px, 1fr) 90px 136px 112px; } .lib-row .col-type, .lib-row .col-tags, .lib-head > :nth-child(5), .lib-head > :nth-child(7) { display: none; } }
+
+.lib-details { position: static; height: clamp(376px, calc(100vh - 384px), 656px); overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #12151a; }
+.lib-title { display: flex; align-items: center; gap: 8px; height: 40px; }
+.lib-title h3 { margin: 0; flex: 1; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-actions { margin: 6px 0; }
+.lib-facts { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 8px; margin: 10px 0; font-size: 15px; }
+.lib-facts dt { color: var(--mid); }
+.lib-facts dd { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: text; -webkit-user-select: text; }
+.lib-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; min-height: 26px; }
+.lib-note { width: 100%; height: 76px; resize: none; background: #0a0b0d; color: var(--text); border: 1px solid #3d444d; border-radius: 8px; padding: 8px; font: 15px/1.4 var(--font); }
+.lib-hist-head { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.lib-versions { list-style: none; margin: 0; padding: 0; }
+.lib-version { border-top: 1px solid var(--line); padding: 6px 0; font-size: 15px; }
+.lib-version-head { display: flex; align-items: center; gap: 4px; }
+.lib-version-head span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-diff { margin: 4px 0 0 16px; padding: 0; font-size: 14px; color: var(--mid); }
+
+.lib-menu { position: fixed; z-index: 60; width: 220px; background: #1d2228; border: 1px solid #3d444d; border-radius: 8px; padding: 4px; box-shadow: 0 10px 28px rgba(0, 0, 0, .6); }
+.lib-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; height: 38px; padding: 0 10px; background: none; border: 0; color: var(--text); font: 15px var(--font); border-radius: 6px; cursor: pointer; text-align: left; }
+.lib-menu-item:hover { background: #2b3139; }
+.lib-menu-item.danger { color: #ff9a90; }
+
+.lib-status { display: flex; align-items: center; gap: 10px; height: 44px; margin-top: 8px; padding: 0 4px; border-top: 1px solid var(--line); color: var(--text); overflow: hidden; }
+.lib-status-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; user-select: text; -webkit-user-select: text; }
+.lib-status.bad { color: var(--bad); }
+
+/* Dialogs of the manager. */
+.lib-dialog { width: min(680px, 92vw); max-width: none; }
+.lib-dialog.wide { width: min(860px, 94vw); }
+.lib-dialog-body { max-height: 62vh; overflow: auto; font-size: 16px; }
+.lib-dialog-body p { margin: 0 0 10px; }
+.lib-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.lib-summary .chip { height: 30px; font-size: 15px; }
+.chip.new { color: var(--ok); border-color: var(--ok); }
+.chip.identical { color: var(--mid); }
+.chip.modified { color: var(--warn); border-color: var(--warn); }
+.lib-group { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+.lib-group-head { display: flex; align-items: center; gap: 10px; }
+.lib-group-head select { margin-left: auto; max-width: 380px; }
+.lib-entries { margin: 8px 0 0; padding: 0 0 0 18px; max-height: 220px; overflow: auto; font-size: 15px; }
+.lib-entries[hidden] { display: none; }
+.lib-entries li { margin: 3px 0; }
+.lib-entries li.older { color: var(--warn); }
+.lib-entries.log { padding-left: 0; list-style: none; max-height: 52vh; }
+.lib-entries.log li { border-bottom: 1px solid var(--line); padding: 6px 0; }
+.lib-trash-row { display: flex; align-items: center; gap: 8px; list-style: none; margin-left: -18px; }
+.lib-trash-row span { flex: 1; }
+.lib-warning { border: 1px solid var(--warn); border-radius: 8px; padding: 10px 12px 2px; margin: 4px 0 10px; color: var(--warn); }
+.lib-prompt { width: 100%; min-width: 0; }
+.lib-why { color: var(--bad); min-height: 24px; margin: 6px 0 0; }
+
+/* The kit builder: the sounds of the library on the left, the pads on the right (8 per row, as on the machine). The
+   panes have a fixed height and scroll inside themselves; a pad tile has a fixed size whatever its sound's name. */
+.lib-dialog.kit { width: min(1180px, 96vw); }
+.kit .lib-dialog-body { max-height: none; }
+.kit .toolbar { margin-bottom: 8px; }
+.kit-cols { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 12px; height: 340px; }
+.kit-list { overflow-x: hidden; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+.kit-sound { grid-template-columns: minmax(0, 1fr) 84px; cursor: pointer; }
+.kit-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-auto-rows: 78px; gap: 6px; align-content: start; overflow-y: auto; }
+.kit-pad { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 4px 6px; min-width: 0; border: 1px solid var(--line); border-radius: 6px; background: #1b1f24; color: var(--mid); font: 14px/1.25 var(--font); text-align: left; overflow: hidden; cursor: pointer; }
+.kit-pad.set { border-color: var(--accent); background: #12303c; color: var(--text); }
+.kit-pad:hover { border-color: #3d444d; }
+.kit-pad span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kit-pad-no { font-weight: 700; }
+.kit-count { margin: 8px 0 0; height: 24px; line-height: 24px; color: var(--mid); }
+.kit-sound[aria-selected="true"] { background: #14323f; }

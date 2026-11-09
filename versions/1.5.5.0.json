@@ -1,0 +1,51 @@
+{
+  "version": "1.5.5.0",
+  "name": "Tempester 1.5.5.0 — more fixes, clearer update screen",
+  "kind": "release",
+  "date": "2026-11-07",
+  "summary": "A second batch of safe fixes, a clearer OS update screen, and 1,584 bytes of code space freed.",
+  "changes": {
+    "fixes": [
+      "Exporting a whole project needs half the working memory, which leaves a safer margin.",
+      "Play List Delete Step no longer overwrites the next list.",
+      "Copying a sequence into another beat finds its free slot in that beat.",
+      "Recording a note with a Note FX value no longer changes an unrelated setting (FX2 used to set the half-step flag).",
+      "Crossed note-offs reach the right voice.",
+      "Loading a beat with an out-of-range Voice Assign no longer upsets the voices."
+    ],
+    "changes": [
+      "The OS update screen tells you what to do: « Writing... DO NOT POWER OFF. », then « When the FX1 LEDs stop: done, power off and on. » (shown from the next update made on this version).",
+      "The three Debug-menu OS senders (Main, Voice, Panel) share one routine: same behaviour, 1,584 bytes freed."
+    ]
+  },
+  "description": "1.5.3.0 plus patches n°2d, 7d, 10, 11, 12, 13 (the former 1.5.4.0), n°14 clearer update message (the former 1.5.4.1) and n°15 code-size optimisation: the three Debug-menu OS senders merged into one routine (1,584 bytes freed), same behaviour. Voice, Panel and SAM unchanged.",
+  "sha256_image": "f68141362d2c352025d00d592e84bd8098f3e886002a8f6e6be967d8bd93fa69",
+  "sha256_image_written": "0bd8cb425d6c925a5e8898bce036e0eefacada29066fe0e599d5565602538f06",
+  "sha256_syx": "88498cb5470feaf5f72bf8dbdac7f7621b26b33cf7ad0768ce0b5d472f295e15",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/playlist_delete_step.json",
+    "patch/loop_counter.json",
+    "patch/dump_request.json",
+    "patch/nrpn_reception.json",
+    "patch/nrpn_emission.json",
+    "patch/project_send_frame.json",
+    "patch/copy_target.json",
+    "patch/fx_mask.json",
+    "patch/noteoff_table.json",
+    "patch/voice_assign_bound.json",
+    "patch/update_message.json",
+    "patch/os_send_merge.json",
+    "patch/version_1.5.5.0.json"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°10: sequence copy allocates its free slot in the target beat",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "[routine](source beat, source pad, target beat, target pad) copies a pad's sequence: it erases the target pad's events in the target beat ([routine]), then for every source event it asks [routine] for a free slot at the same step, copies the 4 event words there ([routine] into the target beat) and sets the pad ([routine] in the target beat). The free-slot search was given the SOURCE beat ([address] move a0,s3): with two different beats it would write a default event of the target pad into the source beat and could overwrite another sound's event in the target beat. Fix: pass the target beat (s8). The only caller today (Copy key screen, [address]-[address]) passes the same beat twice (a2 = a0 = current beat at +0x13c), so s3 == s8 and the behaviour is unchanged. Latent-defect fix only: no cross-beat copy feature is added.",
+ "edits": [
+  {"at": "0x9d04ebe0", "copy": "0x9d04ebe0", "set": {"rs": 30}, "why": "move a0,s8 ; first argument of [routine] (find and initialise a free slot) becomes the target beat (s8 = a2 on entry) instead of the source beat (s3 = a0 on entry); word 0x02602021 addu a0,s3,zero -> 0x03c02021 addu a0,s8,zero"}
+ ]
+}

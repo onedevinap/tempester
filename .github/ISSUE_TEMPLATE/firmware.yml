@@ -1,0 +1,55 @@
+name: Firmware behaviour
+description: A Tempester firmware version behaves differently from its description, or differently from the official OS.
+labels: [firmware]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **If the machine no longer starts, froze during an update, or lost data, use the private security report
+        instead** (see SECURITY.md) and read docs/recovery.md.
+
+        Never attach DSI files, dumps or `.hex` backups, and no disassembly of DSI code.
+  - type: input
+    id: version
+    attributes:
+      label: Main OS version
+      description: System > Main OS Version
+    validations:
+      required: true
+  - type: input
+    id: others
+    attributes:
+      label: Voice, Panel and SAM versions
+      description: System > Show System Information (they should be those of the official 1.5.0.2 package)
+    validations:
+      required: true
+  - type: input
+    id: patch
+    attributes:
+      label: Patch concerned (if known)
+      description: for example n°29
+  - type: dropdown
+    id: cable
+    attributes:
+      label: Cable
+      options: [USB, DIN, not MIDI related]
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did on the machine, in order. Does the official 1.5.0.2 behave the same way?
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: checkboxes
+    id: content
+    attributes:
+      label: Content
+      options:
+        - label: This report contains no DSI file, firmware dump, disassembly or manual page, and no personal data.
+          required: true

@@ -1,0 +1,72 @@
+{
+  "version": "1.6.3.0",
+  "name": "Tempester 1.6.3.0 — performance and browsing",
+  "kind": "release",
+  "date": "2026-11-09",
+  "summary": "Everything in 1.6.2.0, plus the FX ribbons over MIDI, a footswitch that plays a pad, a play probability for each pad, and three fixes to sound loading and Revert.",
+  "changes": {
+    "fixes": [
+      "The Load Sound knob remembers where it was in each sound folder, instead of jumping back to the first sound every time you change pad or folder.",
+      "The Load Sound knob walks a folder in alphabetical order again, the same order as the Save/Load browser."
+    ],
+    "additions": [
+      "The two Real Time FX ribbons can be played over MIDI (CC 108-113 on the Remote Pad IN channel: touch position, release, pressure), and moving a ribbon on the machine sends CC 108-111 on Remote Pad OUT.",
+      "A footswitch can play a pad: System, Foot Pedals, Pedal 1/2 Assignment now goes on to « Pad 1 » ... « Pad 16 » in the switch modes.",
+      "Each pad of each beat has a play probability (0-100 %), set with MIDI CC 14 for the selected pad and saved with the beat; 100 % (the default, and every existing beat) plays exactly as before."
+    ],
+    "changes": [
+      "Revert Snd asks for a second press (the soft key shows « Confirm? »), so one accidental press no longer throws away the sound edits."
+    ]
+  },
+  "description": "1.6.2.0 plus n°31-n°36, each proved on the test builds 1.6.3.0-a (n°31, n°32), 1.6.3.0-b (n°33-n°35) and 1.6.3.0-c (n°36), and together on this image. n°31: the two Real Time FX ribbons over MIDI on Remote Pad IN, CC 108/109 = ribbon 1/2 touched at position 0-127, CC 110/111 = released, CC 112/113 = pressure 0-127, the same calls as the physical ribbon (Note FX, Beat FX in 16 Beats, Latch, FX3/FX4 bank); physical ribbon moves sent on Remote Pad OUT as CC 108/109 = position and CC 110/111 = 0 on release, remote moves not echoed. n°32: System, Foot Pedals, Pedal 1/2 Assignment in a switch mode goes on to « Pad 1 » ... « Pad 16 »: the footswitch presses and releases that panel pad (velocity = Fixed Level Velocity). n°33: the Load Sound knob keeps its position per sound folder (14 folders, bounded by the folder size). n°34: Revert Snd arms on the first press (label « Confirm? ») and reverts on a second press on the same beat and pad; any other panel input disarms it. n°35: the Load Sound knob walks a folder in alphabetical order (one directory pass, the Save/Load browser's own qsort comparator, list shared with the browser; directory order above 256 files). n°36: per-pad play probability p (0-100 %, default 100 = unchanged), the sequencer skips a note with probability 100 - p (LCG mixed with the core timer, drawn only when p < 100); MIDI CC 14 = p on Remote Pad IN for the selected pad of the edited beat; stored in the beat (pad block word 5 = 100 - p) in beat and project files and SysEx 5F / 5C n; reset by Init Beat. Voice, Panel and SAM unchanged.",
+  "sha256_image": "24414e44bd56049a6262b62c861fa37a02e4633aa19a13f9f98b055a39f5de3c",
+  "sha256_image_written": "1750e8637925f6041182379d8c45a8eff46ad79a0d3f203589f4d3860876d0ff",
+  "sha256_syx": "802ad43dbabcfe67d6d30952c408ddaab49956523b1bb08d0f11d061be47b760",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/playlist_delete_step.json",
+    "patch/loop_counter.json",
+    "patch/dump_request.json",
+    "patch/nrpn_reception.json",
+    "patch/nrpn_emission.json",
+    "patch/project_send_frame.json",
+    "patch/copy_target.json",
+    "patch/fx_mask.json",
+    "patch/noteoff_table.json",
+    "patch/voice_assign_bound.json",
+    "patch/update_message.json",
+    "patch/os_send_merge.json",
+    "patch/sram_ring.json",
+    "patch/din_running_status.json",
+    "patch/sysex_abandon_screen.json",
+    "patch/beat_number_check.json",
+    "patch/lfo_restart_play_deferred.json",
+    "patch/remote_keys.json",
+    "patch/led_emission.json",
+    "patch/remote_controls.json",
+    "patch/nrpn_switch_led.json",
+    "patch/project_request.json",
+    "patch/project_request_no_screen.json",
+    "patch/pack7_flush.json",
+    "patch/project_receive_lists.json",
+    "patch/beat_wide_emission.json",
+    "patch/sysex_timeout.json",
+    "patch/ribbon_remote.json",
+    "patch/pedal_pad.json",
+    "patch/load_sound_memory.json",
+    "patch/revert_confirm.json",
+    "patch/load_sound_sort.json",
+    "patch/step_probability.json",
+    "patch/version_1.6.3.0.json"
+  ]
+}

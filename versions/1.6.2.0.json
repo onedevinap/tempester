@@ -1,0 +1,65 @@
+{
+  "version": "1.6.2.0",
+  "name": "Tempester 1.6.2.0 — MIDI transfers",
+  "kind": "release",
+  "date": "2026-11-08",
+  "summary": "Five improvements to MIDI transfers: a silent project request, correct SysEx endings, a project read back correctly, beat-wide positions, and a SysEx timeout.",
+  "changes": {
+    "fixes": [
+      "Sounds, beats and projects sent by the machine end in the standard 7-bit layout, so other software reads their last bytes correctly.",
+      "A project sent back to the machine is read correctly: each Play List keeps its length instead of shifting every later list.",
+      "A SysEx message that never ends is abandoned after about 3 seconds: the Receiving screen closes and the panel and MIDI notes answer again."
+    ],
+    "additions": [
+      "The 8 beat-wide knob positions (All Osc Freq, Feedback, LP Freq, Resonance, Audio Mod, HP Freq, Attack, Decay) are sent over MIDI when they change, and can be set over MIDI."
+    ],
+    "changes": [
+      "The project request no longer draws « Exporting Project... » over the current screen (the menu export still does)."
+    ]
+  },
+  "description": "1.6.1.0 plus n°26-n°30, each proved alone on 1.6.1.1-1.6.1.5 and together on this image. n°26: the project request F0 01 28 42 F7 (n°24) sends the same bytes without drawing anything; the menu « Export Project over MIDI » keeps its screen. n°27: every packed SysEx message the machine sends (60, 5F, 5E, 5C n, 63, 62, 61) ends with its last partial group in the standard DSI layout, the one its own receivers read (the factory flush shifted the head bits, left stale padding and wrote one byte past its buffer). n°28: a received project (5E then 5C n) reads each used Play List with the length the sender wrote (one word too many per used list before, shifting every later list). n°29: the 8 beat-wide positions are sent after any panel action that changes them and after a beat change, as CC 20-27 = position >> 1 plus CC 52-59 = 0x40 when the position is odd, on Remote Pad OUT; the same bytes set them without echo, and CC 107 resends them. n°30: a SysEx message that stops before its F7 is abandoned after about 3 s without a byte (130 main-loop events of 24 ms): the Receiving screen closes, an open file is closed, the DIN running status is reset only when the SysEx cable is the DIN; OS updates are never abandoned. Voice, Panel and SAM unchanged.",
+  "sha256_image": "2a3f2ba15d7cbe0c27ae8e3ede8ec7dd5a7361f7d0c6a58c0a4d4457432556cf",
+  "sha256_image_written": "86d01db5933b8626f651727422738777eb38b27ab29164479b310c457a0aa274",
+  "sha256_syx": "0b26e2b12e68245f3e43a1cb76c496c8a3c71a13f93646363cba9d56fe0f4341",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/playlist_delete_step.json",
+    "patch/loop_counter.json",
+    "patch/dump_request.json",
+    "patch/nrpn_reception.json",
+    "patch/nrpn_emission.json",
+    "patch/project_send_frame.json",
+    "patch/copy_target.json",
+    "patch/fx_mask.json",
+    "patch/noteoff_table.json",
+    "patch/voice_assign_bound.json",
+    "patch/update_message.json",
+    "patch/os_send_merge.json",
+    "patch/sram_ring.json",
+    "patch/din_running_status.json",
+    "patch/sysex_abandon_screen.json",
+    "patch/beat_number_check.json",
+    "patch/lfo_restart_play_deferred.json",
+    "patch/remote_keys.json",
+    "patch/led_emission.json",
+    "patch/remote_controls.json",
+    "patch/nrpn_switch_led.json",
+    "patch/project_request.json",
+    "patch/project_request_no_screen.json",
+    "patch/pack7_flush.json",
+    "patch/project_receive_lists.json",
+    "patch/beat_wide_emission.json",
+    "patch/sysex_timeout.json",
+    "patch/version_1.6.2.0.json"
+  ]
+}

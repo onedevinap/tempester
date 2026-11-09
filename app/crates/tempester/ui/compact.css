@@ -1,0 +1,169 @@
+/* Compact building blocks shared by the pages (the icons are in icons.js): icon buttons with a tooltip, toolbars,
+   the "i" info badge and its popover, chips, dense list rows and two-pane layouts. Same dark theme as app.css
+   (it uses its variables). Click targets are at least 36 px, list text is 15 px or more. */
+
+.icon { display: inline-flex; width: 22px; height: 22px; flex: none; }
+.icon svg { width: 22px; height: 22px; display: block; }
+
+/* Icon button: a 38 px square; the tooltip is the button's own label. */
+.ibtn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 38px; height: 38px; padding: 0; flex: none; background: transparent; color: var(--text); border: 1px solid transparent; border-radius: 8px; cursor: pointer; font: 500 15px/1 var(--font); }
+.ibtn.with-text { width: auto; padding: 0 12px 0 9px; border-color: #3d444d; background: #252a31; }
+.ibtn:hover:not(:disabled) { background: #2b3139; border-color: #3d444d; }
+.ibtn:disabled { opacity: .4; cursor: not-allowed; }
+.ibtn[aria-pressed="true"] { background: #1a6684; border-color: #2a8fb6; }
+.ibtn.primary { background: #1a6684; border-color: #2a8fb6; }
+.ibtn.primary:hover:not(:disabled) { background: #20779a; }
+.ibtn.danger { color: #ff9a90; }
+.ibtn.danger:hover:not(:disabled) { background: #5a1f1a; border-color: #b0443b; color: #fff; }
+.ibtn.star-on { color: var(--warn); }
+
+/* Tooltip from data-tip: ONE box for the page, placed by icons.js (above the element, below when there is no room);
+   fixed, so showing it never moves the layout, and it never takes the pointer. */
+.tip { position: fixed; left: 0; top: 0; z-index: 60; background: #262c34; color: #f3f6f9; border: 1px solid #3d444d; padding: 6px 10px; border-radius: 6px; font: 500 14px/1.3 var(--font); white-space: nowrap; pointer-events: none; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); }
+.tip[hidden] { display: none; }
+
+.toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.toolbar .sep { width: 1px; align-self: stretch; margin: 4px 6px; background: var(--line); }
+.toolbar .grow { flex: 1 1 auto; }
+.toolbar .count { color: var(--mid); font-size: 15px; white-space: nowrap; }
+
+/* The "i" badge and its popover (placed by icons.js, like the tooltip). */
+.info { position: relative; display: inline-flex; vertical-align: middle; }
+.info-badge { width: 36px; height: 36px; color: var(--accent); }
+.info-badge .icon, .info-badge .icon svg { width: 20px; height: 20px; }
+.popover { position: fixed; left: 0; top: 0; z-index: 50; width: max-content; max-width: min(380px, 80vw); background: #1d2228; color: var(--text); border: 1px solid #3d444d; border-radius: 8px; padding: 10px 14px; font: 15px/1.5 var(--font); box-shadow: 0 10px 28px rgba(0, 0, 0, .6); white-space: normal; text-align: left; font-weight: 400; }
+.popover[hidden] { display: none; }
+
+/* Chips and badges: a fixed-height pill so that adding one never moves the row. */
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid #3d444d; border-radius: 99px; color: var(--mid); font: 500 15px/1 var(--font); white-space: nowrap; background: #1b1f24; }
+.chip.on { color: var(--text); border-color: var(--accent); background: #12303c; }
+button.chip { cursor: pointer; }
+.chip[hidden] { display: none; }
+button.chip:hover { color: var(--text); }
+.chip.ok { color: var(--ok); border-color: var(--ok); }
+.chip.warn { color: var(--warn); border-color: var(--warn); }
+.chip.bad { color: var(--bad); border-color: var(--bad); }
+
+/* Dense rows: fixed height, a grid of fixed or flexible columns, one line of text cut with an ellipsis. */
+.dense { margin: 0; padding: 0; list-style: none; }
+.dense .row-item { display: grid; align-items: center; height: 44px; padding: 0 8px; gap: 10px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.dense .row-item > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dense .row-item:hover { background: #1b2026; }
+.dense .row-item[aria-selected="true"] { background: #14323f; }
+.dense .row-item.active { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* Two panes: a main area and a side panel of fixed width; one pane under the other when narrow. */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.pane-side { position: sticky; top: 72px; }
+
+/* Machine page: the pad note table (pad-notes-panel.js), over the page: fixed, so opening it moves nothing. */
+.padnotes { position: fixed; z-index: 45; top: calc(var(--top-h) + var(--banner-h) + 64px); right: 16px; width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - var(--top-h) - var(--banner-h) - 80px); overflow: auto; background: #1d2228; color: var(--text); border: 1px solid #3d444d; border-radius: 10px; padding: 10px 14px 14px; box-shadow: 0 10px 28px rgba(0, 0, 0, .6); font-size: 15px; }
+.padnotes[hidden] { display: none; }
+.padnotes .toolbar strong { font-size: 17px; margin-right: 6px; }
+.padnotes .statusline { display: block; min-height: 22px; margin: 4px 0 8px; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.padnote-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 12px; }
+.padnote { display: grid; grid-template-columns: 34px 76px 44px; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 6px; }
+.padnote.learned { box-shadow: inset 0 0 0 2px var(--ok); }
+.padnote-pad { color: var(--mid); font-weight: 600; font-size: 15px; }
+.padnote .padnote-in { width: 76px; min-height: 36px; padding: 4px 8px; font-size: 15px; }
+.padnote-name { color: var(--mid); font: 15px/1 var(--mono); }
+
+@media (prefers-reduced-motion: reduce) { .ibtn { transition: none; } }
+
+/* One screen per page: a "fit" page is exactly as tall as the window under the top bar (and the fake banner), laid
+   out as a column; whatever may grow (a list, a log) scrolls inside its own box, never the page. */
+.page.fit.shown { display: flex; flex-direction: column; gap: 12px; min-height: 0; height: calc(100vh - var(--top-h) - var(--banner-h) - 2 * var(--main-pad)); }
+.scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+/* A settings strip: one row of fixed height, fields and icon buttons side by side. */
+.strip { display: flex; align-items: center; gap: 8px 14px; flex: none; height: 56px; padding: 0 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+.strip select, .strip input[type=number] { min-height: 38px; padding: 4px 8px; }
+.strip .field { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.strip .sep { width: 1px; align-self: stretch; margin: 10px 0; background: var(--line); flex: none; }
+
+/* A panel: a card with a head line (icon, title, info badge) and a body that can scroll. */
+.panel { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px 12px; }
+.panel-head { display: flex; align-items: center; gap: 6px; flex: none; height: 38px; }
+.panel-head h3 { margin: 0; font-size: 17px; }
+.panel-head .grow { flex: 1 1 auto; }
+.step-no { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); font: 600 15px/1 var(--font); }
+
+/* A status line: one line, cut with an ellipsis, fixed height (the full text is the title). `.multi` keeps a fixed
+   number of lines for results that must be read in full. */
+.statusline { flex: 1 1 0; min-width: 0; height: 24px; line-height: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mid); font-size: 15px; }
+.statusline.good { color: var(--ok); }
+.statusline.warn { color: var(--warn); }
+.statusline.bad { color: var(--bad); }
+.statusbox { flex: none; height: 4.5em; overflow: auto; margin: 0; padding: 6px 12px; border-left: 4px solid var(--line); background: #11141a; color: var(--mid); }
+.statusbox.good { border-color: var(--ok); background: #122019; color: var(--text); }
+.statusbox.bad { border-color: var(--bad); background: #231615; color: var(--text); }
+.statusbox.grow { flex: 1 1 auto; height: auto; min-height: 0; }
+.statusbox p { margin: 0 0 4px; }
+.ibtn[hidden], .chip[hidden] { display: none; }
+.split.fill { flex: 1 1 auto; min-height: 0; align-items: stretch; }
+.split.fill .pane-side { position: static; }
+.cols2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.cols2.fill { flex: 1 1 auto; min-height: 0; }
+.col { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+.panel.fixed { flex: none; }
+.os-cols { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.versions-panel { flex: 1 1 auto; min-height: 0; }
+.vscroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: 4px; }
+/* Version chooser (os-versions.js): recommended cards, then the history; the panel keeps its size, this area scrolls. */
+.vchooser { display: flex; flex-direction: column; gap: 10px; }
+.vcards { display: flex; flex-direction: column; gap: 10px; }
+.vcard { border: 1px solid var(--line); border-radius: 10px; background: #11141a; padding: 8px 14px 8px; }
+.vcard-head { display: flex; align-items: center; gap: 10px; height: 32px; }
+.vcard-head h4 { margin: 0; flex: 1 1 auto; font-size: 17px; }
+.vsummary { margin: 2px 0 6px; font-size: 15px; line-height: 1.45; }
+.vgroup h5 { display: flex; align-items: center; gap: 6px; margin: 6px 0 2px; font-size: 15px; color: var(--accent); }
+.vgroup h5 .icon, .vgroup h5 .icon svg { width: 18px; height: 18px; }
+.vgroup ul { margin: 0; padding-left: 26px; font-size: 15px; line-height: 1.45; }
+.vgroup li { margin-bottom: 3px; }
+.vdetails { margin: 6px 0 4px; padding: 8px 12px; border-left: 4px solid var(--line); background: #0d1014; color: var(--mid); font-size: 15px; line-height: 1.5; -webkit-user-select: text; user-select: text; }
+.vdetails[hidden], .vbody[hidden] { display: none; }
+.ibtn[aria-expanded="true"] .icon svg, .vtoggle[aria-expanded="true"] .icon svg { transform: rotate(180deg); }
+.vhead { display: flex; align-items: center; gap: 6px; height: 38px; }
+.vhead h4 { margin: 0; font-size: 17px; }
+.vhistory { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 8px; background: #11141a; }
+.vrow { border-bottom: 1px solid var(--line); }
+.vrow:last-child { border-bottom: 0; }
+.vrow-head { display: flex; align-items: center; gap: 6px; height: 44px; padding-right: 6px; }
+.vtoggle { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; height: 44px; padding: 0 8px; background: transparent; border: 0; color: var(--text); font: 15px/1 var(--font); text-align: left; cursor: pointer; }
+.vtoggle:hover { background: #1b2026; }
+.vdate { color: var(--mid); white-space: nowrap; }
+.vname { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mid); }
+.vbody { padding: 0 14px 8px 38px; }
+.vnone { padding: 10px 12px; color: var(--mid); }
+@media (max-width: 1000px) {
+  .cols2 { grid-template-columns: minmax(0, 1fr); }
+  .page.fit.shown { height: auto; }
+}
+.steps { margin: 0; padding-left: 20px; }
+.steps li { margin-bottom: 6px; }
+.panel table.list th { position: sticky; top: 0; background: var(--card); }
+.panel table.list th, .panel table.list td { padding: 8px 10px; font-size: 15px; }
+
+/* The identity answer, shown in full on the Machine page: three columns of label / value rows, fixed row count. */
+.idgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 24px; flex: none; }
+.idcol { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0 12px; align-content: start; margin: 0; }
+.idcol dt { color: var(--mid); height: 24px; line-height: 24px; font-size: 15px; white-space: nowrap; }
+.idcol dd { margin: 0; height: 24px; line-height: 24px; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; -webkit-user-select: text; user-select: text; }
+.idcol dd.good { color: var(--ok); }
+.idcol dd.warn { color: var(--warn); }
+.idcol dd.off { color: var(--mid); }
+.idnote { flex: none; margin: 0; height: 48px; line-height: 24px; font-size: 15px; color: var(--mid); overflow: hidden; }
+.idnote.warn { color: var(--warn); }
+/* SHA-256 evidence row (os-hash.js): fixed height, every part keeps its slot so that nothing moves when a result
+   appears. The hashes are monospace and shortened; the full values are in the info popover. */
+.evidence { display: flex; align-items: center; gap: 6px; flex: none; height: 38px; }
+.evidence-mark { display: inline-flex; width: 22px; flex: none; }
+.evidence-mark.good { color: var(--ok); }
+.evidence-mark.warn { color: var(--warn); }
+.evidence-mark.bad { color: var(--bad); }
+.evidence-hashes { flex: none; white-space: nowrap; color: var(--text); }
+.evidence .info[hidden], .evidence .ibtn[hidden] { display: none; }
+.hash-full { word-break: break-all; }
+.verify-block { display: flex; flex-direction: column; gap: 8px; }
+.verify-block .statusbox { height: 6.5em; }

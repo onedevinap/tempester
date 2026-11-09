@@ -1,0 +1,29 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°2a: beat serializer frame reduced from 16.5 KB to 4.2 KB",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "[routine] (sending of a beat, also called for each beat of a project) reserved 0x40A0 bytes of stack for ~9.9 KB of stack available: it wrote over global variables (export freezes reported on the forum). Its buffer never receives more than 2,006 words ([routine] stops beyond 2,000); reduced to 2,048 words, same layout, the 5 slots at the top of the frame shifted by -0x3000.",
+ "edits": [
+  {"at": "0x9d0414c8", "copy": "0x9d0414c8", "set": {"imm": 61280}, "why": "addiu sp,sp,-0x10a0 (cadre 0x40a0 -> 0x10a0)"},
+  {"at": "0x9d0414cc", "copy": "0x9d0414cc", "set": {"imm": 4252}, "why": "offset 0x409c -> 0x109c"},
+  {"at": "0x9d0414d0", "copy": "0x9d0414d0", "set": {"imm": 4248}, "why": "offset 0x4098 -> 0x1098"},
+  {"at": "0x9d0414d8", "copy": "0x9d0414d8", "set": {"imm": 4256}, "why": "offset 0x40a0 -> 0x10a0"},
+  {"at": "0x9d0414dc", "copy": "0x9d0414dc", "set": {"imm": 4260}, "why": "offset 0x40a4 -> 0x10a4"},
+  {"at": "0x9d0414e4", "copy": "0x9d0414e4", "set": {"imm": 4264}, "why": "offset 0x40a8 -> 0x10a8"},
+  {"at": "0x9d0414f0", "copy": "0x9d0414f0", "set": {"imm": 4260}, "why": "offset 0x40a4 -> 0x10a4"},
+  {"at": "0x9d04153c", "copy": "0x9d04153c", "set": {"imm": 4256}, "why": "offset 0x40a0 -> 0x10a0"},
+  {"at": "0x9d041564", "copy": "0x9d041564", "set": {"imm": 4256}, "why": "offset 0x40a0 -> 0x10a0"},
+  {"at": "0x9d0415a4", "copy": "0x9d0415a4", "set": {"imm": 4260}, "why": "offset 0x40a4 -> 0x10a4"},
+  {"at": "0x9d0415ec", "copy": "0x9d0415ec", "set": {"imm": 4256}, "why": "offset 0x40a0 -> 0x10a0"},
+  {"at": "0x9d041614", "copy": "0x9d041614", "set": {"imm": 4256}, "why": "offset 0x40a0 -> 0x10a0"},
+  {"at": "0x9d041670", "copy": "0x9d041670", "set": {"imm": 4260}, "why": "offset 0x40a4 -> 0x10a4"},
+  {"at": "0x9d0416b0", "copy": "0x9d0416b0", "set": {"imm": 4260}, "why": "offset 0x40a4 -> 0x10a4"},
+  {"at": "0x9d0416e8", "copy": "0x9d0416e8", "set": {"imm": 4256}, "why": "offset 0x40a0 -> 0x10a0"},
+  {"at": "0x9d041728", "copy": "0x9d041728", "set": {"imm": 4256}, "why": "offset 0x40a0 -> 0x10a0"},
+  {"at": "0x9d041734", "copy": "0x9d041734", "set": {"imm": 4256}, "why": "offset 0x40a0 -> 0x10a0"},
+  {"at": "0x9d041750", "copy": "0x9d041750", "set": {"imm": 4252}, "why": "offset 0x409c -> 0x109c"},
+  {"at": "0x9d041754", "copy": "0x9d041754", "set": {"imm": 4248}, "why": "offset 0x4098 -> 0x1098"},
+  {"at": "0x9d041758", "copy": "0x9d041758", "set": {"imm": 4256}, "why": "addiu sp,sp,0x10a0 (epilogue)"}
+ ]
+}

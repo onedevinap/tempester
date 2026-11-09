@@ -1,0 +1,130 @@
+# Builds the packages and attaches them to a DRAFT GitHub release (tags v*): per system the app and the DAW plugin
+# Tempester Control (CLAP and VST3): macOS dmg (app only) and pkg (app and plugins), Linux deb for the app and a
+# separate deb for the plugins, Windows portable zip (with plugins/) and setup exe (app and plugins).
+# Run by hand (workflow_dispatch), it only builds the packages as workflow artifacts: no release is created.
+# No secret: the release uses the workflow's own token. Nothing DSI is packaged: each script copies the release binaries,
+# the plugin bundles, the licence, the icons and (Linux) a desktop entry, and the last job refuses any file name outside
+# the expected package list.
+# The release builds the app and the plugin only, never a firmware version: each user builds firmware from their own
+# DSI file.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' app/Cargo.toml | head -1)
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME, app/Cargo.toml says $version"; exit 1; }
+
+      - name: Linux libraries (WebKitGTK, GTK, ALSA)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev
+
+      - name: Rust toolchain
+        # The version pinned in app/rust-toolchain.toml, with its components.
+        working-directory: app
+        run: rustup toolchain install
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/target
+          key: cargo-release-${{ runner.os }}-${{ hashFiles('app/Cargo.lock') }}
+          restore-keys: cargo-release-${{ runner.os }}-
+
+      # The plugin is an isolated crate (own workspace, lock file and target/): its own cache. The package scripts build
+      # the bundles themselves (`cargo xtask bundle tempester-plugin --release --locked`) and fail without them.
+      - uses: actions/cache@v4
+        with:
+          path: app/crates/tempester-plugin/target
+          key: cargo-release-plugin-${{ runner.os }}-${{ hashFiles('app/crates/tempester-plugin/Cargo.lock') }}
+          restore-keys: cargo-release-plugin-${{ runner.os }}-
+
+      - name: Package (macOS dmg and pkg)
+        if: runner.os == 'macOS'
+        run: tools/package_mac.sh
+
+      - name: Package (Linux debs, app and plugins)
+        if: runner.os == 'Linux'
+        run: tools/package_linux.sh
+
+      - name: Install NSIS
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nsis --no-progress -y
+          Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files (x86)\NSIS'
+
+      - name: Package (Windows zip and installer)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: tools/package_windows.ps1 -Installer
+
+      # A window needs WebView2 and a desktop session: if the runner cannot give one, this step reports it without
+      # blocking the release.
+      - name: Windows smoke test (app starts on the simulated machine)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: tools/package_windows.ps1 -Smoke
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tempester-${{ runner.os }}
+          path: dist/*
+          if-no-files-found: error
+
+  draft-release:
+    name: draft release
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      # Exactly one file per pattern, and nothing else: 6 packages (macOS dmg and pkg, Linux app deb and plugins deb,
+      # Windows zip and setup exe).
+      - name: Only the expected packages
+        run: |
+          ls -l dist
+          for pattern in 'Tempester-*-macos-*.dmg' 'Tempester-*-macos-*.pkg' 'tempester_*_*.deb' \
+            'tempester-plugins_*_*.deb' 'Tempester-*-windows-x64.zip' 'Tempester-*-windows-x64-setup.exe'; do
+            found=$(find dist -type f -name "$pattern" | wc -l)
+            [ "$found" -eq 1 ] || { echo "expected one $pattern, found $found"; exit 1; }
+          done
+          count=$(find dist -type f | wc -l)
+          [ "$count" -eq 6 ] || { echo "expected 6 packages, found $count"; exit 1; }
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --draft --verify-tag --title "Tempester $GITHUB_REF_NAME" --generate-notes

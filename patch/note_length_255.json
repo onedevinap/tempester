@@ -1,0 +1,11 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°5: note length editable up to 255",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "Beat Events editor ([address], case 1): the duration maximum was « length < 255 ? length : 254 », one less than what recording writes ([routine] caps at 255). Format unchanged.",
+ "edits": [
+  {"at": "0x9d02efc4", "copy": "0x9d02efc4", "set": {"imm": 256}, "why": "sltiu v0,t1,0xff -> sltiu v0,t1,0x100"},
+  {"at": "0x9d02efc8", "copy": "0x9d02efc8", "set": {"imm": 255}, "why": "li s0,0xfe -> li s0,0xff"}
+ ]
+}

@@ -1,0 +1,28 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°14: clearer OS update screen message",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "[routine] ([routine]) shows two lines while the new OS is written: a warning not to power down until the FX 1 LEDs have reached the top and stopped, then to restart the machine (the original wording is not quoted here). Rewritten in place, within the same string space: 'Writing... DO NOT POWER OFF.' / 'When the FX1 LEDs stop: done, power off and on.'. The end of the update runs in the protected flasher page (0x9D07F000), which cannot display anything, so the instruction must be on screen from the start. Shown by the OS that RECEIVES an update, i.e. from the next update made on a Tempester version that contains this patch.",
+ "edits": [
+  {"at": "0x9d072f40", "copy": "0x9d06fd8c", "count": 2, "why": "update screen text"},
+  {"at": "0x9d072f48", "word": "4f204e4f", "why": "update screen text"},
+  {"at": "0x9d072f4c", "word": "5420504f", "why": "update screen text"},
+  {"at": "0x9d072f50", "word": "57455220", "why": "update screen text"},
+  {"at": "0x9d072f54", "word": "4f46462e", "why": "update screen text"},
+  {"at": "0x9d072f58", "word": "00000000", "count": 5, "why": "update screen text"},
+  {"at": "0x9d072f6c", "word": "5768656e", "why": "update screen text"},
+  {"at": "0x9d072f70", "word": "20746865", "why": "update screen text"},
+  {"at": "0x9d072f74", "word": "20465831", "why": "update screen text"},
+  {"at": "0x9d072f78", "word": "204c4544", "why": "update screen text"},
+  {"at": "0x9d072f7c", "copy": "0x9d072f7c", "set": {"imm": 8307}, "why": "update screen text"},
+  {"at": "0x9d072f80", "word": "6f703a20", "why": "update screen text"},
+  {"at": "0x9d072f84", "word": "646f6e65", "why": "update screen text"},
+  {"at": "0x9d072f88", "copy": "0x9d072f4c", "set": {"imm": 8236}, "why": "update screen text"},
+  {"at": "0x9d072f8c", "copy": "0x9d072f50", "why": "update screen text"},
+  {"at": "0x9d072f90", "word": "6f666620", "why": "update screen text"},
+  {"at": "0x9d072f94", "word": "616e6420", "why": "update screen text"},
+  {"at": "0x9d072f98", "word": "6f6e2e00", "why": "update screen text"},
+  {"at": "0x9d072f9c", "word": "00000000", "count": 2, "why": "update screen text"}
+ ]
+}

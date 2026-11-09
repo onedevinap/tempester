@@ -1,0 +1,22 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°20: SysEx 5C (beat n of a project) refused when n > 15",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "[routine] ([routine]) case 0x5C stored the beat number byte ([address]) without any check, and [routine] then called [routine](n) ([routine]), which writes [address] + (n * 0xA5 + k) * 4 (k = 4..7), the beat header and events of beat n ([routine], [routine], [routine]) and the 32 sounds of beat n in SRAM ([routine] at n * 0xA00 + pad * 0x50). Valid beats are 0-15 (RAM tables end at [address]): n = 16 overwrites the undo beat in SRAM (sounds 0xA000, events 0x3AA00) and RAM past the tables; n = 17-127 (and up to 255 over USB, where SysEx bytes are not masked) writes far past them. Fix: case 5C reads the number through a helper (0x9d07ba00-0x9d07ba2f); n > 15 jumps to the existing error end of case 70 in the same function and frame ([address]: [address] = 4, [routine](0), then [routine](6, command 0, 0, 9)), which drops the message and ends the screen opened by the start event; the remaining bytes up to F7 then meet an idle SysEx state, as after any refused SysEx. 0-15: unchanged.",
+ "edits": [
+  {"at": "0x9d0600cc", "jal": "0x9d07ba00", "why": "jal 0x9d07ba00 ; case 5C: was \"jal [address]\" ([routine]); the delay slot (nop) is kept"},
+  {"at": "0x9d07ba00", "word": "e8ffbd27", "why": "addiu sp,sp,-0x18 ; ra = [address], sp = frame of [routine] (ra at 0x14, s0 at 0x10)"},
+  {"at": "0x9d07ba04", "word": "1400bfaf", "why": "sw ra,0x14(sp)"},
+  {"at": "0x9d07ba08", "jal": "0x9d05ff78", "why": "jal [address] ; [routine]: v0 = n"},
+  {"at": "0x9d07ba0c", "word": "00000000", "why": "nop"},
+  {"at": "0x9d07ba10", "word": "1400bf8f", "why": "lw ra,0x14(sp)"},
+  {"at": "0x9d07ba14", "word": "1000482c", "why": "sltiu t0,v0,0x10"},
+  {"at": "0x9d07ba18", "word": "03000011", "why": "beq t0,zero,0x9d07ba28"},
+  {"at": "0x9d07ba1c", "word": "1800bd27", "why": "addiu sp,sp,0x18 ; delay slot: own frame popped on both paths"},
+  {"at": "0x9d07ba20", "word": "0800e003", "why": "jr ra ; n = 0..15: back to case 5C (stores n, substate 6), unchanged"},
+  {"at": "0x9d07ba24", "word": "00000000", "why": "nop"},
+  {"at": "0x9d07ba28", "j": "0x9d060208", "why": "j [address] ; n > 15: error end of case 70 in the same function, same frame (ra and s0 restored by its epilogue)"},
+  {"at": "0x9d07ba2c", "word": "09001024", "why": "li s0,0x9 ; delay slot: error code passed to [routine]"}
+ ]
+}

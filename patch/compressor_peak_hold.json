@@ -1,0 +1,10 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°4a: compressor envelope Peak Hold saved",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "The beat serializer [routine] built word 9 from Attack (+0x2D) and Decay (+0x2F): Peak Hold (+0x2E) was never written, and the deserializer [routine] read Decay back as Peak Hold. Fixes saving and SysEx export of beats; beats already saved keep Peak Hold = Decay.",
+ "edits": [
+  {"at": "0x9d033510", "copy": "0x9d033510", "set": {"imm": 46}, "why": "lbu t5,0x2f(s0) -> lbu t5,0x2e(s0): Peak Hold instead of Decay"}
+ ]
+}

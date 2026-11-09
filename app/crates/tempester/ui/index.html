@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tempester</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="compact.css">
+<link rel="stylesheet" href="library.css">
+<link rel="stylesheet" href="panel.css">
+<link rel="stylesheet" href="panel-face.css">
+<link rel="stylesheet" href="edit-tools.css">
+<link rel="stylesheet" href="monitor.css">
+</head>
+<body>
+<header class="topbar" id="topbar">
+  <h1>Tempester</h1>
+  <nav id="nav" aria-label="Pages"></nav>
+  <div id="conn" class="pill" role="status"></div>
+  <div id="connbar" class="connbar"></div>
+</header>
+<div id="fake-banner" class="banner" hidden>Fake MIDI: a scripted machine in memory. Nothing reaches a real MIDI port, files go to a separate "fake-midi" folder.</div>
+<main id="pages"></main>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="confirm" aria-labelledby="confirm-title">
+  <form method="dialog">
+    <h2 id="confirm-title"></h2>
+    <div id="confirm-body"></div>
+    <div class="buttons">
+      <button value="cancel" id="confirm-cancel" class="btn">Cancel</button>
+      <button value="ok" id="confirm-ok" class="btn primary">OK</button>
+    </div>
+  </form>
+</dialog>
+<script src="params.js"></script>
+<script src="bridge.js"></script>
+<script src="icons.js"></script>
+<script src="kit.js"></script>
+<script src="pad-notes.js"></script>
+<script src="conn-bar.js"></script>
+<script src="project-ui.js"></script>
+<script src="panel-labels.js"></script>
+<script src="panel-keys.js"></script>
+<script src="panel-remote.js"></script>
+<script src="panel-view.js"></script>
+<script src="panel-mode.js"></script>
+<script src="panel-link.js"></script>
+<script src="panel.js"></script>
+<script src="panel-face.js"></script>
+<script src="panel-machine.js"></script>
+<script src="edit-learn.js"></script>
+<script src="edit-tools.js"></script>
+<script src="panel-perform.js"></script>
+<script src="monitor-ui.js"></script>
+<script src="identity-panel.js"></script>
+<script src="pad-notes-panel.js"></script>
+<script src="os-hash.js"></script>
+<script src="os-versions.js"></script>
+<script src="os-verify.js"></script>
+<script src="page-machine.js"></script>
+<script src="page-panel.js"></script>
+<script src="lib-model.js"></script>
+<script src="lib-dialogs.js"></script>
+<script src="lib-flow.js"></script>
+<script src="lib-kit.js"></script>
+<script src="lib-browser.js"></script>
+<script src="page-library.js"></script>
+<script src="page-backup.js"></script>
+<script src="page-os.js"></script>
+<script src="page-play.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# The Rust version the app is built, linted and tested with, on the author's machine and on the CI runners alike: a
+# newer stable brings new clippy lints (`-D warnings`) and would turn the build red without any code change. Upgrade
+# deliberately: change this line, fix what clippy reports, run tools/test_app.sh.
+[toolchain]
+channel = "1.99.1"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

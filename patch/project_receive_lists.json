@@ -1,0 +1,10 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°28: a received project (SysEx 5E) reads each used Play List with the sender's length",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "[routine] (the menu « Export Project over MIDI » and request 42 of n°24) and the project file writer send, after the Play List version word, 4 lists: 0xFEFE for an empty list, else End + 10 name words + 100 step words ([routine]: 111 words). [routine] reads End then table [address][version] - 2 = 110 words and agrees. [routine] ([address], SysEx 5E, sub-state 4) read End then table[version] - 1 = 111 words: one word too many per used list, so every list after a used one was read one word late (a used list 1 swallowed list 2's marker; with all 4 used, lists 2-4 came out as garbage) and the last list read past the data into the padding and the stale bytes of the SysEx ring (an empty list 4 became a list of garbage). Fix: the word count becomes table[version] - 2, as [routine] (one word, in place; the 0-count refusal 0x26 unchanged, the table gives 100 or 110; the buffer of n°2c holds 1,024 words). Proved by simulation of the image's own sender and receiver (tools/sim_project_receive.py): the standard-layout stream of a project with 0 to 4 used lists, and of the author's real capture, lands in RAM equal to the sender's. Docs/analyses/bug-project-receive.md.",
+ "edits": [
+  {"at": "0x9d043110", "copy": "0x9d043110", "set": {"imm": 65534}, "why": "addiu v0,v0,-0x2 ; was \"addiu v0,v0,-0x1\": words after End = table [address][version] - 2 (110 for version 2), as [routine] and the sender"}
+ ]
+}

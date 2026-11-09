@@ -1,0 +1,3 @@
+# nih-plug bundler metadata: the name shown by the host (otherwise the package name).
+[tempester-plugin]
+name = "Tempester Control"

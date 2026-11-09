@@ -1,0 +1,33 @@
+{
+  "version": "1.5.4.0",
+  "name": "Tempester 1.5.4.0 — fixes 2",
+  "kind": "test",
+  "description": "1.5.3.0 plus a second batch of safe fixes found by the studies (project export stack, and the agents' fixes as they land). Voice, Panel and SAM unchanged.",
+  "sha256_image": "d429918ea8daa6c29d22bae0be9e3216fe3afe8359fca0ff5511e152e6532e37",
+  "sha256_image_written": "c5a39f5b2e5319936607a3944a82a2ee1de5a6dcd2f5dbcd22cddffedbbfd4fa",
+  "sha256_syx": "db39936a6f12e0aef0e1841f4a908384007e9c5e66b3ad84f5c6a7c49f9d37b4",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/playlist_delete_step.json",
+    "patch/loop_counter.json",
+    "patch/dump_request.json",
+    "patch/nrpn_reception.json",
+    "patch/nrpn_emission.json",
+    "patch/project_send_frame.json",
+    "patch/copy_target.json",
+    "patch/fx_mask.json",
+    "patch/noteoff_table.json",
+    "patch/voice_assign_bound.json",
+    "patch/version_1.5.4.0.json"
+  ]
+}

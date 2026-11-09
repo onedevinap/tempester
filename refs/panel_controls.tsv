@@ -1,0 +1,25 @@
+kind	number	nrpn	name (Shift)
+encoder	0	200	LFO Rate (Shape)
+encoder	1	201	Pitch (Fine)
+encoder	2	202	1/2 Mix (Level, Pre/Post Filter)
+encoder	3	203	Shape (Sample)
+encoder	4	204	LFO Amount (Destination)
+encoder	5	205	Env Amount (Velocity Amt)
+encoder	6	206	Env Decay (Release)
+encoder	7	207	Env Attack (Sustain Level)
+encoder	8	208	BPM (Swing)
+encoder	9	209	Delay Send (Delay Time)
+encoder	10	210	Soft knob 4
+encoder	11	211	Soft knob 3
+encoder	12	212	Soft knob 2
+encoder	13	213	Soft knob 1
+absolute	0	220	Feedback
+absolute	1	221	Highpass Frequency
+absolute	2	222	Compress
+absolute	3	223	Audio Mod
+absolute	4	224	Resonance
+absolute	5	225	Lowpass Frequency
+absolute	6	226	Pan
+absolute	7	227	Level
+absolute	8	228	Volume
+absolute	9	229	Distort

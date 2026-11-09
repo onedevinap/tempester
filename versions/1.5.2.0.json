@@ -1,0 +1,36 @@
+{
+  "version": "1.5.2.0",
+  "name": "Tempester 1.5.2.0 — dump requests",
+  "kind": "release",
+  "date": "2026-11-07",
+  "summary": "Adds requests for the current sound and beat, so that a computer can read your presets.",
+  "changes": {
+    "additions": [
+      "The machine sends its current sound when it receives a sound request, with no menu action.",
+      "The same for the current beat."
+    ],
+    "changes": [
+      "The identity reply (how the app finds the machine) now goes out on the cable chosen in System, USB included; it left only by the DIN socket before."
+    ]
+  },
+  "description": "Revision 1.5.1.0 plus patch n°1: the sound request (F0 01 28 40 F7) and the beat request (F0 01 28 41 F7), and the identity reply on the cable chosen in System (version word 0x7F2), to fetch presets before the other additions. Voice, Panel and SAM unchanged.",
+  "sha256_image": "47ac0c079920d37033e8ac22686ebb7dbf5098547f34fa40c5a1cd24f47942e1",
+  "sha256_image_written": "219e7af775c2ba9abfc20dd02fbde6d44af72ab4b4f75549193403e2ae2b1dd9",
+  "sha256_syx": "5be3afe5e9d30d7d084deb0376933f9a0cecf932e9a1cae18809ad3300ac3151",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/loop_counter.json",
+    "patch/dump_request.json",
+    "patch/version_1.5.2.0.json"
+  ]
+}

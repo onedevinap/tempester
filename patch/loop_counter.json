@@ -1,0 +1,29 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°8: loop counter advance aligned on the window (Loop Screen freeze outside 4/4)",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "The sequencer advances its positions by af8 + (x + d) % afc (af8 = [address] window start, afc = [address] length). This is a true step of d inside the window only if af8 % afc == 0 (the 4/4 case); otherwise the offset advances by af8 % afc + d and the catch-up loop of the ISR (while target != [address], [address]-[address]) may never reach its target: freeze (Loop Screen in an odd time signature, beat changes in sync). The three advance sites (ISR [address], [routine], [routine] branch d < x) call a common subroutine at 0x9d07b300 that computes af8 + ((x + d) + afc - af8 % afc) % afc = af8 + (x - af8 + d) mod afc, without unsigned underflow. Identical to the former computation for every x as soon as af8 % afc == 0; division by zero still guarded (teq, code 7).",
+ "edits": [
+  {"at": "0x9d03ef08", "jal": "0x9d07b300", "why": "[routine] (sequencer ISR): call of the advance subroutine instead of divu ([address]+1)%afc (jal 0x9d07b300)"},
+  {"at": "0x9d03ef0c", "word": "25208002", "why": "branch delay slot: a0 = [address] + 1 (s4); the original teq guard is taken over in the subroutine (or a0,s4,zero)"},
+  {"at": "0x9d03ef14", "word": "23885200", "why": "s1 = new offset in the window (v0 - af8), in place of mfhi (subu s1,v0,s2)"},
+  {"at": "0x9d03ef18", "word": "25984000", "why": "s3 = af8 + ([address] - af8 + 1) mod afc (v0), in place of af8 + ([address]+1)%afc (or s3,v0,zero)"},
+  {"at": "0x9d04a69c", "j": "0x9d07b300", "why": "[routine] branch d < x (step back by d ticks): tail jump to the subroutine instead of lw afc (j 0x9d07b300)"},
+  {"at": "0x9d04a6a0", "word": "2520c000", "why": "branch delay slot: a0 = x - d (a2, no underflow since d < x) (or a0,a2,zero)"},
+  {"at": "0x9d04a714", "j": "0x9d07b300", "why": "[routine] (generic advance by d ticks): tail jump to the subroutine instead of divu (x+d)%afc (j 0x9d07b300)"},
+  {"at": "0x9d04a718", "word": "2520c000", "why": "branch delay slot: a0 = x + d (a2); the subroutine's jr ra returns to the caller (or a0,a2,zero)"},
+  {"at": "0x9d07b300", "word": "01a0193c", "why": "common advance subroutine: lui t9,0xa001"},
+  {"at": "0x9d07b304", "word": "fc9a388f", "why": "common advance subroutine: lw t8,-0x6504(t9) : afc"},
+  {"at": "0x9d07b308", "word": "f89a398f", "why": "common advance subroutine: lw t9,-0x6508(t9) : af8"},
+  {"at": "0x9d07b30c", "copy": "0x9d015284", "count": 2, "why": "common advance subroutine: divu t9,t8 | common advance subroutine: teq t8,zero,7 (division by zero guarded)"},
+  {"at": "0x9d07b314", "copy": "0x9d03ef14", "set": {"rd": 2}, "why": "common advance subroutine: mfhi v0 : af8 % afc"},
+  {"at": "0x9d07b318", "word": "23100203", "why": "common advance subroutine: subu v0,t8,v0 : afc - af8 % afc"},
+  {"at": "0x9d07b31c", "word": "21104400", "why": "common advance subroutine: addu v0,v0,a0 : + (x + d)"},
+  {"at": "0x9d07b320", "word": "1b005800", "why": "common advance subroutine: divu v0,t8"},
+  {"at": "0x9d07b324", "copy": "0x9d04a718", "set": {"rs": 24}, "why": "common advance subroutine: teq t8,zero,7 (division by zero guarded)"},
+  {"at": "0x9d07b328", "copy": "0x9d03ef14", "set": {"rd": 2}, "why": "common advance subroutine: mfhi v0 : (x + d - af8) mod afc"},
+  {"at": "0x9d07b32c", "word": "0800e003", "why": "common advance subroutine: jr ra"},
+  {"at": "0x9d07b330", "word": "21105900", "why": "common advance subroutine: addu v0,v0,t9 (delay slot): af8 + …"}
+ ]
+}

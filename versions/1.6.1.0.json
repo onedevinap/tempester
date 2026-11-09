@@ -1,0 +1,55 @@
+{
+  "version": "1.6.1.0",
+  "name": "Tempester 1.6.1.0 — project request",
+  "kind": "release",
+  "date": "2026-11-08",
+  "summary": "A computer can ask the machine for the whole project.",
+  "changes": {
+    "fixes": [
+      "The 4 Pole and AD Mode LEDs follow a value set over MIDI (the sound already changed, the LED kept its old state)."
+    ],
+    "additions": [
+      "A request makes the machine send the whole project, exactly as the menu « Export Project over MIDI » does, on the cable chosen in System."
+    ]
+  },
+  "description": "1.6.0.0 plus n°25 (the Panel LEDs of 4 Pole and AD Mode follow a value set by NRPN) and n°24: the SysEx request F0 01 28 42 F7 sends the whole project (5E, then 5C n for each beat of the project), the bytes of the menu « Export Project over MIDI », on the cable set in System. Voice, Panel and SAM unchanged.",
+  "sha256_image": "f1f452f2aa8638fd17c7df54a6638a04851aefb114c1d606149989d65c9c9c09",
+  "sha256_image_written": "ddf8878fd45f14e1545e3b6b9a3f1134912bcb66f63cbdbf502750d123bcbd46",
+  "sha256_syx": "0814d88698fbfbbdf1d893fff56ee3ba1b5d17290144bc9a497798c4a24884c5",
+  "patches": [
+    "patch/beat_frame.json",
+    "patch/beat_receive_frame.json",
+    "patch/type4_receive_frame.json",
+    "patch/slider_pressure.json",
+    "patch/compressor_peak_hold.json",
+    "patch/compressor_send.json",
+    "patch/note_length_255.json",
+    "patch/sysex_usb_din.json",
+    "patch/playlist_empty_step.json",
+    "patch/playlist_rtrec.json",
+    "patch/playlist_bound.json",
+    "patch/playlist_delete_step.json",
+    "patch/loop_counter.json",
+    "patch/dump_request.json",
+    "patch/nrpn_reception.json",
+    "patch/nrpn_emission.json",
+    "patch/project_send_frame.json",
+    "patch/copy_target.json",
+    "patch/fx_mask.json",
+    "patch/noteoff_table.json",
+    "patch/voice_assign_bound.json",
+    "patch/update_message.json",
+    "patch/os_send_merge.json",
+    "patch/sram_ring.json",
+    "patch/din_running_status.json",
+    "patch/sysex_abandon_screen.json",
+    "patch/beat_number_check.json",
+    "patch/lfo_restart_play_deferred.json",
+    "patch/remote_keys.json",
+    "patch/led_emission.json",
+    "patch/remote_controls.json",
+    "patch/nrpn_switch_led.json",
+    "patch/project_request.json",
+    "patch/version_1.6.1.0.json"
+  ]
+}
