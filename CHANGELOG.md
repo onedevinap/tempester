@@ -12,6 +12,15 @@ First public version.
 
 #### Added
 
+- **The machine's own moves follow in the app** (Tempester OS 1.6.4.0): Level, Pan, Delay Send, Delay Time, Delay
+  Repeats, BPM, Swing, Volume, Distort and Compress turned on the machine move the Machine view's knobs (and the Full
+  view's Volume, Distort and Compress); the Pad Function mode and the exact Tempester version are taken from the
+  machine's own reports.
+- **Machine view as the machine shows it**: LED colours by key (Shift and Sounds orange; 16 Sounds, 16 Mutes, Pads and
+  Events green; 16 Beats red; Play blue, left of its title; the others blue); a lit pad keeps its colour with a round
+  blue halo in the centre.
+- **OS update page**: three choices build (the latest release, the corrections-only one, back to DSI 1.5.0.2); the
+  History lists every release, to read.
 - **Panel page**: a Machine view that draws only the real panel's controls at their place and drives them remotely
   (49 keys, 14 encoders with step display, 10 absolute knobs, 16 pads, the FX ribbons, the machine's LEDs); a Full view
   with every control of the Machine view (Mixer, BPM / Swing, Select, Mod Paths included) plus the 127 parameters of the
@@ -55,6 +64,23 @@ First public version.
 ## Firmware
 
 Each version is built from the official Main OS 1.5.0.2 by the user; Voice, Panel and SAM are unchanged.
+
+### [1.6.4.0] - 2026-11-10, installed and verified
+
+- n°37: 9,876 bytes of the official code that nothing can run are erased, room for new functions; the machine runs
+  the same instructions.
+- n°38: Level, Pan, Delay Send, Delay Time, Delay Repeats, BPM, Swing, Volume, Distort and Compress are reported on
+  Remote Pad OUT (NRPN 230-239) when they change on the machine, so an editor follows.
+- n°39: the request `F0 01 28 43 F7` answers the exact Tempester version.
+- n°40: the Pad Function mode is reported as CC 106 on Remote Pad OUT.
+- n°41: in Pad to Note Mode « Mutes », a note mutes its own pad's sound, bank A or B.
+- n°43: the first Save after power-on no longer offers the Factory folder.
+- n°44: Undo All Snds and Undo Beat restore sound types, play states, Voice Assign and pad LEDs.
+- n°45: Reverse Off clears the reverse of every beat and the live reverse.
+- n°46: the Save/Load browser lists a folder in one pass, much faster.
+- Test versions 1.6.4.0-a, -b, -c and -d hold n°37, n°38, n°39-n°40 and n°41-n°46, to prove each group alone.
+- Not made: n°42 (slave Start: the suspected cause was disproved) and n°47 (Copy Beat onto the playing beat).
+- Every new behaviour tried by hand on the author's Tempest the same day.
 
 ### [1.6.3.0] - 2026-11-09, installed and verified
 
