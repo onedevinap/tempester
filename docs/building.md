@@ -62,17 +62,46 @@ a **draft** release. It packages the app only: no firmware, no DSI file.
 
 ## Installing a release package
 
-None of the packages is signed.
+None of the packages is signed or notarized: Tempester has no Apple or Microsoft developer account. Each system
+therefore blocks the first launch, and the way around it is below. Check the file first: the Releases page lists the
+SHA-256 of each package (`shasum -a 256 <file>` on macOS and Linux, `certutil -hashfile <file> SHA256` on Windows).
 
-- **macOS**: open the `.dmg`, drag `Tempester.app` to Applications. The first time, right-click the app and choose
-  *Open*, then confirm. The `.pkg` installs the app and, if you keep them selected, the CLAP and VST3 plugins in
-  `/Library/Audio/Plug-Ins` (administrator password; open it with Control-click > *Open*).
+- **macOS**: open the `.dmg`, drag `Tempester.app` to Applications. On macOS 15 (Sequoia) and later, right-click >
+  *Open* no longer works for an unsigned app: either open **System Settings > Privacy & Security**, scroll to the
+  message « Tempester was blocked » and click **Open Anyway**, or remove the quarantine mark in Terminal:
+
+  ```bash
+  xattr -dr com.apple.quarantine /Applications/Tempester.app
+  ```
+
+  The `.pkg` installs the app and, if you keep them selected, the CLAP and VST3 plugins in `/Library/Audio/Plug-Ins`
+  (administrator password). To open it: `xattr -d com.apple.quarantine ~/Downloads/Tempester-*-macos-*.pkg`, then
+  double-click; or Control-click > *Open*, then *Open Anyway* in Privacy & Security. If a DAW refuses the plugins:
+
+  ```bash
+  sudo xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/CLAP/Tempester Control.clap" \
+    "/Library/Audio/Plug-Ins/VST3/Tempester Control.vst3"
+  ```
+
 - **Windows**: run `Tempester-<version>-windows-x64-setup.exe` (administrator rights, because the optional plugins go to
   the system plug-in folders; the uninstaller removes them) or unzip the portable zip (no administrator rights; the
-  plugins are in `plugins/`). SmartScreen may warn about an unknown publisher: *More info*, then *Run anyway*.
-- **Linux (Debian/Ubuntu)**: `sudo apt install ./tempester_<version>_<arch>.deb` for the app, and
-  `./tempester-plugins_<version>_<arch>.deb` for the plugins (in `/usr/lib/clap` and `/usr/lib/vst3`). The app depends
-  on `libwebkit2gtk-4.1-0`, `libgtk-3-0` and ALSA.
+  plugins are in `plugins/`). SmartScreen warns about an unknown publisher: click **More info**, then **Run anyway**.
+  If the file is blocked without that choice, unblock it first, in PowerShell:
+
+  ```powershell
+  Unblock-File .\Tempester-<version>-windows-x64-setup.exe
+  ```
+
+  (or right-click the file > Properties > tick *Unblock*). For the zip, unblock the zip before extracting it.
+
+- **Linux (Debian/Ubuntu)**: nothing blocks an unsigned package, but `apt` warns that it is not from a repository:
+
+  ```bash
+  sudo apt install ./tempester_<version>_<arch>.deb            # the app
+  sudo apt install ./tempester-plugins_<version>_<arch>.deb    # the plugins, in /usr/lib/clap and /usr/lib/vst3
+  ```
+
+  The app depends on `libwebkit2gtk-4.1-0`, `libgtk-3-0` and ALSA, which `apt` installs with it.
 
 ## Rebuilding a firmware version from your own DSI file
 

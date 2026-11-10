@@ -98,7 +98,8 @@ You need a Tempest, a USB cable (or a MIDI interface on the DIN ports) and a com
 
 1. **Install the app.** Download the package for your system from the
    [Releases](https://github.com/onedevinap/tempester/releases) page (macOS, Windows, Debian and Ubuntu). The packages
-   are not signed, so the first launch takes one extra click ([how, per system](docs/building.md#installing-a-release-package)).
+   are not signed, so each system blocks the first launch: the commands and clicks that get past it, per system, are
+   in [Installing a release package](docs/building.md#installing-a-release-package).
    You can also [build it from source](docs/building.md#building-and-running-the-app).
 2. **Prepare the Tempest.** It must run the complete official **OS 1.5.0.2**: Main 1.5.0.2 with the Voice, Panel
    and SAM files of the same package. Download that package from
