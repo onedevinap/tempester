@@ -69,7 +69,7 @@ Simulated: n°8 (loop model), n°15, n°16, n°17 (two interrupts and the voice 
 n°21-23 (remote panel), n°24 and n°26 (project request, with the real screen routines), n°25, n°27 (packer and senders),
 n°28 (sender, app re-encoding and receiver on two simulated machines), n°29, n°30 (including a real OS update
 receive), n°31 and n°32 (ribbons and footswitch), n°33 to n°35 (on the real user-interface code), n°36, and 1.6.2.0 and
-1.6.3.0 as combined images. The other patches rest on code reading and static checks.
+1.6.3.0 and 1.6.4.0 as combined images. The other patches rest on code reading and static checks.
 
 The simulators, the stack and register checks and the patch assembly sources are not published: they work on the
 addresses and routines of DSI's code, which this repository does not describe. Their results are summarised patch by
@@ -79,7 +79,7 @@ recipes to its recorded hashes) and the app's tests.
 ## Verified on a real machine
 
 One Tempest, over USB, each installation with the author's go. Each version replaced the previous one; the machine
-now runs 1.6.3.0. The installations up to 1.6.2.0 were made with a SysEx sender of this repository
+now runs 1.6.4.0. The installations up to 1.6.2.0 were made with a SysEx sender of this repository
 (`tools/tempest_midi.swift`), not with the app's OS update page.
 
 | Date | Version | What was checked on the machine |

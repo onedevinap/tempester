@@ -358,13 +358,13 @@ window.Tempester.panelFace = (function () {
      the scale or of the dashes, all inside it, so that the box IS the knob for the overlap test. */
   const KNOB = { box: 64 };
 
-  /* The LED of a key: beside it (`side` right or left, `shift` for the small one of Shift), centred on the key unless
+  /* The LED of a key: beside it (`side` right or left, `shift` close to the key for the two Shift keys), centred on the key unless
      `dy` says otherwise. All LEDs are the blue of the Full view. */
   const L = (side = "right", dy = null) => ({ side, dy });
   const LED_SIZE = { w: 6, h: 14, gap: 6 };
   /* name (panel-keys.js), x, y, width, height, led: null | L(...) */
   const KEYS = [
-    ["Shift 1", 173, 178, 45, 21, { side: "shift", dy: 0 }],
+    ["Shift 1", 173, 178, 45, 21, { side: "shift", dy: null }],
     ["Select", 183, B1 + 36.5, 49, 24, null],
     ["AD Mode", 183, B2 + 52, 49.5, 23, L()],
     ["Env Pitch", 183, KEY2, 49.5, 24.5, L()],
@@ -382,7 +382,7 @@ window.Tempester.panelFace = (function () {
     ["Page Up", 1548, NAV1_KEY, 49, 26, null],
     ["Cursor Up", 1659, NAV1_KEY, 50, 26, null],
     ["Page Down", 1770, NAV1_KEY, 50, 26, null],
-    ["Shift 2", 1437, NAV2_KEY, 47, 24.5, null],
+    ["Shift 2", 1437, NAV2_KEY, 47, 24.5, { side: "shift", dy: null }],
     ["Cursor Left", 1548, NAV2_KEY, 49, 24.5, null],
     ["Cursor Down", 1659, NAV2_KEY, 50, 24.5, null],
     ["Cursor Right", 1770, NAV2_KEY, 50, 24.5, null],
@@ -431,11 +431,11 @@ window.Tempester.panelFace = (function () {
       kind,
     ]),
   ];
-  /* The LEDs right of the REC (red, 0x23: flashes while armed) and PLAY (white, 0x24: lit while playing) titles,
-     the size of the key LEDs. [led, x, y, colour] */
+  /* The LEDs of REC (red, 0x23: flashes while armed, right of its title) and PLAY (blue, 0x24: lit while playing,
+     left of its title, as on the machine: author, 10/11/2026), the size of the key LEDs. [led, x, y, colour] */
   const TRANSPORT_LEDS = [
     [0x23, 1598, TLAB - LED_SIZE.h / 2, "rec"],
-    [0x24, 1822, TLAB - LED_SIZE.h / 2, "play"],
+    [0x24, 1760, TLAB - LED_SIZE.h / 2, "play"],
   ];
 
   /* The four LEDs of the oscillators, 0x27-0x2A: beside "1 Ana 2" and "3 Digi 4". [led, x, y, w, h] */

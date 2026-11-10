@@ -93,6 +93,16 @@
 }
 .panel-root .bt.clair button { background: linear-gradient(#e9ebec, #c9cdd0 60%, #b4b9bd); box-shadow: 0 1px 0 rgba(255,255,255,.12), 0 2px 3px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.7), inset 0 -2px 0 #9097a0; }
 .panel-root .bt button[aria-pressed="true"]::after { background: #8fd0ff; box-shadow: 0 0 4px #2f8dff, 0 0 9px rgba(47,141,255,.7); }
+/* LED colours seen on the machine (author, 10/11/2026): orange for the two Shift keys (light keys, `.clair`) and
+   Sounds; green for 16 Sounds, 16 Mutes, Pads and Events; red for 16 Beats; blue for the others until the author says otherwise. The
+   selectors use the key name (data-key), the same in both views. */
+.panel-root .bt.clair button[aria-pressed="true"]::after,
+.panel-root .bt button[data-key="Sounds"][aria-pressed="true"]::after { background: #ffb340; box-shadow: 0 0 4px #ff8c00, 0 0 9px rgba(255,140,0,.7); }
+.panel-root .bt button[data-key="16 Sounds"][aria-pressed="true"]::after,
+.panel-root .bt button[data-key="16 Mutes"][aria-pressed="true"]::after,
+.panel-root .bt button[data-key="Pads"][aria-pressed="true"]::after,
+.panel-root .bt button[data-key="Events"][aria-pressed="true"]::after { background: #8df07a; box-shadow: 0 0 4px #3ddc2a, 0 0 9px rgba(61,220,42,.7); }
+.panel-root .bt button[data-key="16 Beats"][aria-pressed="true"]::after { background: #ff6a5f; box-shadow: 0 0 4px #ff2a1f, 0 0 9px rgba(255,42,31,.7); }
 /* Fenêtres OLED (sources, destinations, formes) */
 .panel-root .fen { height: 32px; background: #05080b; border: 0; border-radius: 3px; box-shadow: inset 0 0 0 1px #11171e, inset 0 2px 3px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.07); color: var(--oled); font: 14px/32px var(--f-ecran); padding: 0 7px; appearance: none; -webkit-appearance: none; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .panel-root .fen.fixe { cursor: default; color: color-mix(in srgb, var(--oled) 68%, #05080b); display: inline-block; }
@@ -166,13 +176,15 @@
   box-shadow: inset 0 1px 1px rgba(255,255,255,.85), inset 0 -4px 6px rgba(50,55,45,.16), 0 3px 0 #8f948c, 0 4px 4px rgba(0,0,0,.32);
   transition: transform .05s, box-shadow .05s; }
 .panel-root .pad:active { transform: translateY(1px); box-shadow: inset 0 1px 1px rgba(255,255,255,.75), inset 0 -3px 5px rgba(50,55,45,.18), 0 2px 0 #8f948c, 0 3px 3px rgba(0,0,0,.3); }
-.panel-root .pad[aria-pressed="true"] { background: var(--grain-pad), radial-gradient(120% 100% at 45% 35%, #8fd8ff 0%, #5bbcf2 45%, #2f9fe0 100%); background-size: 120px 120px, auto;
-  box-shadow: inset 0 1px 1px rgba(255,255,255,.6), inset 0 -4px 6px rgba(10,50,90,.3), 0 3px 0 #1f6a99, 0 4px 4px rgba(0,0,0,.32); }
-.panel-root .pad[aria-pressed="true"]:active { transform: translateY(1px); box-shadow: inset 0 1px 1px rgba(255,255,255,.5), inset 0 -3px 5px rgba(10,50,90,.32), 0 2px 0 #1f6a99, 0 3px 3px rgba(0,0,0,.3); }
-.panel-root .pad[aria-pressed="true"] .nom { color: #062b45; font-weight: 600; }
-.panel-root .pad.flash { background: var(--grain-pad), radial-gradient(120% 100% at 45% 35%, #ffd27a 0%, #ffb340 45%, #e98a12 100%) !important; background-size: 120px 120px, auto !important;
-  box-shadow: inset 0 1px 1px rgba(255,255,255,.6), inset 0 -4px 6px rgba(110,55,0,.3), 0 3px 0 #a5600c, 0 4px 4px rgba(0,0,0,.32) !important; }
-.panel-root .pad.flash .nom { color: #3d2100; font-weight: 600; }
+/* A lit pad as on the machine (author's photo, 10/11/2026): the pad stays its colour, one blue LED under it makes a
+   round halo in the centre, a lighter core, fading out before the edges; a played pad (.flash) the same, brighter. */
+.panel-root .pad[aria-pressed="true"] { background: var(--grain-pad), radial-gradient(circle at 50% 52%, #a8d4ff 0%, #4f8fff 18%, rgba(47,112,255,.85) 36%, rgba(47,112,255,.4) 58%, rgba(47,112,255,0) 80%), radial-gradient(120% 100% at 40% 25%, #e8e8e2 0%, #dcdcd6 40%, #cfcfc8 75%, #c2c2bb 100%); background-size: 120px 120px, auto, auto;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.75), inset 0 -4px 6px rgba(50,55,45,.16), 0 3px 0 #8f948c, 0 4px 4px rgba(0,0,0,.32), 0 0 14px rgba(74,141,255,.3); }
+.panel-root .pad[aria-pressed="true"]:active { transform: translateY(1px); box-shadow: inset 0 1px 1px rgba(255,255,255,.6), inset 0 -3px 5px rgba(50,55,45,.18), 0 2px 0 #8f948c, 0 3px 3px rgba(0,0,0,.3), 0 0 14px rgba(74,141,255,.3); }
+.panel-root .pad[aria-pressed="true"] .nom { color: #1d2a4a; font-weight: 600; }
+.panel-root .pad.flash { background: var(--grain-pad), radial-gradient(circle at 50% 52%, #e4f1ff 0%, #78b0ff 18%, rgba(63,130,255,.9) 38%, rgba(63,130,255,.45) 60%, rgba(63,130,255,0) 82%), radial-gradient(120% 100% at 40% 25%, #e8e8e2 0%, #dcdcd6 40%, #cfcfc8 75%, #c2c2bb 100%) !important; background-size: 120px 120px, auto, auto !important;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.75), inset 0 -4px 6px rgba(50,55,45,.16), 0 3px 0 #8f948c, 0 4px 4px rgba(0,0,0,.32), 0 0 18px rgba(95,160,255,.4) !important; }
+.panel-root .pad.flash .nom { color: #1d2a4a; font-weight: 600; }
 .panel-root .pad .n { position: absolute; top: -20px; left: 0; right: 0; text-align: center; font: 600 15px/1 var(--f-seri); color: var(--serigraphie); }
 .panel-root .pad .nom { position: absolute; left: 4px; right: 4px; bottom: 7px; text-align: center; font: 600 13px/1.1 var(--f-seri); color: #4a5058; white-space: nowrap; overflow: hidden; }
 .panel-root .pad .nom, .panel-root .pad .n { transition: color .1s; }
@@ -212,9 +224,10 @@
 /* The LEDs of Rec (red, 0x23) and Play (white, 0x24) right of their label, the key LEDs' size and look; the label
    stays centred under its key (the LED and its gap hang outside the label's box). */
 .panel-root .tb .lit { display: inline-flex; align-items: center; gap: 5px; margin-right: -10px; }
+.panel-root .tb .lit.avant { margin-right: 0; margin-left: -10px; }
 .panel-root .tled { display: block; width: 5px; height: 12px; border-radius: 1px; background: #1c2026; }
 .panel-root .tled.rec[aria-pressed="true"] { background: #ff6a5f; box-shadow: 0 0 4px #ff2a1f, 0 0 9px rgba(255,42,31,.7); }
-.panel-root .tled.play[aria-pressed="true"] { background: #f4f7fa; box-shadow: 0 0 4px #ffffff, 0 0 9px rgba(255,255,255,.6); }
+.panel-root .tled.play[aria-pressed="true"] { background: #8fd0ff; box-shadow: 0 0 4px #2f8dff, 0 0 9px rgba(47,141,255,.7); }
 /* LED of a transport key (Rec, Play) lit by the machine */
 .panel-root .tb button[aria-pressed="true"] { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -3px 0 #0a0c0e, 0 0 0 2px #8fd0ff, 0 0 10px rgba(47,141,255,.8); }
 

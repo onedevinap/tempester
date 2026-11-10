@@ -206,20 +206,23 @@ async function transportRow(page, view) {
         ["rec", view === "machine" ? "REC" : "Rec"],
         ["play", view === "machine" ? "PLAY" : "Play"],
       ]) {
+        // REC's LED is right of its title, PLAY's left of it, as on the machine (author, 10/11/2026).
+        const leftOfTitle = colour === "play";
         const led = host.querySelector(`.tled.${colour}`);
         const l = led && led.getBoundingClientRect();
         if (!l || l.width < 1 || l.height < 1) {
-          problems.push(`transport: no LED right of the ${title} title`);
+          problems.push(`transport: no LED ${leftOfTitle ? "left" : "right"} of the ${title} title`);
           continue;
         }
+        const edge = (r) => (leftOfTitle ? r.left : r.right);
         const near = titles(title).sort(
-          (a, b) => Math.hypot(a.right - l.left, a.top - l.top) - Math.hypot(b.right - l.left, b.top - l.top),
+          (a, b) => Math.hypot(edge(a) - l.left, a.top - l.top) - Math.hypot(edge(b) - l.left, b.top - l.top),
         )[0];
         if (!near) {
           problems.push(`transport: no ${title} title`);
           continue;
         }
-        const gap = l.left - near.right;
+        const gap = leftOfTitle ? near.left - l.right : l.left - near.right;
         const middle = l.top + l.height / 2;
         if (gap < 0) problems.push(`transport: the ${title} LED overlaps its title by ${(-gap).toFixed(1)} px`);
         else if (gap > ledGap * near.height) problems.push(`transport: the ${title} LED is ${gap.toFixed(1)} px from its title, not beside it`);
@@ -231,7 +234,7 @@ async function transportRow(page, view) {
   );
 }
 
-/* The machine's LED events light the LEDs of REC (0x23, red) and PLAY (0x24, white), and only those: 0x14, which the
+/* The machine's LED events light the LEDs of REC (0x23, red) and PLAY (0x24, blue), and only those: 0x14, which the
    firmware flashes with 0x23 while armed, lights neither. Each step: the changes sent, then [REC lit, PLAY lit]. */
 async function transportLeds(page, view) {
   const host = view === "machine" ? ".panel-machine" : "#pages .panel-root:not(.panel-machine)";
@@ -250,7 +253,7 @@ async function transportLeds(page, view) {
     );
   const looks = {
     rec: ([r, g, b]) => r > 200 && g < 150 && b < 150,
-    play: ([r, g, b]) => Math.min(r, g, b) > 220,
+    play: ([r, g, b]) => b > 200 && b > r + 60 && g > r,
     off: (rgb) => Math.max(...rgb) < 70,
   };
   const problems = [];

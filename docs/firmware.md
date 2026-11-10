@@ -35,10 +35,11 @@ chips. Step-by-step: [user manual](user-manual.md#before-you-install-a-tempester
 
 Each version contains everything of the one it builds on. « Installed » means installed and used on a real Tempest
 over USB; « verified » adds that the Main OS read back from the machine matched the built image. See
-[testing](testing.md#verified-on-a-real-machine) for what was checked each time. The app offers the releases; the
-test versions are built by the verifier only, to prove a patch on its own.
+[testing](testing.md#verified-on-a-real-machine) for what was checked each time. The app offers the latest release and
+the corrections-only one (and the way back to DSI); the older releases stay listed here and in the app's History, to
+read, not to install. The test versions are built by the verifier only, to prove a patch on its own.
 
-**Which one?** 1.6.4.0 is the latest release, with everything; it is proved in simulation but not yet installed on a machine, so 1.6.3.0 is the latest one verified on a real Tempest. 1.5.6.0 is the corrections-only release: the bug fixes
+**Which one?** 1.6.4.0 is the latest release, with everything. 1.5.6.0 is the corrections-only release: the bug fixes
 with the sound and beat requests and NRPN, without the 1.6 additions.
 
 | Version | Builds on | Adds | Status |
@@ -61,7 +62,7 @@ with the sound and beat requests and NRPN, without the 1.6 additions.
 | 1.6.4.0-b (test) | 1.6.3.0 | n°38 alone | not installed |
 | 1.6.4.0-c (test) | 1.6.3.0 | n°39, 40: the exact version and the Pad Function mode announced | not installed |
 | 1.6.4.0-d (test) | 1.6.3.0 | n°41, 43, 44, 45, 46: five fixes of reported bugs | not installed |
-| **1.6.4.0** room, reports and fixes | 1.6.3.0 | n°37, 38, 39, 40, 41, 43, 44, 45, 46 together | built and proved in simulation (10 Nov), **not installed yet** |
+| **1.6.4.0** room, reports and fixes | 1.6.3.0 | n°37, 38, 39, 40, 41, 43, 44, 45, 46 together | **installed and verified** (10 Nov: the Main OS read back equals the built image; the exact version answered) |
 
 The test versions are kept so that each patch can be checked on its own. 1.6.2.0 and 1.6.3.0 were installed on a real
 machine and verified by reading the Main OS back (see [testing](testing.md#verified-on-a-real-machine)); the behaviours
@@ -377,7 +378,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   to any erased piece, a disassembler's own references agree, and the patched image reaches exactly the same code as
   1.6.3.0. Counter-proofs: erasing a live routine next to an erased piece, code kept alive only by one pointer, or a
   piece the map calls only « probably » dead is refused. Simulated: every simulation of 1.6.3.0 passes on it.
-- **On a machine**: not installed yet (test build 1.6.4.0-a).
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, the 38 erased ranges read 0xFF and the n°37 check passes on that dump.
 - **Limits**: requires n°9a and n°17. A code address computed at run time by arithmetic would not be seen by the map
   (no sign of one). The Main OS read back from the machine shows 0xFF in those pieces.
 
@@ -391,7 +392,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   CC 107. CC 12 / CC 13 are not echoed. Bytes: [MIDI protocol](midi-protocol.md#mixer-beat-and-main-values).
 - **Proof**: simulated with the firmware's own knob handlers and MIDI input: every control x mode x Shift, the other
   messages unchanged, no echo, output rate limit; 18 wrong variants refused.
-- **On a machine**: not installed yet (test build 1.6.4.0-b).
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
 - **Limits**: only the selected pad's mixer values; the tempo is not reported while the machine follows MIDI clock
   (except on CC 107). Requires n°9b.
 - **Found on the way**: Shift + Pan sets Delay Repeats (the remote-panel table said Pan had no Shift function).
@@ -406,7 +407,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   [MIDI protocol](midi-protocol.md#sysex-requests).
 - **Proof**: simulated: the answer on DIN and USB, the number following the screens for other versions, every other
   command and the identity unchanged, the previous version silent; wrong variants refused.
-- **On a machine**: not installed yet (test build 1.6.4.0-c).
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
 - **Limits**: digits up to 16383. Requires n°1.
 
 ### n°40: the Pad Function mode reported
@@ -417,7 +418,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   [MIDI protocol](midi-protocol.md#pad-function-mode-n40-needs-n9b).
 - **Proof**: simulated with the firmware's own panel keys and remote keys: each mode reported once, Off, the output
   buffer guard, CC 107 on the right channel only, every other MIDI input unchanged; wrong variants refused.
-- **On a machine**: not installed yet (test build 1.6.4.0-c).
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
 - **Limits**: the mode cannot be set over MIDI (send the Pad Function keys). Requires n°9b.
 
 ### n°41: MIDI notes in Pad to Note Mode « Mutes », banks A and B
@@ -429,7 +430,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   shown; a note assigned to no pad does nothing. The « MIDI Note: Mute » items are still not used.
 - **Proof**: simulated through the MIDI input and the real note handler, both banks; the other modes identical to
   1.6.3.0; wrong variants refused.
-- **On a machine**: not installed yet (test build 1.6.4.0-d).
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
 
 ### n°43: the first Save no longer offers the Factory folder
 
@@ -437,7 +438,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Effect**: it proposes « Beats 1 » and « Projects 1 »; after that the folder you choose or load from is kept, as
   before, and Factory can still be chosen by hand.
 - **Proof**: simulated from the boot call to the Save dialog.
-- **On a machine**: not installed yet (test build 1.6.4.0-d).
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
 - **Limits**: the folder of the project loaded at startup is not used.
 
 ### n°44: « Undo All Snds » restores everything a single undo does
@@ -448,7 +449,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Effect**: the same restore as Undo Sound, for every pad.
 - **Proof**: simulated on the real Undo screen with a model of the sound memory; the pad after Undo All equals the pad
   after a single Undo Sound; wrong variants refused.
-- **On a machine**: not installed yet (test build 1.6.4.0-d).
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
 
 ### n°45: Reverse Off turns every reverse off
 
@@ -456,7 +457,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   recording reversed notes, or the playback stayed reversed.
 - **Effect**: Reverse off clears the reverse of every beat and the live reverse of 16 Beats / 16 Mutes.
 - **Proof**: simulated through the real Reverse key; Reverse on identical to 1.6.3.0; wrong variants refused.
-- **On a machine**: not installed yet (test build 1.6.4.0-d).
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
 - **Limits**: after a beat change during playback in 16 Beats / 16 Mutes, the LED can still stay lit while the
   playback is forward (unchanged).
 
@@ -468,7 +469,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   result (an empty folder, more than 256 files, a folder that changed while it was read), the official listing runs.
 - **Proof**: simulated for sound, beat and project folders: the list equal to 1.6.3.0's, file for file; wrong
   variants refused.
-- **On a machine**: not installed yet (test build 1.6.4.0-d).
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
 - **Limits**: the time of a storage read is not modelled.
 
 ## How the patches are proved

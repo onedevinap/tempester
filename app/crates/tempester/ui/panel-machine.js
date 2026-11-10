@@ -661,7 +661,6 @@ window.Tempester.panelMachine = (function () {
         b.style.setProperty("--lw", ledW + "px");
         b.style.setProperty("--lh", F.LED_SIZE.h + "px");
         b.classList.add("hasled");
-        if (led.side === "shift") b.classList.add("tiny");
       }
       d.append(b);
       return d;

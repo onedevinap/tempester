@@ -1040,11 +1040,13 @@ window.Tempester.panel = (function () {
     /* The transport as on the machine: « and » narrow keys close together with the « |« » and « –+– » print between
        them, then Rec, Stop and Play, one size, evenly spaced. Rec and Play have their LED right of the label (red 0x23,
        white 0x24), lit by the machine's LED events like the pads. */
+    /* Rec's LED sits right of its label, Play's left of it (blue), as on the machine. */
     const TRANSPORT_LED = { Rec: [0x23, "rec"], Play: [0x24, "play"] };
-    const label = (l) =>
-      TRANSPORT_LED[l]
-        ? `<span class="lit"><b>${l}</b><i class="tled ${TRANSPORT_LED[l][1]}" data-led="${TRANSPORT_LED[l][0]}" aria-hidden="true"></i></span>`
-        : `<span>${l}</span>`;
+    const label = (l) => {
+      if (!TRANSPORT_LED[l]) return `<span>${l}</span>`;
+      const led = `<i class="tled ${TRANSPORT_LED[l][1]}" data-led="${TRANSPORT_LED[l][0]}" aria-hidden="true"></i>`;
+      return `<span class="lit${l === "Play" ? " avant" : ""}">${l === "Play" ? led + `<b>${l}</b>` : `<b>${l}</b>` + led}</span>`;
+    };
     const tb = ([g, l, k, act]) =>
       `<div class="tb ${k}"${act ? ` data-transport="${act}"` : ""}><button type="button" aria-label="${l}" data-key="${l}">${g}</button>${label(l)}</div>`;
     const transport = document.createElement("div");

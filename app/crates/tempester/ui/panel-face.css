@@ -30,7 +30,6 @@
 .panel-root .mv .mvk button { display: block; width: 100%; height: 100%; margin: 0; }
 .panel-root .mv .mvk button::after { left: var(--lx, 0); top: var(--ly, 0); width: var(--lw, 6px); height: var(--lh, 14px); }
 .panel-root .mv .mvk button:not(.hasled)::after { content: none; }
-.panel-root .mv .mvk button.hasled.tiny::after { width: 4px; height: 10px; }
 .panel-root .mv .tb.mvk button { width: 100%; height: 100%; font-size: 26px; }
 /* The « |« » print between « and » (the LEDs of REC and PLAY are panel.css .tled, at the key LEDs' size). */
 .mv .mvt.rwmark { font-size: 15px; }

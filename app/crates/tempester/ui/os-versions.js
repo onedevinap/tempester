@@ -1,5 +1,6 @@
 /* The version chooser of the OS update page: three recommended cards (the latest release, the corrections-only
-   version, back to the original DSI software) and, below, the History of every release, newest first. Each card and
+   version, back to the original DSI software) and, below, the History of every release, newest first, to read only:
+   the author offers the latest and the corrections-only versions, not every older one (10/11/2026). Each card and
    each history row shows the one-line summary and the changes as short lists (fixes, additions, changes), with a
    Details toggle for the technical text; each can be built. The list comes from the manifests (`os_versions`), already
    sorted newest first, with `kind` "release" or "corrections". Building needs the user's DSI file: `setReady(false)`
@@ -20,7 +21,7 @@ window.Tempester.osVersions = (function () {
       "Prepares your own Tempest_Main_1.5.0.2.syx, whose SHA-256 is checked, to be sent as it is. The Voice, Panel and SAM software are not touched.",
     historyTitle: "History",
     historyLead:
-      "Every Tempester release, newest first. Open one to read what it changed since the release before it; each can be built.",
+      "Every Tempester release, newest first, to read: open one for what it changed since the release before it. Only the latest and the corrections-only versions above can be built.",
     historyNone: "No version listed.",
     groups: {
       fixes: { title: "Fixes", icon: "check" },
@@ -139,7 +140,8 @@ window.Tempester.osVersions = (function () {
       });
     }
 
-    /* One history row: a toggle line (version, date, name) and a build button; the changes open under it. */
+    /* One history row: a toggle line (version, date, name); the changes open under it. No build button: the history
+       is read only. */
     function row(v) {
       const body = el("div", { class: "vbody", hidden: true });
       const more = detailsBlock(v.version, v.description);
@@ -169,12 +171,10 @@ window.Tempester.osVersions = (function () {
           ? el("span", { class: "chip on" }, S.correctionsChip)
           : null,
       );
-      const build = buildButton(v.version, onBuild);
-      buttons.push(build);
       return el(
         "li",
         { class: "vrow" },
-        el("div", { class: "vrow-head" }, toggle, build),
+        el("div", { class: "vrow-head" }, toggle),
         body,
       );
     }

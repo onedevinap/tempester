@@ -82,10 +82,15 @@ const variants = {
     'v.kind === "corrections"\n          ? el("span", { class: "chip on" }',
     'false\n          ? el("span", { class: "chip on" }',
   ],
-  "build: a history row builds another version": [
+  "build: a card builds another version": [
     "os-versions.js",
     "() => onBuild(version), {",
     '() => onBuild("0.0.0.0"), {',
+  ],
+  "history: a row gets a build button again": [
+    "os-versions.js",
+    'el("div", { class: "vrow-head" }, toggle),',
+    'el("div", { class: "vrow-head" }, toggle, buildButton(v.version, onBuild)),',
   ],
   "build: enabled without the DSI file": [
     "os-versions.js",

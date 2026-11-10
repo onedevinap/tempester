@@ -171,23 +171,22 @@ function checkHistory(root) {
 
 async function checkInstall(env) {
   const root = env.roots.os;
-  const label = "Build Tempester 1.5.1.0";
+  // The history is read only: no build button for an older release (author, 10/11/2026), nor a second one for
+  // the latest; only the two cards and « Back to DSI » build.
+  assert.strictEqual(controls(root, "Build Tempester 1.5.1.0").length, 0, "no build from the history");
+  assert.strictEqual(controls(root, "Build Tempester 1.6.1.0").length, 0, "no build from the history");
+  assert.strictEqual(controls(root, "Build Tempester 1.6.2.0").length, 1, "latest: its card only");
+  const label = "Build Tempester 1.6.2.0";
   assert.ok(control(root, label).disabled, "no build without the DSI file");
   assert.ok(control(root, "Back to DSI 1.5.0.2").disabled);
-  assert.ok(controls(root, "Build Tempester 1.6.2.0")[0].disabled);
+  assert.ok(control(root, "Build Tempester 1.5.6.0").disabled);
   const before = env.sent.length;
   await pick(root, 0, "Tempest_Main_1.5.0.2.syx", [1, 2]);
   assert.ok(!control(root, label).disabled, "the DSI file enables the builds");
   press(root, label);
-  const twice = controls(root, "Build Tempester 1.6.2.0");
-  assert.strictEqual(twice.length, 2, "latest: its card and its history row");
-  twice[0].click();
-  twice[1].click();
   press(root, "Build Tempester 1.5.6.0");
   press(root, "Back to DSI 1.5.0.2");
   assert.deepStrictEqual(Array.from(env.sent).slice(before), [
-    "os_build\t1.5.1.0\t0102",
-    "os_build\t1.6.2.0\t0102",
     "os_build\t1.6.2.0\t0102",
     "os_build\t1.5.6.0\t0102",
     "os_original\t0102",
@@ -220,7 +219,7 @@ function checkEmpty() {
   await checkInstall(env);
   checkEmpty();
   await tick();
-  console.log("ok, 3 cards, details, history of 4 releases, install of an older one");
+  console.log("ok, 3 cards, details, read-only history of 4 releases, builds from the cards only");
 })().catch((e) => {
   console.error(e);
   process.exit(1);

@@ -73,9 +73,9 @@ const VARIANTS = [
     to: ".panel-root .tb.small button { width: 58px; height: 36px; }",
   },
   {
-    name: "no LED right of the PLAY title",
+    name: "no LED left of the PLAY title",
     file: "panel-face.js",
-    from: '    [0x24, 1822, TLAB - LED_SIZE.h / 2, "play"],\n',
+    from: '    [0x24, 1760, TLAB - LED_SIZE.h / 2, "play"],\n',
     to: "",
   },
   {

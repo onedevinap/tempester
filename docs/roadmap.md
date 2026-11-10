@@ -14,9 +14,9 @@ of what owners ask for below is a reading of the forum, kept as a guide for the 
 ## Where things stand
 
 - **Tempester OS 1.6.4.0** is the latest release (10 November 2026): room for new functions, the machine reporting
-  its mixer, tempo, mode and exact version to an editor, five bug fixes. It is proved in simulation and **not yet
-  installed on a machine**; **1.6.3.0** is the latest verified on a real Tempest: bug fixes, requests for sounds, beats
-  and projects, NRPN in both directions, the front panel over MIDI, FX ribbons over MIDI, play probability per pad.
+  its mixer, tempo, mode and exact version to an editor, five bug fixes, on top of 1.6.3.0 (bug fixes, requests for
+  sounds, beats and projects, NRPN in both directions, the front panel over MIDI, FX ribbons over MIDI, play
+  probability per pad). Installed on the project's Tempest and tried by hand there.
   See [firmware](firmware.md).
 - **The Tempester app** is used daily on macOS; the Windows build is checked to compile, and neither Windows nor
   Linux has been tried by a user yet.
