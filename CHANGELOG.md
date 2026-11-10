@@ -6,7 +6,7 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ## App
 
-### [0.1.0] - unreleased
+### [0.1.0] - 2026-11-10
 
 First public version.
 
