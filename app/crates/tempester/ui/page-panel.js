@@ -20,10 +20,11 @@
     infoTitle: "About the Panel page",
     close: "Close",
     info: [
-      "Full view: every sound parameter, one knob each. The parameters are NRPN, which need a Tempester Main 1.5.3.0 or later (the original DSI OS ignores them). They always change the pad selected on the machine. Distort and Compress are MIDI CC 12 and 13, the 16 pads play notes, and Play and Stop send MIDI Start and Stop for a Tempest set to slave its clock to MIDI. The BPM knob sets the tempo of this app's clock (Play page), used when the app is the clock master.",
+      "Full view: every sound parameter, one knob each. The parameters are NRPN, which need a Tempester Main 1.5.3.0 or later (the original DSI OS ignores them). They always change the pad selected on the machine. Distort and Compress go through the remote panel when it answers (the machine's own 0-255 knob), else they are MIDI CC 12 and 13 (up to 127), the 16 pads play notes, and Play and Stop send MIDI Start and Stop for a Tempest set to slave its clock to MIDI. The BPM knob sets the tempo of this app's clock (Play page), used when the app is the clock master.",
       "Machine view: only what the physical Tempest has, at the same place. Absolute knobs, encoders (endless, shown without a position) and keys act like the machine's own, so the machine decides what each one does: in 16 Beats and 16 Mutes the sound knobs are beat-wide, as on the machine, and the controls the machine ignores there are greyed. An encoder shows its turning (a dot, the ring it crossed, a count); the parameter it changed, with its value, appears under it when the machine reports it. It needs Tempester 1.6.0.0 with Remote Pad IN set to the channel of this app and Remote Pad OUT not Off; without it the controls stay greyed.",
       "Sync works from Tempester 1.5.2.0. With Tempester 1.6.0.0 the machine's LEDs light the keys and pads here, and Volume sets the machine's Volume.",
       "Tempester 1.6.2.0: in 16 Beats and 16 Mutes the Machine view's beat-wide knobs show and set the beat-wide positions (127 = neutral). Tempester 1.6.3.0: the FX ribbons of both views touch the machine's ribbons and show its own; the dice button shows each pad's play probability (read by Sync) and lets you change it in 16 Sounds. A control the installed OS lacks is greyed and its tooltip names the version that brings it.",
+      "Tempester 1.6.4.0: the machine reports what its own knobs and encoders change (Level, Pan, Delay Repeats, Volume, Distort, Compress, and Delay Send, Delay Time, BPM, Swing) and sends them all again when the app asks for its state (Sync). The Machine view moves the matching knobs, and shows an encoder's number in its bubble for a moment; the Full view follows Volume, Distort and Compress. A knob you are turning is not moved by the machine.",
       "Zoom: the - and + buttons, or Cmd/Ctrl with - and +; Cmd/Ctrl 0 fits the width of the window. A zoomed panel scrolls inside its frame.",
     ],
     remoteLooking: "Remote panel: looking...",
@@ -59,7 +60,11 @@
       bridge,
       connected: () => kit.session.connected,
       setTempo: kit.setTempo,
+      remote: () => remoteOn,
     });
+    /* The machine reports back what the app sends (n°38): a Full view knob the user holds or just moved ignores the
+       report, by the same rule as the Machine view's. */
+    const reportGuard = panelMachine.createReportGuard();
 
     const icons = window.Tempester.icons;
     syncButton = icons.button("fetch", S.sync, sync, { variant: "primary" });
@@ -140,7 +145,12 @@
 
     panel.mount(fullHost, params, link.knob, {
       onPad: link.pad,
-      onLocal: link.local,
+      onLocal: (name, value) => {
+        reportGuard.touch(name);
+        link.local(name, value);
+      },
+      onHold: (name, down) =>
+        down ? reportGuard.hold(name) : reportGuard.release(name),
       onTransport: link.transport,
       onKey: link.key,
       onMessage: toast,
@@ -273,7 +283,10 @@
       remoteOn = on;
       panel.setRemote(on);
       machine.setRemote(on);
-      if (!on) mode.reset();
+      if (!on) {
+        mode.reset();
+        machine.setShift(false);
+      }
       refreshFeatures();
     };
     let wasConnected = false;
@@ -313,6 +326,10 @@
       features.setIdentity(!!m.tempester);
       refreshFeatures();
     });
+    bridge.on("mixer", (m) => {
+      machine.reportMixer(m.item, m.value);
+      panelMachine.followInFullView(reportGuard, panel.setLocal, m.item, m.value);
+    });
     bridge.on("beat_wide", (m) => machine.reportBeatWide(m.index, m.position));
     bridge.on("ribbon", (m) => perform.reportRibbon(m.ribbon, m.position));
     bridge.on("beat", (m) => {
@@ -328,9 +345,12 @@
       sayRemote(m.available ? S.remoteOn : S.remoteOff);
     });
     bridge.on("leds", (m) => {
+      const shift = m.changes.filter(([i]) => i === panelMachine.SHIFT_LED);
+      if (shift.length) machine.setShift(shift[shift.length - 1][1] === 1);
       panel.setLeds(m.changes);
       mode.feed(m.changes);
     });
+    bridge.on("pad_mode", (m) => mode.announce(m.mode));
     bridge.on("sound", (message) => {
       panel.setValues(message.values);
       panel.setSoundName(message.name);
@@ -397,10 +417,13 @@
     remoteStatus.setAttribute("data-tip", text);
   }
 
-  /* The full LED state, pads included: the machine answers only with Tempester 1.6.0.0 and Remote Pad OUT on. */
+  /* The full LED state, pads included: the machine answers only with Tempester 1.6.0.0 and Remote Pad OUT on (with
+     n°40, its Pad Function mode too). And the exact version (n°39): the features then follow it, not the install
+     record; a machine without n°39 does not answer. */
   function probeRemote() {
     sayRemote(S.remoteLooking);
     bridge.send("panel_state", 1);
+    bridge.send("tempester_version");
   }
 
   /* The beat holds the pads' play probabilities: fetched too when the installed OS has them. */

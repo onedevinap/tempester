@@ -1,8 +1,9 @@
 # Roadmap
 
-What will probably come next, and why. Tempester is a spare-time project: there are **no dates**, the order can
-change, and an item listed here is a direction, not a promise. Ideas and votes are welcome in a
-[feature request](../.github/ISSUE_TEMPLATE/feature.yml).
+What will probably come next, and why. Tempester is a spare-time project delivered as is: there are **no dates**, the
+order can change, an item listed here is a direction, not a promise, and nothing here is a commitment to anyone.
+Feature requests are not taken (see [Support and contributions](../README.md#support-and-contributions)); the table
+of what owners ask for below is a reading of the forum, kept as a guide for the authors' own choices.
 
 - [Where things stand](#where-things-stand)
 - [Firmware: making room](#firmware-making-room)
@@ -12,8 +13,11 @@ change, and an item listed here is a direction, not a promise. Ideas and votes a
 
 ## Where things stand
 
-- **Tempester OS 1.6.3.0** is the latest release: bug fixes, requests for sounds, beats and projects, NRPN in both
-  directions, the front panel over MIDI, FX ribbons over MIDI, play probability per pad. See [firmware](firmware.md).
+- **Tempester OS 1.6.4.0** is the latest release (10 November 2026): room for new functions, the machine reporting
+  its mixer, tempo, mode and exact version to an editor, five bug fixes. It is proved in simulation and **not yet
+  installed on a machine**; **1.6.3.0** is the latest verified on a real Tempest: bug fixes, requests for sounds, beats
+  and projects, NRPN in both directions, the front panel over MIDI, FX ribbons over MIDI, play probability per pad.
+  See [firmware](firmware.md).
 - **The Tempester app** is used daily on macOS; the Windows build is checked to compile, and neither Windows nor
   Linux has been tried by a user yet.
 - **Tempester Control** (CLAP and VST3) has its 146 parameters and MIDI learn, but no window of its own yet: the
@@ -25,20 +29,22 @@ Every new feature in the Main OS needs code space, and space is what the Tempest
 the instrument had reached the limits of its memory and processing power, and that each addition meant rewriting
 something else to free room. Tempester has so far lived on the flash the official OS leaves erased.
 
-| | Official 1.5.0.2 | Tempester 1.6.3.0 |
-|---|---:|---:|
-| Erased flash (before the protected flasher page) | 22,420 bytes | 18,460 bytes |
-| Largest single erased block | 14,776 bytes | 2,536 bytes |
+| | Official 1.5.0.2 | Tempester 1.6.3.0 | Tempester 1.6.4.0 |
+|---|---:|---:|---:|
+| Erased flash (before the protected flasher page) | 22,420 bytes | 18,460 bytes | 28,336 bytes |
+| Largest single erased block | 14,776 bytes | 2,536 bytes | 2,536 bytes |
 
-The total is still comfortable, but it is now spread in pieces: a large feature no longer fits in one block. The next
-step is therefore to **reclaim dead code**: routines of the official OS that nothing can ever call.
+The total is comfortable again, but it is spread in pieces: a large feature no longer fits in one block. The first
+step, done in 1.6.4.0, was to **reclaim dead code**: routines of the official OS that nothing can ever call.
 
 - **About 9.9 KB of the official code is proven unreachable** (about 2 % of it): an unused text formatter, unused
   floating-point helpers, file-system calls nothing makes, a USB helper, a flash-memory erase routine never called,
   and a few MIDI send helpers. It sits in about 60 zones; most of the bytes are in 35 zones of 64 bytes or more.
-- **How it will be done**: the reachability check is run again on the exact image being patched (a patch can make
-  dead code live again), and the zones are erased by a recipe, like any other change. A zone counted as « probably
-  dead » is not touched until it is proved.
+- **Done in 1.6.4.0** (patch n°37, [firmware](firmware.md#n37-room-for-new-functions-dead-code-erased)):
+  the reachability check was run again on the exact 1.6.3.0 image (a patch can make dead code live again), and the
+  38 proven zones of 64 bytes or more, 9,876 bytes, are erased by a recipe, like any other change. The image reaches
+  exactly the same code as 1.6.3.0. A zone counted as « probably dead » is not touched until it is proved. The
+  erased flash grows to 28,336 bytes, the new room being islands of 64 to 2,228 bytes inside the code.
 - **RAM** (128 KB) is tight too. Tempester reuses bytes the official OS reserves and never uses, each one checked
   disjoint from every other patch.
 
@@ -97,8 +103,7 @@ keep every existing file and every other Tempest working.
 
 **What comes first**: the *candidates* above share three traits: they touch no file format, they live in the Main
 OS, and each was asked for by several owners. Which one, and in what order, will be decided once dead code is
-reclaimed, since each needs room. Tell us which matters most to you in a
-[feature request](../.github/ISSUE_TEMPLATE/feature.yml).
+reclaimed, since each needs room, and by the authors alone.
 
 ## The app
 

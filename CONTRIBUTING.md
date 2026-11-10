@@ -1,7 +1,8 @@
 # Contributing to Tempester
 
-Thank you for helping. Issues and pull requests are welcome: bug reports from real machines are especially valuable,
-and so are tests on Windows and Linux.
+Tempester is delivered as is, without support: issues and pull requests may stay unanswered, and feature requests are
+not taken (see [Support and contributions](README.md#support-and-contributions)). If you contribute anyway, thank you:
+bug reports from real machines and tests on Windows and Linux are the most useful. The rules below apply.
 
 ## The one rule: no DSI content
 

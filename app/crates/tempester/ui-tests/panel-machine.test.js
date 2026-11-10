@@ -183,6 +183,57 @@ const checks = {
     assert.deepStrictEqual(seen, [0, null]);
     assert.strictEqual(mode.mode(), null);
   },
+  "mode: an announced mode (n°40, CC 106) is the mode at once, without waiting":
+    () => {
+      const { mode, seen, timers } = modeRig(T);
+      mode.announce(4);
+      assert.deepStrictEqual(seen, [4]);
+      assert.strictEqual(timers.count(), 0, "no settle delay");
+      mode.announce(4);
+      assert.deepStrictEqual(
+        seen,
+        [4],
+        "an unchanged mode is not announced twice",
+      );
+      mode.announce(3);
+      assert.deepStrictEqual(seen, [4, 3]);
+      assert.strictEqual(mode.mode(), 3);
+    },
+  "mode: once announced, the LEDs no longer decide the mode": () => {
+    const { mode, seen, timers } = modeRig(T);
+    mode.feed([[0x10, 1]]);
+    mode.announce(2);
+    assert.strictEqual(
+      timers.count(),
+      0,
+      "the pending LED decision is dropped",
+    );
+    mode.feed([
+      [0x18, 0],
+      [0x19, 1],
+    ]);
+    timers.fire();
+    assert.deepStrictEqual(seen, [2]);
+    assert.strictEqual(mode.mode(), 2);
+  },
+  "mode: a value no mode has is ignored, the LEDs keep deciding": () => {
+    const { mode, seen, timers } = modeRig(T);
+    for (const bad of [6, -1, 2.5, null, undefined, "1"]) mode.announce(bad);
+    assert.deepStrictEqual(seen, []);
+    mode.feed([[0x11, 1]]);
+    timers.fire();
+    assert.deepStrictEqual(seen, [1]);
+  },
+  "mode: losing the panel forgets the announcement, the LEDs decide again":
+    () => {
+      const { mode, seen, timers } = modeRig(T);
+      mode.announce(5);
+      mode.reset();
+      assert.deepStrictEqual(seen, [5, null]);
+      mode.feed([[0x10, 1]]);
+      timers.fire();
+      assert.deepStrictEqual(seen, [5, null, 0]);
+    },
 
   /* ----- Machine view: what the controls send ----- */
   "machine: the knob table is exactly the firmware's 14 encoders and 10 absolute controls":
@@ -319,7 +370,11 @@ const checks = {
         0,
         "a whole turn is back at the start",
       );
-      assert.strictEqual(controls.encoderView(5).angle, 0, "one dot per encoder");
+      assert.strictEqual(
+        controls.encoderView(5).angle,
+        0,
+        "one dot per encoder",
+      );
     },
   "encoder view: the ring segment covers the last turn in its direction, then goes out":
     () => {
@@ -402,25 +457,27 @@ const checks = {
       );
       assert.strictEqual(controls.caption("enc", 3), null);
     },
-  "value: a parameter NRPN without a recent turn is attributed to no encoder": () => {
-    const { controls, clock } = controlsRig(T);
-    assert.strictEqual(controls.attribute(68, 64), null, "never turned");
-    controls.stepEncoder(6, 1);
-    clock.t += T.panelMachine.ATTRIBUTION_MS + 1;
-    assert.strictEqual(controls.attribute(68, 64), null, "window over");
-    assert.strictEqual(controls.caption("enc", 6), null);
-  },
-  "value: the window is 400 ms from the last step, and every step renews it": () => {
-    const { controls, clock } = controlsRig(T);
-    assert.strictEqual(T.panelMachine.ATTRIBUTION_MS, 400);
-    controls.stepEncoder(2, 1);
-    clock.t += 400;
-    assert.notStrictEqual(controls.attribute(28, 10), null, "at 400 ms");
-    clock.t += 300;
-    controls.stepEncoder(2, 1);
-    clock.t += 300;
-    assert.notStrictEqual(controls.attribute(28, 11), null, "renewed");
-  },
+  "value: a parameter NRPN without a recent turn is attributed to no encoder":
+    () => {
+      const { controls, clock } = controlsRig(T);
+      assert.strictEqual(controls.attribute(68, 64), null, "never turned");
+      controls.stepEncoder(6, 1);
+      clock.t += T.panelMachine.ATTRIBUTION_MS + 1;
+      assert.strictEqual(controls.attribute(68, 64), null, "window over");
+      assert.strictEqual(controls.caption("enc", 6), null);
+    },
+  "value: the window is 400 ms from the last step, and every step renews it":
+    () => {
+      const { controls, clock } = controlsRig(T);
+      assert.strictEqual(T.panelMachine.ATTRIBUTION_MS, 400);
+      controls.stepEncoder(2, 1);
+      clock.t += 400;
+      assert.notStrictEqual(controls.attribute(28, 10), null, "at 400 ms");
+      clock.t += 300;
+      controls.stepEncoder(2, 1);
+      clock.t += 300;
+      assert.notStrictEqual(controls.attribute(28, 11), null, "renewed");
+    },
   "value: an encoder keeps the first parameter it reports, a later other one is not its caption":
     () => {
       const { controls } = controlsRig(T);
@@ -433,91 +490,95 @@ const checks = {
         value: 41,
       });
     },
-  "value: the caption stays until the control is turned again, or the sound is synced": () => {
-    const { controls, clock } = controlsRig(T);
-    controls.stepEncoder(6, 1);
-    controls.attribute(68, 64);
-    clock.t += 60000;
-    assert.notStrictEqual(controls.caption("enc", 6), null, "kept");
-    controls.stepEncoder(6, 1);
-    assert.strictEqual(controls.caption("enc", 6), null, "turned again");
-    controls.attribute(68, 70);
-    controls.setAbs(0, 10);
-    controls.attribute(33, 5);
-    controls.clearCaptions();
-    assert.strictEqual(controls.caption("enc", 6), null, "synced");
-    assert.strictEqual(controls.caption("abs", 0), null, "synced");
-  },
+  "value: the caption stays until the control is turned again, or the sound is synced":
+    () => {
+      const { controls, clock } = controlsRig(T);
+      controls.stepEncoder(6, 1);
+      controls.attribute(68, 64);
+      clock.t += 60000;
+      assert.notStrictEqual(controls.caption("enc", 6), null, "kept");
+      controls.stepEncoder(6, 1);
+      assert.strictEqual(controls.caption("enc", 6), null, "turned again");
+      controls.attribute(68, 70);
+      controls.setAbs(0, 10);
+      controls.attribute(33, 5);
+      controls.clearCaptions();
+      assert.strictEqual(controls.caption("enc", 6), null, "synced");
+      assert.strictEqual(controls.caption("abs", 0), null, "synced");
+    },
 
   /* ----- Machine view: greying by Pad Function mode ----- */
-  "greying: only the proven inert controls are inert, in 16 Beats and 16 Mutes": () => {
-    const inert = (mode) =>
-      T.panelMachine.CONTROLS.filter((c) =>
-        T.panelMachine.isInert(c.kind, c.n, mode),
-      ).map((c) => c.kind + c.n);
-    const expected = ["enc0", "enc2", "enc3", "enc4", "enc5", "abs7"];
-    same(inert(0), expected);
-    same(inert(4), expected);
-    for (const mode of [1, 2, 3, 5]) same(inert(mode), []);
-    same(T.panelMachine.BEAT_WIDE_MODES, [0, 4]);
-  },
-  "greying: global controls, beat-wide ones and the soft knobs stay active": () => {
-    for (const [kind, n] of [
-      ["enc", 1],
-      ["enc", 6],
-      ["enc", 7],
-      ["enc", 8],
-      ["enc", 9],
-      ["enc", 10],
-      ["enc", 13],
-      ["abs", 0],
-      ["abs", 2],
-      ["abs", 6],
-      ["abs", 8],
-      ["abs", 9],
-    ])
-      assert.ok(!T.panelMachine.isInert(kind, n, 0), kind + n);
-  },
+  "greying: only the proven inert controls are inert, in 16 Beats and 16 Mutes":
+    () => {
+      const inert = (mode) =>
+        T.panelMachine.CONTROLS.filter((c) =>
+          T.panelMachine.isInert(c.kind, c.n, mode),
+        ).map((c) => c.kind + c.n);
+      const expected = ["enc0", "enc2", "enc3", "enc4", "enc5", "abs7"];
+      same(inert(0), expected);
+      same(inert(4), expected);
+      for (const mode of [1, 2, 3, 5]) same(inert(mode), []);
+      same(T.panelMachine.BEAT_WIDE_MODES, [0, 4]);
+    },
+  "greying: global controls, beat-wide ones and the soft knobs stay active":
+    () => {
+      for (const [kind, n] of [
+        ["enc", 1],
+        ["enc", 6],
+        ["enc", 7],
+        ["enc", 8],
+        ["enc", 9],
+        ["enc", 10],
+        ["enc", 13],
+        ["abs", 0],
+        ["abs", 2],
+        ["abs", 6],
+        ["abs", 8],
+        ["abs", 9],
+      ])
+        assert.ok(!T.panelMachine.isInert(kind, n, 0), kind + n);
+    },
   "greying: an unknown mode greys nothing": () => {
     for (const mode of [null, undefined, 6, -1])
       assert.ok(!T.panelMachine.isInert("enc", 0, mode), String(mode));
     const { controls } = controlsRig(T);
     assert.ok(!controls.inert("abs", 7), "no mode read yet");
   },
-  "greying: follows the mode chip once the LEDs settle, and back to active on a change": () => {
-    const { controls } = controlsRig(T);
-    const { mode, timers } = (() => {
-      const timers = fakeTimers();
-      const mode = T.panelMode.create({
-        onMode: (m) => controls.setMode(m),
-        setTimer: timers.setTimer,
-        clearTimer: timers.clearTimer,
-      });
-      return { mode, timers };
-    })();
-    mode.feed([[0x10, 1]]);
-    assert.ok(!controls.inert("abs", 7), "not before the LEDs settle");
-    timers.fire();
-    assert.ok(controls.inert("abs", 7), "16 Beats");
-    mode.feed([
-      [0x10, 0],
-      [0x11, 0],
-      [0x18, 0],
-      [0x19, 0],
-    ]);
-    assert.ok(controls.inert("abs", 7), "mid-sequence: still the old mode");
-    mode.feed([[0x18, 1]]);
-    timers.fire();
-    assert.ok(!controls.inert("abs", 7), "16 Sounds: active again");
-    mode.feed([
-      [0x18, 0],
-      [0x19, 1],
-    ]);
-    timers.fire();
-    assert.ok(controls.inert("enc", 5), "16 Mutes");
-    mode.reset();
-    assert.ok(!controls.inert("enc", 5), "panel lost: nothing greyed");
-  },
+  "greying: follows the mode chip once the LEDs settle, and back to active on a change":
+    () => {
+      const { controls } = controlsRig(T);
+      const { mode, timers } = (() => {
+        const timers = fakeTimers();
+        const mode = T.panelMode.create({
+          onMode: (m) => controls.setMode(m),
+          setTimer: timers.setTimer,
+          clearTimer: timers.clearTimer,
+        });
+        return { mode, timers };
+      })();
+      mode.feed([[0x10, 1]]);
+      assert.ok(!controls.inert("abs", 7), "not before the LEDs settle");
+      timers.fire();
+      assert.ok(controls.inert("abs", 7), "16 Beats");
+      mode.feed([
+        [0x10, 0],
+        [0x11, 0],
+        [0x18, 0],
+        [0x19, 0],
+      ]);
+      assert.ok(controls.inert("abs", 7), "mid-sequence: still the old mode");
+      mode.feed([[0x18, 1]]);
+      timers.fire();
+      assert.ok(!controls.inert("abs", 7), "16 Sounds: active again");
+      mode.feed([
+        [0x18, 0],
+        [0x19, 1],
+      ]);
+      timers.fire();
+      assert.ok(controls.inert("enc", 5), "16 Mutes");
+      mode.reset();
+      assert.ok(!controls.inert("enc", 5), "panel lost: nothing greyed");
+    },
 
   "link: nothing is sent while the machine is not connected": () => {
     const bridge = fakeBridge();

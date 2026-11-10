@@ -14,7 +14,7 @@
 #   4. the Python tools compile, tempest_midi.swift compiles (nothing is sent to the machine), tests/test_*.py pass;
 #   5. Rust workspace app/ (tools/test_app.sh): generated tables up to date, cargo fmt, clippy -D warnings, tests, and the
 #      #[ignore] tests on the real DSI files in <folder> (TEMPESTER_DSI_SYX), with a disposable HOME;
-#   6.-9. option --long: the firmware simulations and their counter-proofs (tools/verify_simulations.sh, private:
+#   6.-11. option --long: the firmware simulations and their counter-proofs (tools/verify_simulations.sh, private:
 #      they run the image's code at DSI's routine addresses; the public tree has no simulator and says so).
 # Works in a temporary folder; writes nothing in the repository outside work/ (decoded images, not versioned).
 set -euo pipefail

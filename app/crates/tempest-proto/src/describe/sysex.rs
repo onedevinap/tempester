@@ -52,6 +52,9 @@ fn dsi(message: &[u8]) -> String {
             return format!("Request {command:02X}: {what}");
         }
     }
+    if let Some(version) = identity::parse_version(message) {
+        return format!("Tempester version {version}");
+    }
     match command {
         CMD_CURRENT_SOUND => sound(message, "Sound (current)"),
         CMD_SOUND_FILE => sound(message, "Sound file"),
@@ -73,6 +76,7 @@ fn request_name(command: u8) -> Option<&'static str> {
         0x40 => Some("current sound"),
         0x41 => Some("current beat"),
         0x42 => Some("whole project"),
+        0x43 => Some("exact Tempester version"),
         _ => None,
     }
 }
@@ -146,6 +150,14 @@ mod tests {
         assert_eq!(
             text(&[0xF0, 0x01, 0x28, 0x42, 0xF7]),
             "Request 42: whole project"
+        );
+        assert_eq!(
+            text(&[0xF0, 0x01, 0x28, 0x43, 0xF7]),
+            "Request 43: exact Tempester version"
+        );
+        assert_eq!(
+            text(&[0xF0, 0x01, 0x28, 0x43, 0, 1, 0, 6, 0, 3, 0, 0, 0xF7]),
+            "Tempester version 1.6.3.0"
         );
     }
 

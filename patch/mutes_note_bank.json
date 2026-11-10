@@ -1,0 +1,10 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°41: MIDI notes in Pad to Note Mode Mutes mute the sound of their pad note, banks A and B",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "Tempester n°41: MIDI notes in Pad to Note Mode « Mutes » mute the sound of their pad note, banks A and B (Main 1.5.0.2). Before: [routine], note-on on the Remote Pad IN channel with System « Pad to Note Mode » = Mutes ([address] = 3): the note becomes a pad index 0..31 through the inverse table of « MIDI Note: Pad A1-B16 » ([address], built by [routine]: 0..31 or 0xFF), then [address] reads byte +0xD of the PHYSICAL pad record a1 ([address] + a1 * 0x14, 16 records: the sound the panel pad shows, bank-dependent) and passes it to [routine](ctx, a1, 0, sound). An A note toggled the sound shown on that panel pad (B k when bank B is shown); a B note read past the 16 records (a byte of beat 0's mixer area, usually 0: A1); a note without a pad (0xFF) read « record 255 », byte [address], and toggled the sound it names unless that byte was 0xFF. Docs/analyses/bugs-open-2026-11.md §2. After: the sound is the pad index itself, as in the « Sounds » mode and as the manual says (« mute/unmute the 32 sounds »): A k mutes A k, B k mutes B k, whatever bank is shown. [routine] reads only its 4th argument (the sound: mute bit of [address] + (beat * 0x60 + sound) * 4); an unassigned note (0xFF) is still skipped by the next instruction (beq a3,s2(0xff)). The 32 « MIDI Note: Mute A1-B16 » items are still not read: honouring them would change which notes act (the manual documents the pad notes for this mode), a choice left to the author. Context: main loop (UI dispatch of event 10). One word, no RAM, no flash outside the word.",
+ "edits": [
+  {"at": "0x9d0263c4", "word": "2538a000", "why": "or a3,a1,zero ; was \"lbu a3,0xd(s7)\" (sound shown on the physical pad a1): the sound is the pad index 0..31 of the note (0xFF = no pad, skipped by the following beq)"}
+ ]
+}

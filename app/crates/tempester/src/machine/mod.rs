@@ -3,8 +3,9 @@
 //! and report through the same `Emitter`.
 //!
 //! One file per subject: `connection` (ports, identity, state), `panel` (NRPN), `sound`, `beat`, `library`,
-//! `manager` (the library manager: duplicate check, review, item actions, sending an item), `kit` (library sounds onto the pads of the machine's beat), `midi_export` (a beat as a Standard MIDI File), `backup`, `project`, `project_send` (a whole project back to the machine), `os_update`, `os_verify` (read the installed OS back from the machine), `play` (pads, clock master), `pad_map` (the machine's note of each pad: kept, edited, learned from the machine), `sequencer` (Euclidean and probability sequencer on the clock thread), `remote_panel` (keys, LEDs, controls of the 1.6.0.0 remote panel), `perform` (beat-wide positions, FX ribbons, play probability of 1.6.2.0 / 1.6.3.0), `editor` (the Panel page's editing tools: history, A/B, variations, MIDI learn), `monitor` (every message in and out, for the Machine page); `connector` and `fake_machine` stand in for real ports.
+//! `manager` (the library manager: duplicate check, review, item actions, sending an item), `kit` (library sounds onto the pads of the machine's beat), `midi_export` (a beat as a Standard MIDI File), `backup`, `project`, `project_send` (a whole project back to the machine), `os_update`, `os_verify` (read the installed OS back from the machine), `play` (pads, clock master), `pad_map` (the machine's note of each pad: kept, edited, learned from the machine), `sequencer` (Euclidean and probability sequencer on the clock thread), `remote_panel` (keys, LEDs, controls of the 1.6.0.0 remote panel), `perform` (beat-wide positions, FX ribbons, play probability of 1.6.2.0 / 1.6.3.0), `announce` (the exact Tempester version, n°39, and the Pad Function mode, n°40), `editor` (the Panel page's editing tools: history, A/B, variations, MIDI learn), `monitor` (every message in and out, for the Machine page); `connector` and `fake_machine` stand in for real ports.
 
+mod announce;
 mod backup;
 mod beat;
 pub mod connection;
@@ -43,6 +44,7 @@ use tempest_midi::message::Message;
 use tempest_midi::paced::DEFAULT_RATE;
 use tempest_midi::CancelToken;
 use tempest_proto::beat::BeatSummary;
+use tempest_proto::identity::TempesterVersion;
 use tempest_proto::nrpn::{self, NrpnDecoder};
 use tempest_proto::pad_notes::PadNotes;
 use tempest_proto::performance::BeatWideReader;
@@ -123,6 +125,8 @@ pub struct Machine {
     /// The beat-wide positions reported by the machine or sent by the app (n°29).
     beat_wide_in: BeatWideReader,
     remote: RemoteState,
+    /// The exact version the machine announced (n°39), until the port closes or an OS update starts.
+    announced: Option<TempesterVersion>,
     monitor: Monitor,
     /// The Panel page's editing tools: history, A/B, variations, MIDI learn.
     edit: editor::EditState,
@@ -166,6 +170,7 @@ impl Machine {
             touched_ribbons: BTreeSet::new(),
             beat_wide_in: BeatWideReader::default(),
             remote: RemoteState::Unknown,
+            announced: None,
             monitor: Monitor::new(),
             edit,
             pad_notes,
@@ -192,8 +197,9 @@ impl Machine {
 
     /// Runs one command of the page: each handler takes its own commands and hands back the others.
     pub fn handle(&mut self, command: Command) {
-        let handlers: [fn(&mut Self, Command) -> Option<Command>; 15] = [
+        let handlers: [fn(&mut Self, Command) -> Option<Command>; 16] = [
             Self::handle_link,
+            Self::handle_announce,
             Self::handle_edit,
             Self::handle_monitor,
             Self::handle_panel,
@@ -247,6 +253,7 @@ impl Machine {
                     }
                 }
                 Message::SysEx(bytes) => {
+                    self.on_version_reply(&bytes);
                     self.on_sysex(&bytes);
                     self.on_project_sysex(&bytes);
                 }
@@ -260,10 +267,15 @@ impl Machine {
 
     fn on_channel(&mut self, status: u8, data: &[u8]) {
         let &[controller, value] = data else { return };
-        if self.on_performance_report(status, controller, value) {
+        if self.on_pad_mode(status, controller, value)
+            || self.on_performance_report(status, controller, value)
+        {
             return;
         }
         if let Some(change) = self.nrpn_in.feed_message(status, controller, value) {
+            if self.on_mixer_report(change) {
+                return;
+            }
             if nrpn::is_tempest_number(change.number) {
                 self.edit_observe(change.number, change.value);
                 self.emit(

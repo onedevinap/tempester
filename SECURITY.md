@@ -19,10 +19,10 @@ recovered. **Do not attach DSI files, firmware dumps or `.hex` backups.**
 
 ## What happens next
 
-- An acknowledgement as soon as a maintainer sees it.
-- If a firmware version is concerned, the documentation and the version list are marked « do not install » while it is
-  examined, and a fixed version or a withdrawal follows.
-- Credit in the changelog if you wish (a nickname is fine).
+Tempester is delivered as is, without support: a private report is read when a maintainer has time, and no response
+time is promised. When a report about a firmware version is confirmed, the documentation and the version list are
+marked « do not install », and a fixed version or a withdrawal follows when possible. Credit in the changelog if you
+wish (a nickname is fine).
 
 ## If your machine is in trouble now
 

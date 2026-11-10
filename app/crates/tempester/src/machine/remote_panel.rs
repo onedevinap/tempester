@@ -350,7 +350,9 @@ mod tests {
     fn test_led_when_other_controllers_or_bad_index_arrive_returns_no_event() {
         let mut rig = TestRig::connected("leds-ignored");
         rig.transport().push_incoming(&[
-            0xB0, 103, 5, 0xB0, 106, 5, 0xB0, 107, 5, 0x90, 104, 5, 0xB0, 104, 60, 0xB0, 105, 127,
+            // CC 106 is the mode report of n°40 (machine/announce.rs): 106 with no mode value, and CC 119, here.
+            0xB0, 103, 5, 0xB0, 106, 6, 0xB0, 119, 5, 0xB0, 107, 5, 0x90, 104, 5, 0xB0, 104, 60,
+            0xB0, 105, 127,
         ]);
 
         rig.machine.poll_incoming();

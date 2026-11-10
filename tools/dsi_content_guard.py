@@ -19,7 +19,9 @@ Fails (exit 1) and names file, line and DSI location on:
      both in byte order and as a little-endian value), byte lists ([0x12, 0x34, …]) or spaced bytes (12 34 56 …),
      gathered per label (the identifier before the value on its line, e.g. "origine", "word", "new", or the column)
      in file order, and per line, then checked as in 2. So two DSI words kept as two consecutive JSON fields, or
-     written one after the other in a sentence, are caught.
+     written one after the other in a sentence, are caught. A blank line ends a run: values on either side of an
+     empty line are never joined (two recipes of a generated table, two paragraphs of a document), each side being
+     checked on its own.
 The threshold and its justification: Docs/patch-recipe-format.md ("What the guard refuses")."""
 import importlib.util
 import re
@@ -119,11 +121,16 @@ def label(prefix: str, column: int) -> str:
     return names[-1] if names else f'column {column}'
 
 
-def text_streams(text: str) -> dict[str, list[tuple[bytes, int, bool]]]:
-    """Per label, the hexadecimal quoted in the text as (chunk of bytes, line, made of words) in file order; words
-    written out give two streams (as written, and as little-endian values)."""
-    streams: dict[str, list[tuple[bytes, int, bool]]] = defaultdict(list)
+def text_streams(text: str) -> dict[str, list[tuple[bytes, int, bool, int]]]:
+    """Per label, the hexadecimal quoted in the text as (chunk of bytes, line, made of words, paragraph) in file
+    order; words written out give two streams (as written, and as little-endian values). The paragraph number
+    changes at every blank line: check_text never joins two chunks of different paragraphs."""
+    streams: dict[str, list[tuple[bytes, int, bool, int]]] = defaultdict(list)
+    paragraph = 0
     for number, line in enumerate(text.splitlines(), 1):
+        if not line.strip():
+            paragraph += 1
+            continue
         taken: list[tuple[int, int]] = []
         found: list[tuple[int, str, bytes, bool]] = []
         for match in BYTE_LIST.finditer(line):
@@ -143,23 +150,25 @@ def text_streams(text: str) -> dict[str, list[tuple[bytes, int, bool]]]:
             name = label(prefix, column)
             swapped = b''.join(data[i:i + 4][::-1] for i in range(0, len(data), 4)) if words else data
             for stream in (name, f'line {number}'):
-                streams[stream + ' (as written)'].append((data, number, words))
-                streams[stream + ' (as values)'].append((swapped, number, words))
+                streams[stream + ' (as written)'].append((data, number, words, paragraph))
+                streams[stream + ' (as values)'].append((swapped, number, words, paragraph))
     return streams
 
 
 def check_text(path: Path, text: str, dsi: Dsi) -> list[str]:
     problems = []
     for label, chunks in text_streams(text).items():
-        joined = b''.join(c for c, _, _ in chunks)
-        lines = [number for chunk, number, _ in chunks for _ in chunk]
-        # Words written out are compared word against word; byte lists and spaced bytes at every offset.
-        step = 4 if all(words for _, _, words in chunks) else 1
-        for offset, where in dsi.hits(joined):
-            if offset % step:
-                continue
-            problems.append(f'{path}:{lines[offset]}: quoted DSI words ({label}) {joined[offset:offset + 8].hex()} '
-                            f'= {where[0]} offset {where[1]:#x}')
+        for paragraph in sorted({c[3] for c in chunks}):
+            run = [c for c in chunks if c[3] == paragraph]
+            joined = b''.join(c for c, _, _, _ in run)
+            lines = [number for chunk, number, _, _ in run for _ in chunk]
+            # Words written out are compared word against word; byte lists and spaced bytes at every offset.
+            step = 4 if all(words for _, _, words, _ in run) else 1
+            for offset, where in dsi.hits(joined):
+                if offset % step:
+                    continue
+                problems.append(f'{path}:{lines[offset]}: quoted DSI words ({label}) {joined[offset:offset + 8].hex()} '
+                                f'= {where[0]} offset {where[1]:#x}')
     return problems
 
 

@@ -15,7 +15,6 @@ use crate::command::{Command, Place};
 use crate::error::AppError;
 use crate::event::Event;
 use crate::storage::data_dir::Platform;
-use crate::storage::installed::features_json;
 use crate::storage::settings::{KEY_CHANNEL, KEY_PANEL_VIEW, KEY_PANEL_ZOOM, KEY_PORT};
 
 const IDENTITY_TIMEOUT: Duration = Duration::from_millis(1500);
@@ -97,7 +96,8 @@ impl Machine {
                         .map(|p| p.display().to_string()),
                 )
                 .with("default_port", DEFAULT_PORT_NAME)
-                .with("features", features_json(installed.as_ref()))
+                .with("features", self.features())
+                .with("announced", self.announced.map(|v| v.to_string()))
                 .with("installed", installed.map(|i| i.to_json())),
         );
         self.emit(super::pad_map::pad_notes_event(&self.pad_notes));
@@ -144,6 +144,7 @@ impl Machine {
         self.release_held_keys();
         self.release_touched_ribbons();
         self.forget_remote();
+        self.announced = None;
         self.beat_wide_in.forget();
         self.stop_clock();
         self.backup = None;

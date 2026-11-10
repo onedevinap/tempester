@@ -22,12 +22,19 @@
    that nothing moves whatever a caption, a count or a LED shows (ui-tests/layout-stability.js proves it in Chrome and
    WebKit) and no text meets another text or a control (ui-tests/layout-overlap.js).
 
+   With Tempester 1.6.4.0 (n°38) the machine reports the values its own knobs and encoders change (`mixer` events:
+   `controls.report(item, value)`, the one entry point, items in MIXER_REPORTS). An absolute knob moves to the value
+   (Level, Pan, Volume 7-bit on the knob's 0-255 scale, Distort and Compress raw, Delay Repeats on the Pan knob while
+   Shift is lit on the machine); an encoder has no position, so its yellow bubble shows the number for a moment (BPM,
+   Swing, Delay Send, Delay Time). The machine reports back what the app sends too, so a report for a knob the user
+   holds or moved in the last REPORT_QUIET_MS is ignored (`createReportGuard`, shared with the Full view).
+
    Tempester.panelMachine.createControls(link, now)   the controls without any drawing (the part the tests run):
         link = {control(k, value), encoder(e, step), beatWide(i, position)}; now() = clock in ms (Date.now), a parameter for the tests
    Tempester.panelMachine.mount(container, deps) draws the view; deps = {link, onKey, onPad, onTransport, remote,
         panel (Tempester.panel.parts), paramMax(index), paramName(index)}; returns {setRemote(on),
         setParam(index, value), setValues(values), setScreen({name, mode}), setMode(index | null),
-        setBeatWide(on), reportBeatWide(i, position), refit()}
+        setBeatWide(on), reportBeatWide(i, position), reportMixer(item, value), setShift(on), refit()}
    Tempester.panelMachine.CONTROLS               the knob table, checked against refs/panel_controls.tsv */
 "use strict";
 window.Tempester = window.Tempester || {};
@@ -58,7 +65,7 @@ window.Tempester.panelMachine = (function () {
     ["abs", 3, "Audio Mod", "Audio Mod"],
     ["abs", 4, "Resonance", "Lowpass Resonance"],
     ["abs", 5, "Frequency", "Lowpass Frequency"],
-    ["abs", 6, "Pan", "Pan"],
+    ["abs", 6, "Pan", "Pan (Shift: Delay Repeats)"],
     ["abs", 7, "Level", "Level"],
     ["abs", 8, "Volume", "Volume"],
     ["abs", 9, "Distort", "Distort"],
@@ -118,6 +125,29 @@ window.Tempester.panelMachine = (function () {
   /* The machine answers a turn with a per-parameter NRPN within a main-loop pass plus the MIDI transfer (a few
      ms, USB or DIN); 400 ms is far more than that and still shorter than a second, deliberate turn of another knob. */
   const ATTRIBUTION_MS = 400;
+  /* n°38: the items the machine reports, with the knob (absolute control) or the encoder each one is shown on. The
+     machine stores Level, Pan and Volume as the knob byte >> 1, Distort and Compress as the byte, Delay Repeats as
+     (byte >> 1) x 126 / 127. */
+  const MIXER_REPORTS = {
+    level: { abs: 7 },
+    pan: { abs: 6 },
+    delay_repeats: { abs: 6 },
+    volume: { abs: 8 },
+    distort: { abs: 9 },
+    compress: { abs: 2 },
+    delay_send: { enc: 9 },
+    delay_time: { enc: 9 },
+    tempo: { enc: 8 },
+    swing: { enc: 8 },
+  };
+  /* A report answers the knob the user just moved (the machine reports what the app sends): the user's hand wins for
+     this long after the last move. Longer than the round trip, shorter than a deliberate second move. */
+  const REPORT_QUIET_MS = 400;
+  /* How long a reported number stays in an encoder's bubble. */
+  const REPORT_SHOW_MS = 1500;
+  const SHIFT_LED = 0x26;
+  const HALF_MAX = 127;
+  const REPEATS_MAX = 126;
   const ABS_MAX = 255,
     ABS_MID = 128,
     /* The machine reads value >> 1: two units are one step of its 7-bit knob. */
@@ -126,6 +156,45 @@ window.Tempester.panelMachine = (function () {
     ENC_PX_PER_STEP = 8,
     ENC_MAX_STEP = 15,
     ENC_MIN_STEP = -16;
+
+  /* The rule that keeps a report from moving a control under the user's finger: busy while held, and for
+     REPORT_QUIET_MS after the last touch (a release counts as one). One rule, used by the Machine view's knobs and the
+     Full view's. */
+  function createReportGuard(now = () => Date.now()) {
+    const held = new Set(),
+      touched = new Map();
+    return {
+      touch: (key) => touched.set(key, now()),
+      hold(key) {
+        held.add(key);
+        touched.set(key, now());
+      },
+      release(key) {
+        held.delete(key);
+        touched.set(key, now());
+      },
+      held: (key) => held.has(key),
+      busy: (key) =>
+        held.has(key) ||
+        (touched.has(key) && now() - touched.get(key) <= REPORT_QUIET_MS),
+    };
+  }
+
+  /* The reported values the Full view has a knob for (named like the items; its BPM is the app's own clock and never
+     follows the machine). Volume is on the knob's 7-bit scale, Distort and Compress raw 0-255, as the reports are. */
+  const FULL_VIEW_REPORTS = ["volume", "distort", "compress"];
+  function followInFullView(guard, setLocal, item, value) {
+    if (!FULL_VIEW_REPORTS.includes(item) || guard.busy(item)) return false;
+    setLocal(item, value);
+    return true;
+  }
+
+  /* The number an encoder's bubble shows for a reported value. */
+  function formatReported(item, value) {
+    return item === "tempo" ? (value / 10).toFixed(1) : String(value);
+  }
+  const repeatsOfByte = (byte) => Math.floor(((byte >> 1) * REPEATS_MAX) / HALF_MAX);
+  const byteOfRepeats = (v) => Math.round((v * HALF_MAX) / REPEATS_MAX) * 2;
 
   /* ---------- The controls, without any drawing ---------- */
   const angleOf = (detents) =>
@@ -144,7 +213,13 @@ window.Tempester.panelMachine = (function () {
       flashStart: 0,
     }));
     const captions = new Map();
-    const dragging = new Set();
+    const guard = createReportGuard(now);
+    const absKey = (k) => "abs" + k;
+    /* The Pan knob is also Delay Repeats' (with Shift on the machine): both values are kept, the knob shows the one
+       the machine's Shift selects. */
+    const pair = { pan: null, repeats: null };
+    let shift = false;
+    const reportedText = new Array(14).fill(null);
     let lastTurn = null;
     let mode = null;
     const bw = new Array(BEAT_WIDE.length).fill(null);
@@ -187,9 +262,15 @@ window.Tempester.panelMachine = (function () {
       const next = clampAbs(value);
       if (next === abs[k]) return false;
       abs[k] = next;
+      guard.touch(absKey(k));
+      if (k === 6) rememberPair(next);
       noteTurn("abs", k);
       link.control(k, next);
       return true;
+    }
+    function rememberPair(byte) {
+      if (shift) pair.repeats = repeatsOfByte(byte);
+      else pair.pan = byte >> 1;
     }
     /* A drag is relative to where the knob was when it was taken (the middle when its position is not known). */
     function dragAbs(k, startValue, dyUp) {
@@ -236,11 +317,62 @@ window.Tempester.panelMachine = (function () {
     function encoderView(e) {
       const burst = bursts[e],
         age = now() - burst.at;
+      const said = reportedText[e];
+      const turnCount = age < COUNT_WINDOW_MS ? formatCount(burst.sum) : "";
+      /* A report newer than the last turn is the machine's own answer: its number replaces the turn's count. */
+      const reported =
+        said !== null && now() - said.at < REPORT_SHOW_MS && said.at >= burst.at;
       return {
         angle: angleOf(turned[e]),
         flash: age < FLASH_MS ? burst.flash : null,
-        count: age < COUNT_WINDOW_MS ? formatCount(burst.sum) : "",
+        count: reported ? said.text : turnCount,
       };
+    }
+    /* ----- n°38: what the machine reports ----- */
+    function reportKnob(k, byte) {
+      if (guard.busy(absKey(k)) || abs[k] === byte) return false;
+      abs[k] = byte;
+      return true;
+    }
+    /* Keeps the knob's own byte when it already stands for the reported 7-bit value (no 1-unit jitter). */
+    const halfByte = (k, v) => (abs[k] !== null && abs[k] >> 1 === v ? abs[k] : v * 2);
+    /* The Pan knob shows Pan, or Delay Repeats while Shift is lit. */
+    function showPanKnob() {
+      const v = shift ? pair.repeats : pair.pan;
+      if (v === null) return false;
+      const current = abs[6];
+      const same =
+        current !== null && (shift ? repeatsOfByte(current) : current >> 1) === v;
+      return reportKnob(6, same ? current : shift ? byteOfRepeats(v) : v * 2);
+    }
+    /* The one entry point for a report of the machine: returns true when something to draw changed. */
+    function report(item, value) {
+      const target = MIXER_REPORTS[item];
+      if (target === undefined || !Number.isFinite(value)) return false;
+      if (target.enc !== undefined) {
+        if (item === "tempo" && value === 0) return false;
+        reportedText[target.enc] = { text: formatReported(item, value), at: now() };
+        return true;
+      }
+      switch (item) {
+        case "pan":
+          pair.pan = Math.min(HALF_MAX, value);
+          return showPanKnob();
+        case "delay_repeats":
+          pair.repeats = Math.min(REPEATS_MAX, value);
+          return showPanKnob();
+        case "distort":
+        case "compress":
+          return reportKnob(target.abs, clampAbs(value));
+        default:
+          return reportKnob(target.abs, halfByte(target.abs, Math.min(HALF_MAX, value)));
+      }
+    }
+    /* The machine's Shift LED: the Pan knob then stands for Delay Repeats. */
+    function setShift(on) {
+      if (shift === !!on) return false;
+      shift = !!on;
+      return showPanKnob();
     }
     /* A per-parameter NRPN from the machine. The absolute knobs that are a sound parameter own theirs by number;
        any other one answers the control turned within ATTRIBUTION_MS, and only the first parameter it reports
@@ -270,7 +402,7 @@ window.Tempester.panelMachine = (function () {
     }
     function paramToAbs(index, value, max) {
       const k = ABS_OF_PARAM[index];
-      if (k === undefined || dragging.has(k) || !max) return null;
+      if (k === undefined || guard.held(absKey(k)) || !max) return null;
       abs[k] = clampAbs((value * ABS_MAX) / max);
       return k;
     }
@@ -310,8 +442,11 @@ window.Tempester.panelMachine = (function () {
       stepEncoder,
       turnEncoder,
       paramToAbs,
-      hold: (k) => dragging.add(k),
-      release: (k) => dragging.delete(k),
+      hold: (k) => guard.hold(absKey(k)),
+      release: (k) => guard.release(absKey(k)),
+      report,
+      setShift,
+      shifted: () => shift,
       resetPending: (e) => (pending[e] = 0),
     };
   }
@@ -454,7 +589,7 @@ window.Tempester.panelMachine = (function () {
       for (const end of ["pointerup", "pointercancel"])
         svg.addEventListener(end, () => {
           if (wide !== null) controls.releaseBeatWide(wide);
-          else controls.release(n);
+          else if (!encoder) controls.release(n);
           wide = null;
         });
       svg.addEventListener(
@@ -632,6 +767,12 @@ window.Tempester.panelMachine = (function () {
     function reportBeatWide(i, position) {
       if (controls.reportBeatWide(i, position)) redraw();
     }
+    function reportMixer(item, value) {
+      if (controls.report(item, value)) redraw();
+    }
+    function setShift(on) {
+      if (controls.setShift(on)) redraw();
+    }
     function redraw() {
       draws.forEach((d) => d());
     }
@@ -675,6 +816,8 @@ window.Tempester.panelMachine = (function () {
       setMode,
       setBeatWide,
       reportBeatWide,
+      reportMixer,
+      setShift,
       refit: () => {
         if (!frame.clientWidth) return;
         window.Tempester.panelView.applyScale(frame, face, F.SIZE.w, MAX_FIT);
@@ -697,6 +840,11 @@ window.Tempester.panelMachine = (function () {
     ATTRIBUTION_MS,
     isInert,
     MAX_FIT,
+    MIXER_REPORTS,
+    REPORT_QUIET_MS,
+    SHIFT_LED,
+    createReportGuard,
+    followInFullView,
     createControls,
     mount,
   };

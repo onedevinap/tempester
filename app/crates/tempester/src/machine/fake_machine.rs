@@ -1,6 +1,8 @@
 //! A scripted Tempest for demos and tests (`TEMPESTER_FAKE_MIDI=1`): answers the identity request, `40` with a
 //! `60` sound, `41` with a `5F` beat, `42` with a whole project (`5E` + 16 x `5C`), all synthetic, and keeps the sound or beat it is sent, so that a restore
-//! can be seen. With its remote panel (Tempester 1.6.0.0, `fake_panel`) it also answers keys and LED requests.
+//! can be seen. With its remote panel (Tempester 1.6.0.0, `fake_panel`) it also answers keys and LED requests, reports
+//! its Pad Function mode (n°40) and answers the version request (n°39) with 1.6.3.0, as the test build 1.6.4.0-c does
+//! (it keeps the version digits of 1.6.3.0).
 //! A project sent to it (`5E`, then `5C n`) is stored and answered by request `42` (beats not sent keep their content,
 //! as on the machine); with the n°28 defect switched on it reads the Play Lists like the stock OS (`shifted_lists`).
 //! `debug_send` plays the Debug-menu OS sends, one of them as a constant (as seen on the real machine).
@@ -13,7 +15,8 @@ use tempest_midi::message::Message;
 use tempest_midi::{FakeTransport, StreamParser};
 use tempest_proto::beat::{self, PADS};
 use tempest_proto::beat_sequence::{synthetic_sequence_beat, BeatEvent};
-use tempest_proto::identity::IDENTITY_REQUEST;
+use tempest_proto::identity::{TempesterVersion, IDENTITY_REQUEST, VERSION_REQUEST};
+use tempest_proto::mixer_report::{report_bytes, MixerItem};
 use tempest_proto::os_image::{self, OsId, BLOCK_SIZE};
 use tempest_proto::pad_notes::PadNotes;
 use tempest_proto::project::{self, Received, BEATS};
@@ -25,6 +28,9 @@ use tempest_proto::sound_message::{
 const IDENTITY_REPLY: [u8; 14] = [
     0xF0, 0x7E, 0x7F, 0x06, 0x02, 0x01, 0x28, 0x01, 0x00, 0x00, 0x15, 0x02, 0x7F, 0xF7,
 ];
+
+/// What the fake announces to the version request (n°39).
+const ANNOUNCED: TempesterVersion = TempesterVersion([1, 6, 3, 0]);
 
 /// The project in the machine's RAM: its decoded `5E` data and the decoded data of each of the 16 beats.
 struct StoredProject {
@@ -203,6 +209,15 @@ fn answer(state: &mut State, sysex: &[u8]) -> Vec<Vec<u8>> {
     if sysex == IDENTITY_REQUEST {
         return vec![IDENTITY_REPLY.to_vec()];
     }
+    if sysex == VERSION_REQUEST {
+        // Only the Tempester with the remote panel knows the request; the others ignore it, as a machine without n°39.
+        return state
+            .panel
+            .as_ref()
+            .and_then(|_| ANNOUNCED.reply())
+            .into_iter()
+            .collect();
+    }
     if sysex == REQUEST_SOUND {
         return vec![sound_message::encode_current(&state.sound)];
     }
@@ -241,11 +256,21 @@ fn beat_with_probability(state: &State) -> Vec<u8> {
 }
 
 /// Moves of the machine's own controls, as Tempester 1.6.3.0 reports them on Remote Pad OUT (channel 2 here): FX ribbon
-/// 1 touched at 96 then released (n°31), LP Freq beat-wide at 151 (n°29: MSB 75, LSB 0x40).
+/// 1 touched at 96 then released (n°31), LP Freq beat-wide at 151 (n°29: MSB 75, LSB 0x40), then three mixer reports (n°38).
 pub fn perform_moves(transport: &FakeTransport) {
     transport.push_incoming(&[
         0xB1, 0x6C, 96, 0xB1, 0x6E, 0, 0xB1, 0x16, 75, 0xB1, 0x36, 0x40,
     ]);
+    // n°38: the selected pad's Level moved to 72, the tempo to 121.5 and the Distort knob to its upper half.
+    for (item, value) in [
+        (MixerItem::Level, 72),
+        (MixerItem::Tempo, 1215),
+        (MixerItem::Distort, 200),
+    ] {
+        if let Ok(bytes) = report_bytes(1, item, value) {
+            transport.push_incoming(&bytes);
+        }
+    }
 }
 
 /// The sound of pad `pad` in beat `beat` of the synthetic project: eight kinds, three variants across the beats, so
@@ -348,6 +373,18 @@ mod tests {
 
         let identity = tempest_proto::identity::parse(&reply).unwrap();
         assert_eq!(identity.version, 0x7F2);
+    }
+
+    #[test]
+    fn test_scripted_when_version_requested_returns_1_6_3_0_only_with_the_remote_panel() {
+        let reply = ask(&scripted(true), &VERSION_REQUEST);
+        let silent = ask(&scripted(false), &VERSION_REQUEST);
+
+        assert_eq!(
+            tempest_proto::identity::parse_version(&reply),
+            Some(TempesterVersion([1, 6, 3, 0]))
+        );
+        assert!(silent.is_empty());
     }
 
     #[test]

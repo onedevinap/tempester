@@ -38,7 +38,7 @@ over USB; « verified » adds that the Main OS read back from the machine matche
 [testing](testing.md#verified-on-a-real-machine) for what was checked each time. The app offers the releases; the
 test versions are built by the verifier only, to prove a patch on its own.
 
-**Which one?** 1.6.3.0 is the latest release, with everything. 1.5.6.0 is the corrections-only release: the bug fixes
+**Which one?** 1.6.4.0 is the latest release, with everything; it is proved in simulation but not yet installed on a machine, so 1.6.3.0 is the latest one verified on a real Tempest. 1.5.6.0 is the corrections-only release: the bug fixes
 with the sound and beat requests and NRPN, without the 1.6 additions.
 
 | Version | Builds on | Adds | Status |
@@ -57,6 +57,11 @@ with the sound and beat requests and NRPN, without the 1.6 additions.
 | **1.6.2.0** MIDI transfers | 1.6.1.0 | n°26, 27, 28, 29, 30 together | installed and verified (8 Nov) |
 | 1.6.3.0-a, -b, -c (test) | 1.6.2.0 | n°31-32, n°33-35 and n°36, each group alone | not installed |
 | **1.6.3.0** performance and browsing | 1.6.2.0 | n°31, 32, 33, 34, 35, 36 together | **installed and verified** (9 Nov) |
+| 1.6.4.0-a (test) | 1.6.3.0 | n°37 alone: dead code erased, room for new functions | not installed |
+| 1.6.4.0-b (test) | 1.6.3.0 | n°38 alone | not installed |
+| 1.6.4.0-c (test) | 1.6.3.0 | n°39, 40: the exact version and the Pad Function mode announced | not installed |
+| 1.6.4.0-d (test) | 1.6.3.0 | n°41, 43, 44, 45, 46: five fixes of reported bugs | not installed |
+| **1.6.4.0** room, reports and fixes | 1.6.3.0 | n°37, 38, 39, 40, 41, 43, 44, 45, 46 together | built and proved in simulation (10 Nov), **not installed yet** |
 
 The test versions are kept so that each patch can be checked on its own. 1.6.2.0 and 1.6.3.0 were installed on a real
 machine and verified by reading the Main OS back (see [testing](testing.md#verified-on-a-real-machine)); the behaviours
@@ -359,6 +364,113 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **On a machine**: installed with 1.6.3.0 (image verified) and used on the machine.
 - **Limits**: no screen of the machine shows the value. The official OS ignores it: such a beat plays every note there.
 
+### n°37: room for new functions (dead code erased)
+
+- **Problem**: the official OS carries code that nothing can ever run (an unused text formatter of the C library,
+  floating-point helpers, file-system calls nobody makes, USB, flash and MIDI helpers without caller), and two earlier
+  Tempester patches (n°9a, n°17) left the code they replaced in place. The free flash left on 1.6.3.0 was too small
+  for the next functions.
+- **Effect**: 9,876 bytes in 38 pieces of 64 to 2,228 bytes are erased (0xFF) and can hold new code. Nothing changes
+  for you: the machine runs exactly the same instructions.
+- **Proof**: static: a reachability map of the whole image (from the reset and every interrupt vector, through every
+  jump, call, jump table and code pointer, including pointers built by instruction pairs) finds no path and no pointer
+  to any erased piece, a disassembler's own references agree, and the patched image reaches exactly the same code as
+  1.6.3.0. Counter-proofs: erasing a live routine next to an erased piece, code kept alive only by one pointer, or a
+  piece the map calls only « probably » dead is refused. Simulated: every simulation of 1.6.3.0 passes on it.
+- **On a machine**: not installed yet (test build 1.6.4.0-a).
+- **Limits**: requires n°9a and n°17. A code address computed at run time by arithmetic would not be seen by the map
+  (no sign of one). The Main OS read back from the machine shows 0xFF in those pieces.
+
+### n°38: the machine reports its mixer, beat and main values
+
+- **Problem**: Level, Pan, Delay Send, Delay Time, BPM... could be turned from an editor (remote panel), but turning
+  them on the machine sent nothing, so the editor could not follow.
+- **Effect**: on Remote Pad OUT, the machine sends NRPN 230-239 when one of these values changes: Level, Pan and Delay
+  Send of the selected pad, Delay Time and Delay Repeats of the beat, the tempo (BPM × 10), Swing, Volume, Distort
+  and Compress. Coalesced, at most 4 per main-loop pass, only when the DIN output buffer is nearly empty; all 10 on
+  CC 107. CC 12 / CC 13 are not echoed. Bytes: [MIDI protocol](midi-protocol.md#mixer-beat-and-main-values).
+- **Proof**: simulated with the firmware's own knob handlers and MIDI input: every control x mode x Shift, the other
+  messages unchanged, no echo, output rate limit; 18 wrong variants refused.
+- **On a machine**: not installed yet (test build 1.6.4.0-b).
+- **Limits**: only the selected pad's mixer values; the tempo is not reported while the machine follows MIDI clock
+  (except on CC 107). Requires n°9b.
+- **Found on the way**: Shift + Pan sets Delay Repeats (the remote-panel table said Pan had no Shift function).
+
+### n°39: the exact version on request
+
+- **Problem**: the identity answer of every Tempester gives the same version word, so a program could not tell one
+  Tempester release from another.
+- **Effect**: the request `F0 01 28 43 F7` answers the exact version `a.b.c.d` on the SysEx cable set in System. The
+  number is read where the System screen reads it, so every release announces its own number without a new patch (a
+  test build keeps the number of its base release). The identity answer is unchanged. Bytes:
+  [MIDI protocol](midi-protocol.md#sysex-requests).
+- **Proof**: simulated: the answer on DIN and USB, the number following the screens for other versions, every other
+  command and the identity unchanged, the previous version silent; wrong variants refused.
+- **On a machine**: not installed yet (test build 1.6.4.0-c).
+- **Limits**: digits up to 16383. Requires n°1.
+
+### n°40: the Pad Function mode reported
+
+- **Problem**: a program could only guess the Pad Function mode from the four mode LEDs, after they settled.
+- **Effect**: the mode (16 Beats, 16 Time Steps, 16 Sounds, 16 Tunings, 16 Mutes, 16 Levels) is sent as CC 106 on
+  Remote Pad OUT when it changes and after a full-state request (CC 107), with the rules of the LED reports. Bytes:
+  [MIDI protocol](midi-protocol.md#pad-function-mode-n40-needs-n9b).
+- **Proof**: simulated with the firmware's own panel keys and remote keys: each mode reported once, Off, the output
+  buffer guard, CC 107 on the right channel only, every other MIDI input unchanged; wrong variants refused.
+- **On a machine**: not installed yet (test build 1.6.4.0-c).
+- **Limits**: the mode cannot be set over MIDI (send the Pad Function keys). Requires n°9b.
+
+### n°41: MIDI notes in Pad to Note Mode « Mutes », banks A and B
+
+- **Problem**: with System › Pad to Note Mode = Mutes, a note muted the sound shown on the matching panel pad, so with
+  bank B shown the note of A3 muted B3, and the notes of bank B muted a wrong sound (usually A1); a note assigned to no
+  pad could also toggle a stray sound.
+- **Effect**: the note of a pad (System › MIDI Note: Pad A1-B16) mutes or unmutes that pad's sound, whatever bank is
+  shown; a note assigned to no pad does nothing. The « MIDI Note: Mute » items are still not used.
+- **Proof**: simulated through the MIDI input and the real note handler, both banks; the other modes identical to
+  1.6.3.0; wrong variants refused.
+- **On a machine**: not installed yet (test build 1.6.4.0-d).
+
+### n°43: the first Save no longer offers the Factory folder
+
+- **Problem**: after power-on, the first Save Beat or Save Project proposed the « Factory » folder.
+- **Effect**: it proposes « Beats 1 » and « Projects 1 »; after that the folder you choose or load from is kept, as
+  before, and Factory can still be chosen by hand.
+- **Proof**: simulated from the boot call to the Save dialog.
+- **On a machine**: not installed yet (test build 1.6.4.0-d).
+- **Limits**: the folder of the project loaded at startup is not used.
+
+### n°44: « Undo All Snds » restores everything a single undo does
+
+- **Problem**: Undo All Snds (and Undo Beat, which runs the same code) copied the sounds back but left the sound types,
+  the play states (a sound whose volume crossed zero stayed silent or audible wrongly), the Voice Assign reservations
+  and the pad's LEDs as they were.
+- **Effect**: the same restore as Undo Sound, for every pad.
+- **Proof**: simulated on the real Undo screen with a model of the sound memory; the pad after Undo All equals the pad
+  after a single Undo Sound; wrong variants refused.
+- **On a machine**: not installed yet (test build 1.6.4.0-d).
+
+### n°45: Reverse Off turns every reverse off
+
+- **Problem**: Reverse on, then a change of beat or of pad mode, then Reverse off: the LED went off but a beat kept
+  recording reversed notes, or the playback stayed reversed.
+- **Effect**: Reverse off clears the reverse of every beat and the live reverse of 16 Beats / 16 Mutes.
+- **Proof**: simulated through the real Reverse key; Reverse on identical to 1.6.3.0; wrong variants refused.
+- **On a machine**: not installed yet (test build 1.6.4.0-d).
+- **Limits**: after a beat change during playback in 16 Beats / 16 Mutes, the LED can still stay lit while the
+  playback is forward (unchanged).
+
+### n°46: the Save/Load browser opens a folder much faster
+
+- **Problem**: the browser read the folder's directory again for every file name: 9,161 directory reads for 76 files,
+  growing with the square of the folder size.
+- **Effect**: one pass over the directory; the same list, in the same order. When that pass cannot be sure of the
+  result (an empty folder, more than 256 files, a folder that changed while it was read), the official listing runs.
+- **Proof**: simulated for sound, beat and project folders: the list equal to 1.6.3.0's, file for file; wrong
+  variants refused.
+- **On a machine**: not installed yet (test build 1.6.4.0-d).
+- **Limits**: the time of a storage read is not modelled.
+
 ## How the patches are proved
 
 - **Static checks**: every replaced word is checked against the input image (by SHA-256 of the whole file and of the
@@ -377,4 +489,6 @@ None of this is a guarantee. Read [Before you install](user-manual.md#before-you
 Among others: crossed note-offs lost in rare cases; the projection shift in odd-meter loops (n°8 limits); the
 compressor Amount clamp; a latent defect in the factory update routine (a failed read-back of one row erases the whole
 4 KB page and rewrites only that row; it never showed and the page is never modified by Tempester); several forum
-reports not studied yet (copy of a beat onto itself, arpeggiator sync, roll swing, and more).
+reports studied but not fixed (copy of a beat onto the playing beat, arpeggiator sync, roll swing, and more); the
+« start offset as slave » report is not explained by the code: the first step plays a tenth of a millisecond after the
+first clock, and only the last quarter of each clock is late.

@@ -3,9 +3,13 @@
    The four mode LEDs tell it: 0x10 alone = Beats, 0x11 alone = Time Steps, 0x18 alone = Sounds, 0x19 alone = Mutes,
    0x10 + 0x11 = Tunings, 0x18 + 0x19 = Levels. On a change the machine turns the four LEDs off, then on again, so the
    state is only trusted once no LED has changed for SETTLE_MS.
+   A Tempester with n°40 says the mode itself (CC 106, the `pad_mode` event): once announced, the announcement is the
+   mode, at once, and the LEDs no longer decide it, until the panel is lost (reset).
 
-   Tempester.panelMode.create({onMode, setTimer, clearTimer, settleMs}) -> {feed(changes), reset(), mode()}
-        onMode(index | null)   the settled mode (null = unknown or no single mode lit)
+   Tempester.panelMode.create({onMode, setTimer, clearTimer, settleMs}) -> {feed(changes), announce(index), reset(),
+        mode()}
+        onMode(index | null)   the mode (null = unknown or no single mode lit)
+        announce(index)        the mode the machine announced (0-5; anything else is ignored)
    Tempester.panelMode.decode(lit)  index of the mode for a set of lit LED indexes, or null
    Tempester.panelMode.NAMES */
 "use strict";
@@ -46,7 +50,8 @@ window.Tempester.panelMode = (function () {
   }) {
     const lit = new Set();
     let current = null,
-      timer = null;
+      timer = null,
+      announced = false;
 
     function settle() {
       timer = null;
@@ -67,19 +72,30 @@ window.Tempester.panelMode = (function () {
         if (on) lit.add(index);
         else lit.delete(index);
       }
-      if (touched) schedule();
+      if (touched && !announced) schedule();
+    }
+    function announce(index) {
+      if (!Number.isInteger(index) || index < 0 || index >= NAMES.length)
+        return;
+      announced = true;
+      if (timer !== null) clearTimer(timer);
+      timer = null;
+      if (index === current) return;
+      current = index;
+      onMode(current);
     }
     /* The panel is gone (disconnected, no remote panel): what was read is no longer true. */
     function reset() {
       if (timer !== null) clearTimer(timer);
       timer = null;
       lit.clear();
+      announced = false;
       if (current !== null) {
         current = null;
         onMode(null);
       }
     }
-    return { feed, reset, mode: () => current };
+    return { feed, announce, reset, mode: () => current };
   }
 
   return { NAMES, MODE_LEDS, SETTLE_MS, decode, create };

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Counter-proofs of tools/dsi_content_guard.py: a planted DSI fragment, in every form the guard claims to see, must
-turn it red, and the same file with the fragment broken must leave it green; the patches written back in the former
-{adresse, origine, nouveau} format (DSI's original words) and a Rust table holding them must be red, the recipes green.
+turn it red, and the same file with the fragment broken must leave it green; the two words of a pair on either side
+of a blank line (two recipes of a generated table) must leave it green, the same two lines without the blank line red;
+the patches written back in the former {adresse, origine, nouveau} format (DSI's original words) and a Rust table
+holding them must be red, the recipes green.
 
 usage: dsi_content_guard_counter_proofs.py <folder of the DSI .syx files> <scratch folder>
 Writes only in <scratch folder> (planted files are never left in the repository). Exit 1 at the first proof that
@@ -84,6 +86,14 @@ def main() -> None:
         green.write_bytes(broken)
         check(f'{name}: DSI words at {offset:#x} refused', not guard(dsi, red))
         check(f'{name}: same file with the second word broken accepted', guard(dsi, green))
+    # A blank line ends a run: the pair split over two paragraphs (the tail of one recipe, the head of the next in
+    # app/.../generated/versions.rs) is not a quoted run of DSI words; the same two lines joined are.
+    rows = planted(first, second)['table.rs'].decode().splitlines()
+    split, joined = scratch / 'green' / 'two_recipes.rs', scratch / 'red' / 'two_recipes.rs'
+    split.write_text(f'{rows[0]}\n    ],\n}};\n\nstatic P_NEXT: Patch = Patch {{\n{rows[1]}\n')
+    joined.write_text(f'{rows[0]}\n    ],\n}};\nstatic P_NEXT: Patch = Patch {{\n{rows[1]}\n')
+    check('the pair split by a blank line (two recipes of a generated table) accepted', guard(dsi, split))
+    check('the same two lines without the blank line refused', not guard(dsi, joined))
     firmware = scratch / 'firmware' / 'harmless.syx'
     firmware.parent.mkdir(exist_ok=True)
     firmware.write_bytes(b'\xf0\x7e\x7f\x06\x01\xf7')

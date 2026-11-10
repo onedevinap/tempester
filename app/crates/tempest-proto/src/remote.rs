@@ -16,6 +16,10 @@ pub const CC_KEY_RELEASE: u8 = 103;
 pub const CC_LED_ON: u8 = 104;
 pub const CC_LED_OFF: u8 = 105;
 pub const CC_STATE_REQUEST: u8 = 107;
+/// Tempester n°40: the machine sends its Pad Function mode as `CC 106 = mode` on Remote Pad OUT, when it changes and
+/// after a state request (`CC 107`). Modes 0-5: 16 Beats, 16 Time Steps, 16 Sounds, 16 Tunings, 16 Mutes, 16 Levels.
+pub const CC_PAD_MODE: u8 = 106;
+pub const PAD_MODE_COUNT: u8 = 6;
 /// Key codes are 0-48.
 pub const KEY_COUNT: u8 = 49;
 /// LED indexes are 0-59; 0x2C-0x3B are the 16 pad LEDs.
@@ -147,9 +151,50 @@ pub fn led_change(status: u8, controller: u8, value: u8) -> Option<LedChange> {
     }
 }
 
+/// The Pad Function mode carried by a channel message (n°40), if it is one. Like the LEDs, any channel: only the
+/// remote panel sends `CC 106`. A value outside 0-5 is no mode.
+pub fn pad_mode(status: u8, controller: u8, value: u8) -> Option<u8> {
+    (status & 0xF0 == 0xB0 && controller == CC_PAD_MODE && value < PAD_MODE_COUNT).then_some(value)
+}
+
+/// The mode report the machine sends on `channel` (0-15), as the fake machine plays it.
+pub fn pad_mode_report(channel: u8, mode: u8) -> Result<[u8; 3], RemoteError> {
+    if mode >= PAD_MODE_COUNT {
+        return Err(RemoteError::BadValue(u16::from(mode)));
+    }
+    Ok([status(channel)?, CC_PAD_MODE, mode])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_pad_mode_when_cc_106_on_any_channel_returns_the_mode() {
+        assert_eq!(pad_mode(0xB0, 106, 0), Some(0));
+        assert_eq!(pad_mode(0xB1, 106, 5), Some(5));
+        assert_eq!(pad_mode(0xBF, 106, 3), Some(3));
+    }
+
+    #[test]
+    fn test_pad_mode_when_other_message_or_value_returns_none() {
+        assert_eq!(pad_mode(0xB0, 106, 6), None);
+        assert_eq!(pad_mode(0xB0, 105, 2), None);
+        assert_eq!(pad_mode(0x90, 106, 2), None);
+        assert_eq!(pad_mode(0xB0, 107, 1), None);
+    }
+
+    #[test]
+    fn test_pad_mode_report_when_built_returns_the_bytes_of_the_analysis_and_reads_back() {
+        // `Bm 6A mode` (Docs/analyses/feature-identity-mode.md), m = Remote Pad OUT - 1.
+        assert_eq!(pad_mode_report(1, 4), Ok([0xB1, 0x6A, 4]));
+        assert_eq!(pad_mode_report(0, 6), Err(RemoteError::BadValue(6)));
+        assert_eq!(pad_mode_report(16, 0), Err(RemoteError::BadChannel(16)));
+        for mode in 0..PAD_MODE_COUNT {
+            let [s, c, v] = pad_mode_report(2, mode).expect("in range");
+            assert_eq!(pad_mode(s, c, v), Some(mode));
+        }
+    }
 
     #[test]
     fn test_key_when_pressed_and_released_returns_cc_102_and_103() {

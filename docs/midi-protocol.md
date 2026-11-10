@@ -15,6 +15,7 @@ DIN and USB unless stated; replies and reports leave on the cable or channel sta
 - [Remote panel](#remote-panel)
 - [Beat-wide positions](#beat-wide-positions)
 - [FX ribbons](#fx-ribbons)
+- [Mixer, beat and main values](#mixer-beat-and-main-values)
 - [Play probability](#play-probability)
 - [7-bit packing](#7-bit-packing)
 - [Sound parameter numbers](#sound-parameter-numbers)
@@ -29,10 +30,12 @@ DIN and USB unless stated; replies and reports leave on the cable or channel sta
 | Request `42` (whole project); 4 Pole / AD Mode LEDs follow NRPN | 1.6.1.0 | n°24, n°25 |
 | Request `42` draws nothing on the screen; standard last packed group; project receive fixed; beat-wide CC 52-59 and reports; SysEx timeout | 1.6.2.0 | n°26 to n°30 |
 | FX ribbons over MIDI (CC 108-113); play probability per pad (CC 14) | 1.6.3.0 | n°31, n°36 |
+| Mixer, beat and main values reported (NRPN 230-239) | test build 1.6.4.0-b | n°38 |
+| Request `43` (exact Tempester version); Pad Function mode reported (CC 106) | not in a release yet (test build 1.6.4.0-c) | n°39, n°40 |
 
 ## SysEx requests
 
-The official OS answers no request. Tempester adds three. Each reply leaves on the cable set in System > *MIDI: SysEx
+The official OS answers no request. Tempester adds four. Each reply leaves on the cable set in System > *MIDI: SysEx
 IN+OUT Cable* (USB or DIN), and is the same message the machine's menu would send.
 
 | Request | Reply | Content |
@@ -40,6 +43,7 @@ IN+OUT Cable* (USB or DIN), and is the same message the machine's menu would sen
 | `F0 01 28 40 F7` | `F0 01 28 60 <data> F7` | the sound of the pad selected on the machine: 128 bytes, 7-bit packed |
 | `F0 01 28 41 F7` | `F0 01 28 5F <data> F7` | the current beat (events, settings and its 32 sounds) |
 | `F0 01 28 42 F7` | `F0 01 28 5E <data> F7`, then `F0 01 28 5C <k> <data> F7` for each beat k (0-15) present in the project | the whole project: header and 4 Play Lists, then its beats; byte for byte what the menu sends when it exports the project |
+| `F0 01 28 43 F7` | `F0 01 28 43 a1 a0 b1 b0 c1 c0 d1 d0 F7` | the exact Tempester version `a.b.c.d` (n°39), each digit `N` as two bytes `N >> 7`, `N & 7F` (0-16383): the number System > *Main OS Version* shows |
 
 Notes:
 
@@ -47,7 +51,10 @@ Notes:
 - A request is served from the machine's main loop. A 16-beat project takes tens of seconds on DIN.
 - The machine receives these same messages (`60`, `5F`, `5E` + `5C`) to load a sound, a beat or a project; that is
   stock behaviour. Receiving a project into Play Lists correctly needs n°28 (1.6.2.0).
-- Unknown commands are ignored as before.
+- Unknown commands are ignored as before: a machine without n°39 does not answer `43`, so a program that gets no
+  answer within a second falls back to what it knows (the identity says only « Tempester »).
+- The version is read from the same place the System screen reads it: every release announces its own number. A test
+  build keeps the number of the release it is built on.
 
 ## Identity
 
@@ -55,7 +62,8 @@ Universal identity request `F0 7E 7F 06 01 F7`. Reply:
 `F0 7E <device> 06 02 01 28 01 00 00 15 <v1> <v2> F7`, version word `v = v1 | v2 << 4`.
 
 - Every Tempester version answers `v = 0x7F2` (`v1 = 02`, `v2 = 7F`); the official OS answers its own word. The word says
-  « Tempester », not which release: read System > *Main OS Version* for that.
+  « Tempester », not which release: ask with the request `43` ([above](#sysex-requests)) from n°39 on, or read System >
+  *Main OS Version*. The identity reply itself is unchanged, so existing identity readers keep working.
 - The official OS sends this reply on the DIN port only. From 1.5.2.0 it follows the SysEx cable setting.
 
 ## Sound parameters (NRPN)
@@ -116,6 +124,19 @@ pads 1-16, sent only after a `CC 107` with value bit 0 set; 0x12 is Sound Bank B
 Changes are sent at most 4 per main-loop pass and only when the DIN output buffer is nearly empty; a LED that toggles
 back before it is sent produces nothing. Remote Pad OUT must not be *Off*.
 
+### Pad Function mode (n°40, needs n°9b)
+
+| Message | Meaning |
+|---|---|
+| `Bm 6A pp` (CC 106) from the machine | the Pad Function mode is `pp`: 0 16 Beats, 1 16 Time Steps, 2 16 Sounds, 3 16 Tunings, 4 16 Mutes, 5 16 Levels |
+
+Sent when the mode changes (a panel key or a remote key), and again after a `CC 107`, after the LEDs. Same rules as the
+LEDs: Remote Pad OUT must not be *Off* (the change is sent once it is on), and only when the DIN output buffer is
+nearly empty. Nothing sets the mode over MIDI: send the Pad Function keys (16 = 16 Beats, 17 = 16 Time Steps,
+24 = 16 Sounds, 25 = 16 Mutes; 16 Tunings and 16 Levels are two keys held). The first report after power-on gives the
+start mode (16 Sounds). Without n°40, read the mode from the four mode LEDs (0x10, 0x11, 0x18, 0x19) once they have
+stopped changing.
+
 ### Encoders and absolute knobs (n°23, needs n°9a)
 
 | NRPN | Control | Value |
@@ -135,7 +156,7 @@ Bytes: encoder `e` one step up = `Bn 63 01 Bn 62 <48+e> Bn 06 40 Bn 26 01`, one 
 | 3 | Shape (Sample) | | 3 | Audio Mod |
 | 4 | LFO Amount (Destination) | | 4 | Resonance |
 | 5 | Env Amount (Velocity Amt) | | 5 | Lowpass Frequency |
-| 6 | Env Decay (Release) | | 6 | Pan |
+| 6 | Env Decay (Release) | | 6 | Pan (Delay Repeats) |
 | 7 | Env Attack (Sustain Level) | | 7 | Level |
 | 8 | BPM (Swing) | | 8 | Volume |
 | 9 | Delay Send (Delay Time) | | 9 | Distort |
@@ -188,6 +209,35 @@ From 1.6.3.0 (n°31, needs n°9b). `r` = 0 for ribbon 1, 1 for ribbon 2.
 
 The footswitch pads of the same release (n°32) are a setting on the machine (System, *Pedal 1/2 Assignment*: « Pad 1 »
 ... « Pad 16 »); they add no MIDI message: the pad plays as when it is pressed by hand.
+
+## Mixer, beat and main values
+
+From the test build 1.6.4.0-b (n°38, needs n°9b). The machine **reports** these values on Remote Pad OUT as NRPN
+`230 + item`: `Bm 63 01`, `Bm 62 <66 + item>`, `Bm 06 <v >> 7>`, `Bm 26 <v & 7F>` (full status every time). Example:
+Level 72 on channel 3 = `B2 63 01 B2 62 66 B2 06 00 B2 26 48`.
+
+| NRPN | Item | Value | Machine control |
+|---|---|---|---|
+| 230 | Level of the selected pad | 0-127 | knob Level (absolute 7): knob byte >> 1 |
+| 231 | Pan of the selected pad | 0-127 | knob Pan (absolute 6): knob byte >> 1 |
+| 232 | Delay Send of the selected pad | 0-127 | encoder Delay Send (9) |
+| 233 | Delay Time of the beat | 0-11 | Shift + encoder Delay Send |
+| 234 | Delay Repeats of the beat | 0-126 | Shift + knob Pan: (knob byte >> 1) × 126 / 127 |
+| 235 | Tempo × 10 (rounded; 0 = unknown) | 300-2500 (30.0-250.0 BPM) | encoder BPM (8), 0.5 BPM per step |
+| 236 | Swing | 0-12 | Shift + encoder BPM |
+| 237 | Volume | 0-127 | knob Volume (absolute 8): knob byte >> 1 |
+| 238 | Distort | 0-255 | knob Distort (absolute 9): the knob byte, 0 below 4 |
+| 239 | Compress | 0-255 | knob Compress (absolute 2): the knob byte |
+
+- Sent on the main-loop pass after the value changes, whatever changed it (a knob, the remote panel, a beat or pad
+  change, a beat received), the latest value only, at most 4 reports per pass and only when the DIN output buffer is
+  nearly empty; DIN then USB. *Off*: nothing, the changes go out when Remote Pad OUT is set again. Nothing at power on.
+- Not sent: a value set by `CC 12` / `CC 13` (the sender knows it), and the tempo while the machine follows MIDI clock.
+- `Bn 6B xx` (CC 107) also sends the 10 values.
+- The machine ignores NRPN 230-239: sending a report back changes nothing.
+- `CC 12` / `CC 13` (official OS) set Distort / Compress to the value 0-127, the same as the knob at that byte: the
+  upper half of the knob's range needs the remote panel (NRPN 229 / 222).
+- Mute, Solo and Delay On of the selected pad are the LEDs 0x0E, 0x07, 0x0F ([remote panel](#leds-n22-needs-n9b)).
 
 ## Play probability
 

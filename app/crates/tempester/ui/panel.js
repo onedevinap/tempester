@@ -9,6 +9,7 @@
               onPad: pad 0-31 (A1-B16: the Sound Bank B LED of the machine adds 16, as its key does), the same pad
               for the press and its release
               onLocal: the BPM, Distort, Compress and Volume knobs (the only ones that are not sound parameters)
+              onHold(name, down): one of those knobs taken (true) or let go (false)
               onTransport: the Play (true) and Stop (false) keys (MIDI Start and Stop)
               onKey: a key of the remote panel (Tempester 1.6.0.0) pressed (true) or released (false), by key code
    Tempester.panel.setLocal(name, val)   the BPM knob moved elsewhere (the Play page)
@@ -73,7 +74,7 @@ window.Tempester.panel = (function () {
   const etat = { dernier: 34, groupe: [34, 35, 37, 39], son: "" };
   /* The knobs that are not sound parameters. BPM is the app's clock tempo; Distort and Compress are CC 12 and 13;
      Volume is the absolute control 8 of the remote panel (Tempester 1.6.0.0; the stock OS never reads CC 7). The
-     machine does not report its volume, so the knob starts at its default and only moves what is sent. */
+     knob starts at its default; Tempester 1.6.4.0 reports Volume, Distort and Compress (setLocal). */
   const LOCAL = {
     bpm: {
       min: 20,
@@ -83,8 +84,20 @@ window.Tempester.panel = (function () {
       title:
         "Tempo of the app's clock (Play page): it matters when the app is the clock master",
     },
-    distort: { min: 0, max: 127, def: 0, title: "Distortion (MIDI CC 12)" },
-    compress: { min: 0, max: 127, def: 0, title: "Compression (MIDI CC 13)" },
+    /* 0-255 like the machine's knob: the upper half is reachable only through the remote panel (controls 9 and 2);
+       without it the CC 12 / 13 carry at most 127 (panel-link.js). */
+    distort: {
+      min: 0,
+      max: 255,
+      def: 0,
+      title: "Distortion (remote panel, else MIDI CC 12 up to 127)",
+    },
+    compress: {
+      min: 0,
+      max: 255,
+      def: 0,
+      title: "Compression (remote panel, else MIDI CC 13 up to 127)",
+    },
     volume: {
       min: 0,
       max: 127,
@@ -249,8 +262,13 @@ window.Tempester.panel = (function () {
       y0 = e.clientY;
       v0 = val();
       svg.setPointerCapture(e.pointerId);
+      if (loc && extras.onHold) extras.onHold(loc, true);
       if (!loc) toucher(id(), groupe);
     });
+    for (const end of ["pointerup", "pointercancel"])
+      svg.addEventListener(end, () => {
+        if (loc && extras.onHold) extras.onHold(loc, false);
+      });
     svg.addEventListener("pointermove", (e) => {
       if (!svg.hasPointerCapture(e.pointerId)) return;
       ecrire(v0 + Math.round(((y0 - e.clientY) * etendue()) / 150));

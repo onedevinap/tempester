@@ -123,7 +123,8 @@ every release; these are the ones most people need:
 
 | Release | What it is | Choose it if |
 |---|---|---|
-| **1.6.3.0** (latest) | Every fix and every addition: requests, NRPN, remote panel, project transfers, beat-wide positions, FX ribbons over MIDI, footswitch pads, Load Sound memory and alphabetical order, Revert confirmation, per-pad play probability | you want all of Tempester |
+| **1.6.4.0** (latest, proved in simulation, **not yet run on a machine**) | 1.6.3.0 plus room for new functions (9.9 KB of dead code erased), the machine reporting its mixer, tempo, Pad Function mode and exact version to an editor, and five bug fixes | you want the newest and accept to be the first to install it; tell us how it goes |
+| **1.6.3.0** (latest verified on a real Tempest) | Every fix and every addition: requests, NRPN, remote panel, project transfers, beat-wide positions, FX ribbons over MIDI, footswitch pads, Load Sound memory and alphabetical order, Revert confirmation, per-pad play probability | you want all of Tempester |
 | **1.5.6.0** (corrections only) | The bug fixes, plus the sound and beat requests and NRPN; no remote panel, project request or new performance features | you want the fixes and as few changes as possible |
 | **DSI 1.5.0.2** (back to official) | The official OS, rebuilt unchanged from your own file | you want to go back |
 
@@ -154,6 +155,11 @@ Full details: [firmware notes](docs/firmware.md) (each change, how it was proved
 | A project sent back to the machine keeps its Play Lists | 1.6.2.0 |
 | A SysEx message that never ends is abandoned after about 3 seconds | 1.6.2.0 |
 | The Load Sound knob remembers its place in each folder and walks it in alphabetical order | 1.6.3.0 |
+| In Pad to Note Mode « Mutes », a note mutes its own pad's sound, bank A or B | 1.6.4.0 |
+| The first Save after power-on no longer offers the Factory folder | 1.6.4.0 |
+| Undo All Snds and Undo Beat restore sound types, play states, Voice Assign and pad LEDs | 1.6.4.0 |
+| Reverse Off clears the reverse of every beat and the live reverse | 1.6.4.0 |
+| The Save/Load browser lists a folder in one pass (much faster) | 1.6.4.0 |
 
 **Additions and changes**
 
@@ -170,6 +176,9 @@ Full details: [firmware notes](docs/firmware.md) (each change, how it was proved
 | A footswitch can play a pad | 1.6.3.0 |
 | A play probability for each pad of each beat (MIDI CC 14) | 1.6.3.0 |
 | Revert Snd asks for a second press | 1.6.3.0 |
+| 9.9 KB of dead official code erased: room for new functions, same instructions run | 1.6.4.0 |
+| Level, Pan, Delay Send, Delay Time, Delay Repeats, BPM, Swing, Volume, Distort and Compress reported over MIDI (NRPN 230-239) | 1.6.4.0 |
+| The Pad Function mode reported (CC 106); the exact Tempester version on request (SysEx `43`) | 1.6.4.0 |
 
 Each release contains everything of the earlier ones. Release by release: [firmware notes](docs/firmware.md#versions).
 The new MIDI messages: [MIDI protocol](docs/midi-protocol.md).
@@ -225,7 +234,8 @@ We try to say exactly what was checked, and on what.
 - **Going back to DSI 1.5.0.2** on the test machine. It uses the same update path as every install above.
 - A few rare paths of the fixes (listed in [testing](docs/testing.md#not-verified)).
 
-Reports from your own machine, especially on Windows, Linux or a DIN cable, are very welcome.
+Reports from your own machine, especially on Windows, Linux or a DIN cable, help; nothing is promised in return (see
+[Support](#support-and-contributions)).
 
 ## Safety
 
@@ -242,7 +252,10 @@ Changing the firmware of an instrument always carries some risk. Tempester is de
 - **A hardware backup is optional.** For the rare case where the Main OS would no longer start at all, the
   [recovery guide](docs/recovery.md#optional-full-chip-backup-and-recovery-with-a-pickit) explains a full chip backup
   with a Microchip PICkit. You do not need one: every install above was made without it, and it has never been needed.
-- **No warranty.** You use Tempester at your own risk (see the licence).
+- **No warranty, no responsibility.** Everything is documented and most of it was tested, on one machine, as described
+  in [testing](docs/testing.md); but Tempester is to be taken as it is, and its contributors are not responsible for
+  any problem on your machine. You use it at your own risk (see the [licence](LICENSE) and the
+  [legal notes](docs/legal.md#delivered-as-is)).
 
 ## Documentation
 
@@ -331,10 +344,14 @@ net for experienced users ([recovery](docs/recovery.md)).
 
 </details>
 
-## Contributing
+## Support and contributions
 
-Bug reports, tests on real machines and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md)
-first. The one strict rule: **never attach or commit DSI files**, firmware dumps, manuals or pictures.
+**Tempester is delivered as is.** There is no support, no help desk and no commitment to fix a bug, answer a question
+or add a function; the licence excludes any warranty ([GPL v3 §15 and §16](LICENSE)). You install a Tempester OS on
+your own machine at your own risk, after reading [Safety](#safety) and [recovery](docs/recovery.md). Issues and pull
+requests may be read when time allows and may stay unanswered; feature requests are not taken. If you still send
+something, read [CONTRIBUTING.md](CONTRIBUTING.md) first. The one strict rule: **never attach or commit DSI files**,
+firmware dumps, manuals or pictures.
 
 ## Security
 

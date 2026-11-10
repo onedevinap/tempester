@@ -2,7 +2,7 @@
 //!
 //! Each module covers one subject and is checked against the Python tools of the repository (`tools/`), which
 //! remain the reference: `pack7` (7-bit packing), `os_image` (OS SysEx files), `sound` and `sound_message`
-//! (128-byte sounds and their messages), `beat` (beat dump: summary and sounds), `beat_sequence` (tempo, swing, time signature and events of a beat), `midi_file` (a beat as a Standard MIDI File), `project` (Send Project), `nrpn`, `remote` (keys, LEDs and controls of the Tempester 1.6.0.0 remote panel), `performance` (beat-wide positions, FX ribbons and play probability over control changes), `pad_notes` (the machine's note of each pad), `identity`, `describe` (readable labels for a MIDI monitor), `sha256`, `recipe` (patch
+//! (128-byte sounds and their messages), `beat` (beat dump: summary and sounds), `beat_sequence` (tempo, swing, time signature and events of a beat), `midi_file` (a beat as a Standard MIDI File), `project` (Send Project), `nrpn`, `remote` (keys, LEDs and controls of the Tempester 1.6.0.0 remote panel), `performance` (beat-wide positions, FX ribbons and play probability over control changes), `mixer_report` (the mixer, delay and main values the machine reports as NRPN 230-239), `pad_notes` (the machine's note of each pad), `identity`, `describe` (readable labels for a MIDI monitor), `sha256`, `recipe` (patch
 //! edits as operations on the user's image), `versions` (Tempester versions built from generated recipe tables).
 
 pub mod beat;
@@ -10,6 +10,7 @@ pub mod beat_sequence;
 pub mod describe;
 pub mod identity;
 pub mod midi_file;
+pub mod mixer_report;
 pub mod nrpn;
 pub mod os_image;
 pub mod pack7;

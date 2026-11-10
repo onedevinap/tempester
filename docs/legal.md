@@ -16,6 +16,16 @@
   GPL v3. The plugin depends on `nih-plug` (ISC) and, for its VST3 format, on `vst3-sys` (GPL v3), so a plugin binary is
   distributed under the GPL v3 with its source.
 
+## Delivered as is
+
+Tempester is free software under the GNU GPL v3.0 or later. Its sections 15 and 16 apply in full: **there is no
+warranty** of any kind, and the contributors are not liable for any damage, including a machine that no longer starts
+or data that is lost. Beyond the licence, the project makes **no commitment**: no support, no answer to issues or pull
+requests, no fix, no new function and no further release are owed to anyone. Each Tempester OS version is tested as
+described in [testing](testing.md), and everything the project does is documented; but it is to be taken as it is,
+and **the contributors are not responsible for any problem on your machine**. You install a version on your own
+instrument at your own risk, after reading the [safety notes](../README.md#safety) and [recovery](recovery.md).
+
 ## What this repository does not contain
 
 None of the following is in this repository, its history or its releases, and contributions that add them are refused:

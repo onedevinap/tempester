@@ -41,6 +41,8 @@ pub enum Command {
     Connect(Option<String>),
     Disconnect,
     Identity,
+    /// Asks a Tempester for its exact version (n°39, `F0 01 28 43 F7`); the answer comes back as incoming SysEx.
+    TempesterVersion,
     /// MIDI channel 1-16 used for NRPN, notes and clock.
     SetChannel(u8),
     Nrpn {
@@ -263,6 +265,7 @@ impl Args<'_> {
             | "ports"
             | "disconnect"
             | "identity"
+            | "tempester_version"
             | "fetch_sound"
             | "send_sound"
             | "fetch_beat"
@@ -324,6 +327,7 @@ impl Args<'_> {
             "ports" => Command::Ports,
             "disconnect" => Command::Disconnect,
             "identity" => Command::Identity,
+            "tempester_version" => Command::TempesterVersion,
             "fetch_sound" => Command::FetchSound,
             "send_sound" => Command::SendSound,
             "fetch_beat" => Command::FetchBeat,
@@ -771,6 +775,8 @@ mod tests {
     fn test_parse_when_simple_command_returns_it() {
         assert_eq!(parse("fetch_sound"), Ok(Command::FetchSound));
         assert_eq!(parse("os_cancel"), Ok(Command::OsCancel));
+        assert_eq!(parse("tempester_version"), Ok(Command::TempesterVersion));
+        assert!(parse("tempester_version\t1").is_err());
     }
 
     #[test]

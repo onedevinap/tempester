@@ -279,6 +279,7 @@ impl Machine {
         self.release_held_keys();
         self.release_touched_ribbons();
         self.verify = None;
+        self.announced = None;
         self.os_active.store(true, Ordering::SeqCst);
         let Some(pending) = self.pending_os.take() else {
             return Ok(());

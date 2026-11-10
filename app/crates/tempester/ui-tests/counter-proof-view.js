@@ -17,8 +17,8 @@ const FILES = [
 const variants = {
   "mode decided at once, without waiting for the LEDs to settle": [
     "panel-mode.js",
-    "if (touched) schedule();",
-    "if (touched) settle();",
+    "if (touched && !announced) schedule();",
+    "if (touched && !announced) settle();",
   ],
   "16 Tunings read as 16 Beats": [
     "panel-mode.js",
@@ -29,6 +29,31 @@ const variants = {
     "panel-mode.js",
     "if (mutes && !beats && !steps && !sounds) return 4;",
     "if (mutes && !beats && !steps && !sounds) return 2;",
+  ],
+  "announced mode ignored (the LEDs only)": [
+    "panel-mode.js",
+    "      announced = true;\n",
+    "      return;\n",
+  ],
+  "announced mode waits for the settle delay": [
+    "panel-mode.js",
+    "      current = index;\n      onMode(current);\n    }",
+    "      timer = setTimer(() => {\n        current = index;\n        onMode(current);\n      }, settleMs);\n    }",
+  ],
+  "LEDs override the announced mode": [
+    "panel-mode.js",
+    "if (touched && !announced) schedule();",
+    "if (touched) schedule();",
+  ],
+  "announced mode of no Pad Function accepted": [
+    "panel-mode.js",
+    "index < 0 || index >= NAMES.length",
+    "index < 0",
+  ],
+  "announcement kept after the panel is lost": [
+    "panel-mode.js",
+    "      announced = false;\n",
+    "",
   ],
   "mode kept after the panel is lost": [
     "panel-mode.js",
@@ -102,7 +127,7 @@ const variants = {
   ],
   "machine report fights a knob being dragged": [
     "panel-machine.js",
-    "dragging.has(k) || ",
+    "guard.held(absKey(k)) || ",
     "",
   ],
   "encoder dot never moves": [

@@ -173,6 +173,15 @@ if command -v node > /dev/null; then
   node "$P/app/crates/tempester/ui-tests/panel-perform-counter-proof.js" "$UI" "$T" > "$T/perform-counter.log" 2>&1 \
     || { cat "$T/perform-counter.log"; exit 1; }
   ok "performance controls with one behaviour broken refused ($(tail -n 1 "$T/perform-counter.log"))"
+  # The n°38 reports (Tempester 1.6.4.0: the machine's mixer, delay and main values moving the Machine view's knobs
+  # and encoder bubbles and the Full view's Volume, Distort and Compress, never under the user's hand; what Distort
+  # and Compress send), then broken copies that must fail.
+  node "$P/app/crates/tempester/ui-tests/panel-mixer.test.js" "$UI" > "$T/mixer.log" 2>&1 \
+    || { cat "$T/mixer.log"; exit 1; }
+  ok "mixer reports ($(cat "$T/mixer.log"))"
+  node "$P/app/crates/tempester/ui-tests/panel-mixer-counter-proof.js" "$UI" "$T" > "$T/mixer-counter.log" 2>&1 \
+    || { cat "$T/mixer-counter.log"; exit 1; }
+  ok "mixer reports with one behaviour broken refused ($(tail -n 1 "$T/mixer-counter.log"))"
   # No control of either view may move or change size, whatever the page shows (Chrome and WebKit, the standalone
   # preview, nothing is sent); then the same test on broken copies, which must fail. Needs playwright-core (not a
   # dependency of the project): PLAYWRIGHT_CORE, or the author's npx cache.

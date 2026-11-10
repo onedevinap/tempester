@@ -4,8 +4,10 @@
 usage: patch_version.py <stock Main_1.5.0.2.bin> <version a.b.c.d> <description> > patch/version_<version>.json
 
 The four digits are "li a0,N" passed one by one to the display of each screen (DIGITS: their edit positions); each digit
-goes from 0 to 0x7FFF. Only the digits that change are written; the stock digits are read back from the image and
-checked (1.5.0.2). Two version patches touch the same instructions: a version holds only one.
+goes from 0 to 16383 (0x3FFF): n°39 (patch/version_request.s) reads these words at run time and announces each digit
+as two 7-bit bytes, so this file is the one source of the announced version too. Only the digits that change are
+written; the stock digits are read back from the image and checked (1.5.0.2). Two version patches touch the same
+instructions: a version holds only one.
 Output: a recipe (tools/recipe_writer.py, Docs/patch-recipe-format.md), without any DSI byte."""
 import importlib.util
 import struct
@@ -21,6 +23,7 @@ STOCK = (1, 5, 0, 2)
 DIGITS = {'system_screen': (0x9D007758, 0x9D007780, 0x9D0077A0, 0x9D0077C0),
             'debug_screen': (0x9D009DA0, 0x9D009DC8, 0x9D009DE8, 0x9D009E08)}
 SCREEN_LABELS = {'system_screen': 'system screen', 'debug_screen': 'debug screen'}
+DIGIT_MAX = 0x3FFF                  # two 7-bit data bytes in n°39's answer
 
 
 def word_at(image: bytes, address: int) -> bytes:
@@ -35,8 +38,8 @@ def load_immediate(image: bytes, n: int) -> bytes:
 
 def patch(image: bytes, version: str, description: str) -> str:
     digits = tuple(int(x) for x in version.split('.'))
-    if len(digits) != 4 or not all(0 <= c <= 0x7FFF for c in digits):
-        raise SystemExit('expected version: a.b.c.d, digits from 0 to 32767')
+    if len(digits) != 4 or not all(0 <= c <= DIGIT_MAX for c in digits):
+        raise SystemExit(f'expected version: a.b.c.d, digits from 0 to {DIGIT_MAX}')
     words = []
     for ecran, addresses in DIGITS.items():
         label = SCREEN_LABELS[ecran]

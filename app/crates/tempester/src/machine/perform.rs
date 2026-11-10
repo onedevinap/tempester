@@ -5,7 +5,12 @@
 //! reported to the page; a Revert by CC 19 (not reported either) sets all eight to neutral. A ribbon the app touched
 //! is remembered until released, and released before the port closes, as held keys are: a ribbon left touched holds
 //! its effect on the machine.
+//!
+//! The mixer reports of Tempester 1.6.4.0 (n°38, `tempest_proto::mixer_report`) arrive as NRPN 230-239 and go to the
+//! page as `mixer` events (`item` name, `value` as reported: tempo is times ten).
 
+use tempest_proto::mixer_report::mixer_report;
+use tempest_proto::nrpn::Nrpn;
 use tempest_proto::performance::{self, BEAT_WIDE_COUNT};
 
 use super::Machine;
@@ -150,6 +155,20 @@ impl Machine {
         true
     }
 
+    /// An NRPN 230-239 from the machine (n°38): the mixer, delay and main values it reports, on any channel. `false`
+    /// for any other number, which keeps its own handling.
+    pub(super) fn on_mixer_report(&self, change: Nrpn) -> bool {
+        let Some((item, value)) = mixer_report(change) else {
+            return false;
+        };
+        self.emit(
+            Event::new("mixer")
+                .with("item", item.name())
+                .with("value", value),
+        );
+        true
+    }
+
     /// Best effort, like `release_held_keys`: releases every ribbon the app left touched.
     pub(super) fn release_touched_ribbons(&mut self) {
         let touched = std::mem::take(&mut self.touched_ribbons);
@@ -179,6 +198,7 @@ impl Machine {
 mod tests {
     use super::*;
     use crate::machine::testkit::TestRig;
+    use tempest_proto::mixer_report::{report_bytes, MixerItem};
 
     fn beat_wide(index: u8, position: u8) -> Command {
         Command::BeatWide { index, position }
@@ -389,5 +409,110 @@ mod tests {
         assert!(names.contains(&r#"{"event":"ribbon","ribbon":0,"position":96}"#.to_string()));
         assert!(names.contains(&r#"{"event":"ribbon","ribbon":0,"position":null}"#.to_string()));
         assert!(names.contains(&r#"{"event":"beat_wide","index":2,"position":151}"#.to_string()));
+        assert!(names.contains(&r#"{"event":"mixer","item":"tempo","value":1215}"#.to_string()));
+    }
+
+    /// The four control changes of an NRPN of any number, as a machine would send them on channel 1.
+    fn raw_nrpn(number: u16, value: u16) -> Vec<u8> {
+        vec![
+            0xB0,
+            99,
+            (number >> 7) as u8,
+            0xB0,
+            98,
+            (number & 0x7F) as u8,
+            0xB0,
+            6,
+            (value >> 7) as u8,
+            0xB0,
+            38,
+            (value & 0x7F) as u8,
+        ]
+    }
+
+    #[test]
+    fn test_mixer_when_the_machine_reports_on_any_channel_returns_mixer_events() {
+        let mut rig = TestRig::connected("mixer-report");
+        rig.transport().push_incoming(&[
+            0xB2, 0x63, 0x01, 0xB2, 0x62, 0x66, 0xB2, 0x06, 0x00, 0xB2, 0x26, 0x48,
+        ]);
+        for (channel, item, value) in [
+            (0, MixerItem::Tempo, 1215),
+            (7, MixerItem::Distort, 255),
+            (15, MixerItem::DelayRepeats, 126),
+        ] {
+            let bytes = report_bytes(channel, item, value).expect("in range");
+            rig.transport().push_incoming(&bytes);
+        }
+
+        rig.machine.poll_incoming();
+
+        let rows: Vec<String> = rig.events().iter().map(|e| e.render()).collect();
+        assert_eq!(
+            rows,
+            vec![
+                r#"{"event":"mixer","item":"level","value":72}"#,
+                r#"{"event":"mixer","item":"tempo","value":1215}"#,
+                r#"{"event":"mixer","item":"distort","value":255}"#,
+                r#"{"event":"mixer","item":"delay_repeats","value":126}"#,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_mixer_when_the_number_or_value_is_not_a_report_returns_the_old_behaviour() {
+        let mut rig = TestRig::connected("mixer-other");
+        rig.transport().push_incoming(&raw_nrpn(34, 100));
+        rig.transport().push_incoming(&raw_nrpn(230, 128));
+        rig.transport().push_incoming(&raw_nrpn(240, 1));
+
+        rig.machine.poll_incoming();
+
+        let rows: Vec<String> = rig.events().iter().map(|e| e.render()).collect();
+        assert_eq!(
+            rows,
+            vec![r#"{"event":"nrpn","number":34,"value":100,"channel":1}"#]
+        );
+    }
+
+    #[test]
+    fn test_mixer_when_the_app_asks_for_the_state_returns_the_ten_values_of_the_fake_machine() {
+        let mut rig = TestRig::connected("mixer-state");
+
+        rig.machine.handle(Command::PanelState { pads: true });
+        rig.machine.poll_incoming();
+
+        let items: Vec<String> = rig
+            .events()
+            .iter()
+            .filter(|e| e.name == "mixer")
+            .map(|e| e.render())
+            .collect();
+        assert_eq!(items.len(), 10);
+        assert_eq!(items[0], r#"{"event":"mixer","item":"level","value":100}"#);
+        assert_eq!(items[5], r#"{"event":"mixer","item":"tempo","value":1200}"#);
+    }
+
+    #[test]
+    fn test_mixer_when_the_app_turns_a_knob_returns_the_machine_report_but_cc_12_stays_silent() {
+        let mut rig = TestRig::connected("mixer-echo");
+
+        rig.machine.handle(Command::Control {
+            index: 7,
+            value: 145,
+        });
+        rig.machine.handle(Command::Cc {
+            controller: 12,
+            value: 90,
+        });
+        rig.machine.poll_incoming();
+
+        let rows: Vec<String> = rig
+            .events()
+            .iter()
+            .filter(|e| e.name == "mixer")
+            .map(|e| e.render())
+            .collect();
+        assert_eq!(rows, vec![r#"{"event":"mixer","item":"level","value":72}"#]);
     }
 }

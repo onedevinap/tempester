@@ -116,7 +116,10 @@ Voice, Panel, SAM). It fails on:
 - any quoted run of DSI words in a text file: hexadecimal written out as 8-digit words (with or without `0x`, read in
   byte order and as little-endian values), byte lists `[0x12, 0x34, …]`, spaced bytes `12 34 56 …`, gathered per
   label (the key or identifier before the value on its line, e.g. `origine`, `word`, `new`), per table column and per
-  line, in file order. Two DSI words kept as two consecutive JSON fields are therefore caught.
+  line, in file order. Two DSI words kept as two consecutive JSON fields are therefore caught. A blank line ends a
+  run: the last word of one recipe and the first of the next in a generated table, or two paragraphs of a document,
+  are checked each on its own (found on 10/11/2026: the tail `addiu sp,sp,0x20` of n°39 and the head
+  `andi a0,a0,0xff` of n°5 follow each other in `versions.rs` and in a DSI function).
 
 **Threshold.** The unit is a pair of consecutive aligned words (8 bytes): one instruction alone is a 32-bit encoding of
 an opcode, registers and an immediate, a functional fact that any MIPS code may contain; two consecutive words are the

@@ -85,8 +85,9 @@ machine (Tempester 1.5.3.0 or later; the official OS ignores NRPN). Turning a kn
 
 The machine-only controls (Shift, BPM, Volume, the Mixer, Select, Mod Paths, the screen keys) go through the remote
 panel (Tempester 1.6.0.0 or later) and are greyed without it. They are the Machine view's own controls: both views show
-the same state. The machine does not report its mixer, tempo and volume yet, so turning them on the machine does not
-move them here (planned, see the [roadmap](roadmap.md)).
+the same state. With Tempester 1.6.4.0 the machine reports Level, Pan, Delay Send, Delay Time, Delay Repeats, BPM,
+Swing, Volume, Distort and Compress, so turning them on the machine moves them here too; with an earlier Tempester
+they only follow what the app sends.
 
 In **16 Beats** and **16 Mutes** the machine's own sound knobs act on the whole beat. The Full view still edits the
 selected pad only, and a note under the panel says so; use the Machine view to turn the knobs as the machine does.

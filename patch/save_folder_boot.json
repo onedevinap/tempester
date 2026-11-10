@@ -1,0 +1,14 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°43: the first Save after power-on no longer offers the Factory folder",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "Tempester n°43: the first Save after power-on no longer offers the Factory folder for beats and projects (Main 1.5.0.2). Before: the Save dialog of [routine] takes its folder from ctx[0x35] (sounds, [address]), ctx[0x36] (beats, [address]) and ctx[0x37] (projects, [address]). They are written only when a file is loaded from the browser or when the folder knob turns; [routine] does not set them, so they are 0 (.bss) at boot, and folder 0 of the beat and project tables ([address], [address]) is « Factory »: the first Save Beat or Save Project proposes the Factory folder, where one confirmation overwrites factory content. Docs/analyses/bugs-open-2026-11.md §12. After: at boot, main's call to [routine] goes through SAVEDIR, which sets ctx[0x36] = ctx[0x37] = 1 (« Beats 1 », « Projects 1 ») and tail-calls [routine] (which never writes them). Folder 0 of the sounds is « Kicks »: ctx[0x35] is left at 0. Every later write (browser load, folder knob) is unchanged, so Factory stays selectable by hand. Context: main, once at boot, before the initial state runs. No RAM of its own. Flasher page untouched.",
+ "edits": [
+  {"at": "0x9d03d754", "jal": "0x9d07a620", "why": "jal 0x9d07a620 ; main, boot: was \"jal [address]\" ([routine]); delay slot \"nop\" kept"},
+  {"at": "0x9d07a620", "word": "01000824", "why": "li t0,0x1"},
+  {"at": "0x9d07a624", "word": "708588af", "why": "sw t0,-0x7a90(gp) ; ctx[0x36] = 1: Save Beat folder « Beats 1 »"},
+  {"at": "0x9d07a628", "j": "0x9d014870", "why": "j [address] ; [routine], returns to main"},
+  {"at": "0x9d07a62c", "word": "748588af", "why": "sw t0,-0x7a8c(gp) ; delay slot: ctx[0x37] = 1: Save Project folder « Projects 1 »"}
+ ]
+}

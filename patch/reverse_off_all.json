@@ -1,0 +1,18 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°45: Reverse Off clears every reverse store",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "Tempester n°45: Reverse Off clears every reverse store, so nothing stays reversed with the LED off (Main 1.5.0.2). Before: [routine](ctx, on) keeps one LED flag (ctx+0x26, LED 0x13) but two stores chosen by [routine] (the Pad Function mode): in 16 Beats / 16 Mutes the global [address] (XORed into each voice's reverse at its start, Timer 4), otherwise byte +0x37 of the selected beat ([address] + beat * 0x294), written into every recorded note ([routine]) and read for live pad play ([routine]). Off cleared only the store of the current mode and beat: Reverse on in a sound mode, change beat, Off: the first beat kept +0x37 = 1 with the LED off, and new recordings on it came out reversed; Reverse on in 16 Beats, change to a sound mode, Off: [address] stayed 1 and playback stayed reversed. +0x37 is not saved; only [routine], [routine] and [routine] cleared it. Docs/analyses/bugs-open-2026-11.md §6 (a). After: the Off branch, rewritten in place, clears [address] and +0x37 of the 16 beats (0-15), then clears the LED flag and the LED as before. On is unchanged. Not changed: [routine] (Timer 4) clears [address] without the LED (§6 (b), the LED can stay lit over forward playback in 16 Beats / 16 Mutes after a beat change). Context: main loop (UI). Byte stores, atomic for Timer 4. No RAM of its own, no free flash: 11 words in place, and the two words [address]-[address] (the old beat-mode tail of Off) are no longer reached.",
+ "edits": [
+  {"at": "0x9d01549c", "word": "01a0083c", "why": "lui t0,0xa001 ; was \"jal [address]\": the Off branch no longer depends on the mode"},
+  {"at": "0x9d0154a0", "word": "7b9a00a1", "why": "sb zero,-0x6585(t0) ; [address] = 0: live reverse of 16 Beats / 16 Mutes"},
+  {"at": "0x9d0154a4", "word": "00a0083c", "why": "lui t0,0xa000"},
+  {"at": "0x9d0154a8", "word": "c34a0825", "why": "addiu t0,t0,0x4ac3 ; +0x37 of beat 0 ([address] + 0x37)"},
+  {"at": "0x9d0154ac", "word": "40290925", "why": "addiu t1,t0,0x2940 ; +0x37 of beat 16 (the undo copy, left alone): end"},
+  {"at": "0x9d0154b0", "word": "94020825", "why": "addiu t0,t0,0x294"},
+  {"at": "0x9d0154b4", "word": "feff0915", "why": "bne t0,t1,[address]"},
+  {"at": "0x9d0154b8", "word": "6cfd00a1", "why": "sb zero,-0x294(t0) ; delay slot: +0x37 of beats 0..15 = 0"},
+  {"at": "0x9d0154bc", "word": "00000000", "count": 3, "why": "nop ; was \"addiu t5,t9,0x4a8c\" | nop ; was \"addu t4,t6,t5\" | nop ; was \"sb zero,0x37(t4)\" (the current beat only); [address] clears ctx+0x26 and the LED as before"}
+ ]
+}

@@ -7,7 +7,8 @@ use super::{tables, Describer, Kind, Line};
 use crate::nrpn::{CC_DATA_LSB, CC_DATA_MSB, CC_NRPN_LSB, CC_NRPN_MSB};
 use crate::pad_notes::{self, PadNotes};
 use crate::remote::{
-    CC_KEY_PRESS, CC_KEY_RELEASE, CC_LED_OFF, CC_LED_ON, CC_STATE_REQUEST, FIRST_PAD_LED,
+    CC_KEY_PRESS, CC_KEY_RELEASE, CC_LED_OFF, CC_LED_ON, CC_PAD_MODE, CC_STATE_REQUEST,
+    FIRST_PAD_LED, PAD_MODE_COUNT,
 };
 use crate::sound::params;
 
@@ -205,6 +206,9 @@ fn cc_text(controller: u8, value: u8) -> String {
         }
         CC_LED_ON => format!("LED on: {}", led_text(value)),
         CC_LED_OFF => format!("LED off: {}", led_text(value)),
+        CC_PAD_MODE if value < PAD_MODE_COUNT => {
+            format!("Pad Function: {}", PAD_MODES[usize::from(value)])
+        }
         CC_STATE_REQUEST => format!(
             "LED state request ({})",
             if value & 1 == 1 {
@@ -219,6 +223,16 @@ fn cc_text(controller: u8, value: u8) -> String {
         },
     }
 }
+
+/// Tempester n°40's mode numbers.
+const PAD_MODES: [&str; PAD_MODE_COUNT as usize] = [
+    "16 Beats",
+    "16 Time Steps",
+    "16 Sounds",
+    "16 Tunings",
+    "16 Mutes",
+    "16 Levels",
+];
 
 fn led_text(index: u8) -> String {
     if index >= FIRST_PAD_LED {
@@ -387,6 +401,10 @@ mod tests {
         assert_eq!(
             label_of(&d.feed(0, &[0xB0, 104, 5])),
             "Ch 1 CC 104 LED on: 5"
+        );
+        assert_eq!(
+            label_of(&d.feed(0, &[0xB1, 106, 4])),
+            "Ch 2 CC 106 Pad Function: 16 Mutes"
         );
         assert_eq!(
             label_of(&d.feed(0, &[0xB0, 105, 0x2C])),

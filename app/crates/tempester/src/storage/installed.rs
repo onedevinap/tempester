@@ -95,17 +95,30 @@ impl InstalledOs {
 }
 
 /// The Tempester features the app has controls for, each with the patch that brings it (`patch/*.json`).
-pub const FEATURES: [(&str, &str); 4] = [
+pub const FEATURES: [(&str, &str); 5] = [
     ("beat_wide", "patch/beat_wide_emission.json"),
     ("ribbons", "patch/ribbon_remote.json"),
     ("pedal_pad", "patch/pedal_pad.json"),
     ("probability", "patch/step_probability.json"),
+    ("mixer_reports", "patch/mixer_reports.json"),
 ];
 
 /// For each of `FEATURES`: whether the installed OS has it (`on`, only for a known Tempester build: an unknown file or
 /// no record is off) and the first version that brings it (`since`), for the page's tooltips.
 pub fn features_json(record: Option<&InstalledOs>) -> Json {
-    let installed = record.and_then(|r| versions::find_by_image_sha256(&r.sha256_image));
+    features_of(record.and_then(|r| versions::find_by_image_sha256(&r.sha256_image)))
+}
+
+/// `features_json` from the exact version the machine announced (n°39) when the app knows that release; from the
+/// install record otherwise (no announcement, or a number this app does not know: it says nothing of what it holds).
+pub fn features_for(announced: Option<&str>, record: Option<&InstalledOs>) -> Json {
+    match announced.and_then(versions::find_version) {
+        Some(version) => features_of(Some(version)),
+        None => features_json(record),
+    }
+}
+
+fn features_of(installed: Option<&versions::Version>) -> Json {
     Json::Obj(
         FEATURES
             .iter()
@@ -163,22 +176,71 @@ mod tests {
             }))
             .render()
         };
-        let line = |a, b, c, d| {
+        let line = |a, b, c, d, e| {
             format!(
-                r#"{{"beat_wide":{{"on":{a},"since":"1.6.2.0"}},"ribbons":{{"on":{b},"since":"1.6.3.0"}},"pedal_pad":{{"on":{c},"since":"1.6.3.0"}},"probability":{{"on":{d},"since":"1.6.3.0"}}}}"#
+                r#"{{"beat_wide":{{"on":{a},"since":"1.6.2.0"}},"ribbons":{{"on":{b},"since":"1.6.3.0"}},"pedal_pad":{{"on":{c},"since":"1.6.3.0"}},"probability":{{"on":{d},"since":"1.6.3.0"}},"mixer_reports":{{"on":{e},"since":"1.6.4.0"}}}}"#
             )
         };
 
-        assert_eq!(of("1.6.3.0"), line(true, true, true, true));
-        assert_eq!(of("1.6.2.0"), line(true, false, false, false));
-        assert_eq!(of("1.6.1.0"), line(false, false, false, false));
+        assert_eq!(of("1.6.4.0"), line(true, true, true, true, true));
+        assert_eq!(of("1.6.3.0"), line(true, true, true, true, false));
+        assert_eq!(of("1.6.2.0"), line(true, false, false, false, false));
+        assert_eq!(of("1.6.1.0"), line(false, false, false, false, false));
         assert_eq!(
             features_json(Some(&record())).render(),
-            line(false, false, false, false)
+            line(false, false, false, false, false)
         );
         assert_eq!(
             features_json(None).render(),
-            line(false, false, false, false)
+            line(false, false, false, false, false)
+        );
+    }
+
+    #[test]
+    fn test_features_for_when_announced_version_known_returns_its_features_over_the_record() {
+        let v1610 = versions::find_version("1.6.1.0").expect("1.6.1.0 in the table");
+        let old_record = InstalledOs {
+            sha256_image: v1610.sha256_image.into(),
+            ..record()
+        };
+
+        let announced = features_for(Some("1.6.3.0"), Some(&old_record)).render();
+        let without_record = features_for(Some("1.6.3.0"), None).render();
+
+        let all_on = features_json(Some(&InstalledOs {
+            sha256_image: versions::find_version("1.6.3.0")
+                .expect("1.6.3.0 in the table")
+                .sha256_image
+                .into(),
+            ..record()
+        }))
+        .render();
+        assert_eq!(announced, all_on);
+        assert_eq!(without_record, all_on);
+        // Every feature 1.6.3.0 brings is on; the later ones (n°38, 1.6.4.0) stay off.
+        for name in ["beat_wide", "ribbons", "pedal_pad", "probability"] {
+            let on = format!(r#""{name}":{{"on":true"#);
+            assert!(announced.contains(&on), "{name}: {announced}");
+        }
+    }
+
+    #[test]
+    fn test_features_for_when_nothing_or_an_unknown_number_announced_returns_the_record_s() {
+        let v1620 = versions::find_version("1.6.2.0").expect("1.6.2.0 in the table");
+        let record_1620 = InstalledOs {
+            sha256_image: v1620.sha256_image.into(),
+            ..record()
+        };
+        let from_record = features_json(Some(&record_1620)).render();
+
+        assert_eq!(features_for(None, Some(&record_1620)).render(), from_record);
+        assert_eq!(
+            features_for(Some("9.9.9.9"), Some(&record_1620)).render(),
+            from_record
+        );
+        assert_eq!(
+            features_for(Some("9.9.9.9"), None).render(),
+            features_json(None).render()
         );
     }
 
