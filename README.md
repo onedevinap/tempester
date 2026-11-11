@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/onedevinap/tempester/actions/workflows/ci.yml"><img src="https://github.com/onedevinap/tempester/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="https://github.com/onedevinap/tempester/releases"><img src="https://img.shields.io/github/v/release/onedevinap/tempester?include_prereleases&sort=semver&label=app" alt="Latest app release"></a>
-  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.6.3.0-e8833a" alt="Tempester OS 1.6.3.0"></a>
+  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.6.4.0-e8833a" alt="Tempester OS 1.6.4.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--3.0--or--later-blue" alt="Licence: GPL-3.0-or-later"></a>
   <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-555" alt="Platforms: macOS, Windows, Linux">
 </p>
