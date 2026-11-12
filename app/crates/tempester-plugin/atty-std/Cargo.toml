@@ -1,0 +1,12 @@
+# Stand-in for the unmaintained `atty` crate (RUSTSEC-2021-0145: unaligned read on Windows, no fixed release), which
+# nih_log pulls in only to ask whether stderr is a terminal. Same API, answered by the standard library's IsTerminal.
+# Wired in by [patch.crates-io] in ../Cargo.toml; the version is above every vulnerable one so audits see it as fixed.
+[package]
+name = "atty"
+version = "0.2.15"
+edition = "2021"
+license = "GPL-3.0-or-later"
+publish = false
+
+[lib]
+path = "src/lib.rs"

@@ -2,7 +2,7 @@
 # workspace build (app/Cargo.toml lists this folder under `exclude`).
 # Bundles: `cargo xtask bundle tempester-plugin --release` -> target/bundled/ (.clap and .vst3).
 [workspace]
-members = ["xtask"]
+members = ["xtask", "atty-std"]
 
 [package]
 name = "tempester-plugin"
@@ -29,3 +29,8 @@ expect_used = "deny"
 [profile.release]
 opt-level = 3
 lto = "thin"
+
+# nih_log depends on `atty`, unmaintained with an open advisory and no fixed release: replaced by the local
+# std-based stand-in (atty-std/Cargo.toml says why).
+[patch.crates-io]
+atty = { path = "atty-std" }

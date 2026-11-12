@@ -6,6 +6,17 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ## App
 
+### [Unreleased]
+
+#### Security
+
+- **Tempester Control no longer contains `atty`** (RUSTSEC-2021-0145, unaligned read on Windows, unmaintained with no
+  fixed release). nih-plug's logger only asks whether stderr is a terminal; a small stand-in with the same API, built on
+  the standard library, replaces it (`app/crates/tempester-plugin/atty-std`).
+- **`glib` 0.18 (RUSTSEC-2024-0429) stays, not reachable**: the advisory is about `glib::VariantStrIter`, which neither
+  the app nor its GTK and WebKit libraries call. The Linux app gets glib through wry's GTK 3 bindings, which stop at
+  0.18 even in the latest wry; it goes when wry moves on.
+
 ### [0.1.0] - 2026-11-10
 
 First public version.
