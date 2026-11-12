@@ -38,6 +38,7 @@ window.Tempester.panelPerform = (function () {
     beat_wide: "Beat-wide positions need",
     ribbons: "FX ribbons over MIDI need",
     probability: "Play probability needs",
+    pad_channels: "MIDI channel per pad needs",
   };
   const S = {
     needs: (name, since) =>

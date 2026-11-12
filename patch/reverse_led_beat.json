@@ -1,0 +1,20 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°48: the Reverse LED follows the beat after a beat change",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "Tempester n°48: after a beat change the Reverse LED shows the reverse of the new beat (Main 1.5.0.2). Before: the Reverse LED follows one flag, ctx+0x26 ([routine] draws LED 0x13 from it), set and cleared only by the Reverse key ([routine]). [routine] (Timer 4) clears the live reverse of 16 Beats / 16 Mutes at every beat change, but not the flag: Reverse on in 16 Beats, select another beat: playback is forward and the LED stays lit; the next Reverse press turns it « off » (nothing changes) and a second one is needed to reverse again. Docs/analyses/bugs-open-2026-11.md §6 (b); case (a) is n°45 (Reverse Off clears every store). After: the two UI refreshes that follow a beat change, [routine] (pad press, beat select, playlist step, file actions; 7 callers) and case 10 of [routine] (beat change from MIDI Song Position in a playlist), set the flag to what a pad plays now, [routine] = record reverse of the selected beat (+0x37) | live reverse [address], then draw the LED as before. In 16 Beats / 16 Mutes the LED goes out with the reverse; in a sound mode the LED shows the record reverse of the beat now selected (each beat keeps its own, as n°45 left it). Same LED command as before when nothing changed. Not covered: a beat change by MIDI Stop in a playlist ([routine] refreshes no screen). Context: main loop (UI). No RAM. Free flash 0x9D07A800-0x9D07A823 (9 words), 2 words in place.",
+ "edits": [
+  {"at": "0x9d01df88", "jal": "0x9d07a800", "why": "jal 0x9d07a800 ; [routine]: was \"jal [address]\" (Reverse LED); delay slot \"move a0,s0\" kept, after ctx+0x13c = new beat"},
+  {"at": "0x9d0208d8", "jal": "0x9d07a800", "why": "jal 0x9d07a800 ; [routine] case 10: was \"jal [address]\"; delay slot \"move a0,s8\" kept (the second call [address] then agrees)"},
+  {"at": "0x9d07a800", "word": "e8ffbd27", "why": "addiu sp,sp,-0x18 ; a0 = ctx"},
+  {"at": "0x9d07a804", "word": "1400bfaf", "why": "sw ra,0x14(sp)"},
+  {"at": "0x9d07a808", "jal": "0x9d0305dc", "why": "jal [address] ; what a pad plays now: beat[ctx+0x13c] +0x37 | [address] (0 or 1)"},
+  {"at": "0x9d07a80c", "word": "1000a4af", "why": "sw a0,0x10(sp)"},
+  {"at": "0x9d07a810", "word": "1000a48f", "why": "lw a0,0x10(sp)"},
+  {"at": "0x9d07a814", "word": "260082a4", "why": "sh v0,0x26(a0) ; Reverse LED flag = that reverse"},
+  {"at": "0x9d07a818", "word": "1400bf8f", "why": "lw ra,0x14(sp)"},
+  {"at": "0x9d07a81c", "j": "0x9d0153f0", "why": "j [address] ; LED 0x13 drawn from the flag, as before"},
+  {"at": "0x9d07a820", "word": "1800bd27", "why": "addiu sp,sp,0x18"}
+ ]
+}

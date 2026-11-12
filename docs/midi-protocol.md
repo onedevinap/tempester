@@ -247,6 +247,46 @@ each note of that pad is skipped with probability 100 - `p`. The value is saved 
 project) in a field the official OS writes as 0 and never reads. The machine does not report it; read it back from a
 beat dump.
 
+## Channel per pad
+
+### Channel per pad (n°58, needs n°9b)
+
+| Message | Meaning |
+|---|---|
+| `Bn 0F pp` (CC 15) to the machine | address pad `pp` (0-31 = A1-B16); 32-127: no pad addressed |
+| `Bm 10 vv` (CC 16) from the machine | answer to CC 15: the addressed pad's value `vv` (0-32) |
+| `Bn 10 vv` (CC 16) to the machine | the addressed pad's value: 0 = usual route, 1-16 = channel 1-16 with the played note, 17-32 = channel (`vv` - 16) with the pad's « MIDI Note: Pad »; 33-127 ignored |
+| `Bn 11 7F` (CC 17) to the machine | save the System settings (with the table) if a value changed; ignored while playing or recording (the save stops the transport): send it again once stopped |
+
+`n` = Remote Pad IN (any channel when *All*), DIN or USB; `m` = Remote Pad OUT (no answer when *Off*). A pad with a
+value sends its note-on / note-off there (DIN then USB), from the sequencer and from the pads played by hand, instead
+of its usual route (Sequencer Out, Synth IN or Remote Pad OUT). Values take effect at once and are lost at power-off
+until CC 17 saves them. To read the whole table: CC 15 = 0 to 31, one answer each.
+
+## Fine Quantize value
+
+From 1.6.5.0 (n°55). The project header (`5E`, and the project file) holds the project parameters as 44 16-bit words
+(version 5 in word 0). Word 4's high byte is the Quantize, 0-7 (1/4, 1/8, 1/8T, 1/16, 1/16T, 1/32, 1/32T, Off), as on
+the official OS. When the Quantize is one of the eight Tempester values, word 4 says Off (7) and word 18 (byte offset
+36 of the record) holds `0x5100 | v`:
+
+| v | value | grid |
+|---|---|---|
+| 1 | 8 Dot | 72 ticks (96 per quarter note) |
+| 2 | 16 Dot | 36 |
+| 3 | 32 Dot | 18 |
+| 4 | 64th | 6 |
+| 5 | 64T | 4 |
+| 6 | 8 Quint | 5 per half note |
+| 7 | 16 Quint | 5 per quarter note |
+| 8 | 16 Sept | 7 per quarter note |
+
+Otherwise word 18 is what the official OS writes there (`0x0000` or `0xFFFF`). Words 18-33 are never read by the
+official OS nor by earlier Tempester versions, which load such a project with Quantize Off. Tempester 1.6.5.0 reads
+word 18 only with the high byte `0x51`, `v` 1-8 and word 4 at Off; anything else loads as plain Off. The knob order on
+the machine, longest to shortest: 1/4, 8 Dot, 1/8, 8 Quint, 16 Dot, 1/8T, 1/16, 16 Quint, 32 Dot, 1/16T, 16 Sept,
+1/32, 1/32T, 64th, 64T, Off.
+
 ## 7-bit packing
 
 Data in DSI SysEx messages is packed in groups: one byte holding the high bits of up to 7 data bytes (bit j = high bit

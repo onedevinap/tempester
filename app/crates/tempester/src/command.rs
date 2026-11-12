@@ -4,7 +4,7 @@
 use std::fmt;
 
 use tempest_proto::pad_notes::PAD_COUNT;
-use tempest_proto::{performance, remote};
+use tempest_proto::{pad_channel, performance, remote};
 
 use crate::edit::command::EditCommand;
 use crate::hex;
@@ -87,6 +87,15 @@ pub enum Command {
         pad: u8,
         percent: u8,
     },
+    /// MIDI channel value 0-32 of pad 0-31 (n°58, Tempester 1.6.5.0: CC 15 then CC 16).
+    PadChannel {
+        pad: u8,
+        value: u8,
+    },
+    /// Reads the channel value of the 32 pads (CC 15 = 0-31; the machine answers CC 16 for each).
+    PadChannelRead,
+    /// Saves the System settings, the pad channels with them (CC 17 = 127; the machine ignores it while it plays).
+    PadChannelSave,
     /// Fake MIDI only: the scripted machine plays moves of its own controls (a ribbon touched then released, a
     /// beat-wide knob), as reports of n°29 and n°31.
     FakePerform,
@@ -289,6 +298,8 @@ impl Args<'_> {
             | "project_cancel"
             | "fake_project_send"
             | "fake_project_send_partial"
+            | "pad_channel_read"
+            | "pad_channel_save"
             | "fake_perform" => self.simple(),
             "connect"
             | "set_channel"
@@ -309,6 +320,7 @@ impl Args<'_> {
             | "beat_wide"
             | "ribbon"
             | "pad_probability"
+            | "pad_channel"
             | "fake_project_defect" => self.with_numbers(),
             name if name.starts_with("lib_") => {
                 crate::library::command::parse(name, self.args).map(Command::Lib)
@@ -351,6 +363,8 @@ impl Args<'_> {
             "project_cancel" => Command::ProjectCancel,
             "fake_project_send" => Command::FakeProjectSend,
             "fake_project_send_partial" => Command::FakeProjectSendPartial,
+            "pad_channel_read" => Command::PadChannelRead,
+            "pad_channel_save" => Command::PadChannelSave,
             "fake_perform" => Command::FakePerform,
             _ => return Err(self.unknown()),
         })
@@ -385,6 +399,7 @@ impl Args<'_> {
             "beat_wide" => self.beat_wide(),
             "ribbon" => self.ribbon(),
             "pad_probability" => self.pad_probability(),
+            "pad_channel" => self.pad_channel(),
             "note" => self.note(),
             "pad" => self.pad(),
             "pad_note" => {
@@ -515,6 +530,14 @@ impl Args<'_> {
         Ok(Command::PadProbability {
             pad: self.number(0, 0, 15)? as u8,
             percent: self.number(1, 0, u32::from(performance::PROBABILITY_MAX))? as u8,
+        })
+    }
+
+    fn pad_channel(&self) -> Result<Command, CommandError> {
+        self.expect(2)?;
+        Ok(Command::PadChannel {
+            pad: self.number(0, 0, u32::from(pad_channel::PADS) - 1)? as u8,
+            value: self.number(1, 0, u32::from(pad_channel::VALUE_MAX))? as u8,
         })
     }
 
@@ -932,7 +955,16 @@ mod tests {
             })
         );
         assert_eq!(parse("fake_perform"), Ok(Command::FakePerform));
+        assert_eq!(
+            parse("pad_channel\t31\t32"),
+            Ok(Command::PadChannel { pad: 31, value: 32 })
+        );
+        assert_eq!(parse("pad_channel_read"), Ok(Command::PadChannelRead));
+        assert_eq!(parse("pad_channel_save"), Ok(Command::PadChannelSave));
         for line in [
+            "pad_channel\t32\t0",
+            "pad_channel\t0\t33",
+            "pad_channel\t0",
             "beat_wide\t8\t0",
             "beat_wide\t0\t255",
             "ribbon\t2\trelease",

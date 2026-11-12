@@ -449,6 +449,14 @@ impl Machine {
             .with("beats", subject.project.beats.len())
             .with("total", BEATS)
             .with("lists_used", subject.project.header.lists_used().to_vec())
+            .with(
+                "quantize",
+                subject
+                    .project
+                    .header
+                    .quantize
+                    .map(|q| q.label().to_string()),
+            )
             .with("guard", guard.name())
             .with("installed", installed.as_ref().map(|i| i.label.clone()))
             .with("lines", lines)
@@ -479,6 +487,11 @@ fn replaced_lines(project: &Project) -> Vec<String> {
             "The file holds {} of {BEATS} beats: beat(s) {} are not sent and keep their current content on the machine.",
             project.beats.len(),
             numbers(&absent)
+        ));
+    }
+    if let Some(quantize) = project.header.quantize.filter(|q| q.needs_tempester()) {
+        lines.push(format!(
+            "The project records in Quantize {quantize}, a Tempester 1.6.5.0 value: the machine keeps it only with that OS (any other loads the project with Quantize Off)."
         ));
     }
     lines

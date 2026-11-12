@@ -15,6 +15,9 @@ const FILES = [
   "conn-bar.js",
   "monitor-ui.js",
   "identity-panel.js",
+  "panel-perform.js",
+  "pad-channels.js",
+  "pad-channels-panel.js",
   "pad-notes-panel.js",
   "os-hash.js",
   "os-versions.js",
@@ -46,6 +49,7 @@ const variants = {
   ],
   "machine: set_channel removed": send("page-machine.js", "set_channel"),
   "machine: identity removed": send("page-machine.js", "identity"),
+  "machine: version request removed": send("page-machine.js", "tempester_version"),
   "machine: reveal of the data folder removed": [
     "page-machine.js",
     'bridge.send("reveal", "data")',
@@ -86,6 +90,7 @@ const variants = {
   "os: os_validate removed": send("page-os.js", "os_validate"),
   "os: os_versions removed": send("page-os.js", "os_versions"),
   "os: identity removed": send("page-os.js", "identity"),
+  "os: version request removed": send("page-os.js", "tempester_version"),
   "os: send without confirmation": [
     "page-os.js",
     'if (ok) bridge.send("os_send");',

@@ -339,7 +339,10 @@
     els.identity = button(
       "identity",
       S.identity,
-      () => bridge.send("identity"),
+      () => {
+        bridge.send("identity");
+        bridge.send("tempester_version");
+      },
       {
         text: S.identity,
       },

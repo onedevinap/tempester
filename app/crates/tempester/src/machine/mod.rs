@@ -20,6 +20,7 @@ mod midi_export;
 mod monitor;
 mod os_update;
 mod os_verify;
+mod pad_channel;
 mod pad_map;
 mod panel;
 mod perform;
@@ -124,6 +125,8 @@ pub struct Machine {
     touched_ribbons: BTreeSet<u8>,
     /// The beat-wide positions reported by the machine or sent by the app (n°29).
     beat_wide_in: BeatWideReader,
+    /// The answers awaited for n°58 and the read in progress (`pad_channel`).
+    pad_channels: pad_channel::Link,
     remote: RemoteState,
     /// The exact version the machine announced (n°39), until the port closes or an OS update starts.
     announced: Option<TempesterVersion>,
@@ -169,6 +172,7 @@ impl Machine {
             held_keys: BTreeSet::new(),
             touched_ribbons: BTreeSet::new(),
             beat_wide_in: BeatWideReader::default(),
+            pad_channels: pad_channel::Link::default(),
             remote: RemoteState::Unknown,
             announced: None,
             monitor: Monitor::new(),
@@ -197,7 +201,7 @@ impl Machine {
 
     /// Runs one command of the page: each handler takes its own commands and hands back the others.
     pub fn handle(&mut self, command: Command) {
-        let handlers: [fn(&mut Self, Command) -> Option<Command>; 16] = [
+        let handlers: [fn(&mut Self, Command) -> Option<Command>; 17] = [
             Self::handle_link,
             Self::handle_announce,
             Self::handle_edit,
@@ -205,6 +209,7 @@ impl Machine {
             Self::handle_panel,
             Self::handle_remote,
             Self::handle_perform,
+            Self::handle_pad_channel,
             Self::handle_sound,
             Self::handle_beat,
             Self::handle_manager,
@@ -263,11 +268,13 @@ impl Machine {
         self.on_led_changes(&leds);
         self.settle_pad_learn(now, false);
         self.check_probe();
+        self.tick_pad_channels(Instant::now());
     }
 
     fn on_channel(&mut self, status: u8, data: &[u8]) {
         let &[controller, value] = data else { return };
         if self.on_pad_mode(status, controller, value)
+            || self.on_pad_channel_report(status, controller, value)
             || self.on_performance_report(status, controller, value)
         {
             return;
@@ -340,6 +347,7 @@ pub fn coalesce(batch: Vec<Command>) -> Vec<Command> {
             (Command::PadProbability { pad: a, .. }, Command::PadProbability { pad: b, .. }) => {
                 a == b
             }
+            (Command::PadChannel { pad: a, .. }, Command::PadChannel { pad: b, .. }) => a == b,
             // Only a touch gives way to a later touch of the same ribbon: a release always goes out, so that a quick
             // tap is a touch and a release on the machine.
             (

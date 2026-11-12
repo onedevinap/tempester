@@ -1,0 +1,11 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°52: compressor envelope Amount reaches -127 (optional)",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "Amount of the compressor envelope (beat +0x30, 0..0xFE shown as value - 0x7F: -127..+127; parameter table [address] entry 14, max 0xFE, default 0x7F) was forced to at least 0x3F (-64) at two sites: the compressor edit screen ([routine], button 0xA, [address]: sltiu a1,v0,0x3f ; li t0,0x3f ; movz t0,v0,a1) and the beat header deserializer ([routine], word 10 low byte, [address]: sltiu s7,v1,0x3f). The Voice OS (chip 3, command 0xE2xx) handles 0..0xFE symmetrically, without overflow (Docs/analyses/bugs-open-2026-11.md §19): the clamp is a DSI choice, maybe a limit of the analog compressor. Both comparisons become « < 0 », never true: the knob and the remote encoder steps of n°23 (same screen) go down to -127, a beat file or SysEx beat with Amount below -64 loads as it is. Already right: Init Beat sets -127 ([routine]), n°4b sends the stored value on every beat selection, the serializer writes the byte whole, the display shows value - 0x7F. Optional: how the compressor sounds below -64 is unknown (listen test in Docs/analyses/bugs-open-2026-11.md §19). Two words in place.",
+ "edits": [
+  {"at": "0x9d0174cc", "copy": "0x9d0174cc", "set": {"imm": 0}, "why": "sltiu a1,v0,0x0 ; was 0x3f: a1 = 0, so movz keeps the edited value (no minimum)"},
+  {"at": "0x9d033b08", "copy": "0x9d033b08", "set": {"imm": 0}, "why": "sltiu s7,v1,0x0 ; was 0x3f: s7 = 0, the loaded Amount is kept (no minimum)"}
+ ]
+}

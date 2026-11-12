@@ -38,8 +38,12 @@
   }
 
   /* The Main OS last sent from the OS update page, and whether a read-back from the machine proved it. */
-  function showInstalled(record) {
-    const line = window.Tempester.osVerify.installedLine(record);
+  function showInstalled(view) {
+    const line = window.Tempester.osVerify.installedLine(
+      view.record,
+      view.running,
+      view.verified,
+    );
     els.installed.textContent = line.text;
     els.installed.setAttribute("class", "statusline " + line.tone);
     els.installed.setAttribute("title", line.title);
@@ -57,12 +61,13 @@
         el("option", { value: String(k + 1) }, String(k + 1)),
       ),
     );
-    els.identity = button("identity", S.identityButton, () =>
-      bridge.send("identity"),
-    );
+    els.identity = button("identity", S.identityButton, () => {
+      bridge.send("identity");
+      bridge.send("tempester_version");
+    });
     els.identityLine = el("span", { class: "statusline", role: "status" });
     els.installed = el("span", { class: "statusline", role: "status" });
-    showInstalled(null);
+    window.Tempester.osVerify.watch(showInstalled);
     els.folder = el("span", { class: "statusline mono", title: "" });
     return el(
       "div",
@@ -98,9 +103,7 @@
     bridge.on("state", (m) => {
       els.folder.textContent = m.data_dir || "";
       els.folder.setAttribute("title", m.data_dir || "");
-      showInstalled(m.installed || null);
     });
-    bridge.on("installed", (m) => showInstalled(m.installed || null));
     bridge.on("error", (m) => {
       if (m.during !== "identity") return;
       if (m.code === "timeout")

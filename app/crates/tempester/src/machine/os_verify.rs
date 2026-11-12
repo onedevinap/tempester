@@ -1,8 +1,9 @@
 //! "Verify the installed OS": after an update, the user opens the Debug menu on the machine (both SHIFT and SYSTEM)
 //! and chooses "Send Main OS". The app listens for that message, checks it like a backup does (blocks, checksum,
 //! constant image), compares the SHA-256 of the range an OS update writes (the image below the flasher page) with the
-//! one of the OS it last sent (`storage::installed`), keeps the dump as a dated backup, and, when the two are equal,
-//! marks the installed OS as verified.
+//! one of the OS it last sent and the one of the release the machine announces (`storage::installed`), keeps the dump
+//! as a dated backup, and, when the dump equals the sent OS, marks the installed OS as verified. The announcement is
+//! only a number (a test build announces its base), so the dump decides which of the two the machine runs.
 //! The flasher page after that range is the machine's own: an update never rewrites its own page, and it differs a
 //! little from the one in DSI's file. It is reported apart, never compared (proved on the real machine, 2026-11-08:
 //! the written range of the 1.6.2.0 dump was identical, 74 words differed, all in the flasher page).
@@ -15,17 +16,14 @@ use super::backup::{Piece, Verdict};
 use super::Machine;
 use crate::error::AppError;
 use crate::event::Event;
-use crate::storage::installed::{features_json, InstalledOs};
+use crate::storage::installed::{verify_candidates, InstalledOs, VerifyCandidate};
 use crate::storage::stamp::now_stamp;
 
-/// Waiting for the Main dump of the machine, to compare with `expected`.
+/// Waiting for the Main dump of the machine, to compare with each candidate (never empty).
 #[derive(Debug)]
 pub(super) struct VerifyWatch {
-    expected: InstalledOs,
-    /// `expected.sha256_image_written`, checked present when the listening starts.
-    expected_written: String,
+    candidates: Vec<VerifyCandidate>,
 }
-
 /// What a received Main message proves.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Outcome {
@@ -100,19 +98,23 @@ pub(super) fn judge(expected_written_sha256: &str, verdict: &Verdict) -> Outcome
 impl Machine {
     pub(super) fn verify_start(&mut self) -> Result<(), AppError> {
         self.idle_session()?;
-        let expected = self.storage.installed_os().ok_or(AppError::Precondition(
-            "no installed OS is recorded: send a Main OS from this page first",
-        ))?;
-        let expected_written = expected.sha256_image_written.clone().ok_or(
-            AppError::Precondition(
-                "the installed OS was recorded by an older version of the app and is not a known Tempester build: send it again from this page",
-            ),
-        )?;
-        self.emit(listening_event(&expected, &expected_written));
-        self.verify = Some(VerifyWatch {
-            expected,
-            expected_written,
-        });
+        let announced = self.announced.map(|v| v.to_string());
+        let candidates = verify_candidates(announced.as_deref(), self.storage.installed_os());
+        self.listen_for_dump(candidates)
+    }
+
+    /// Starts listening for the machine's Main dump, to compare it with each of `candidates` (the first is shown).
+    pub(super) fn listen_for_dump(
+        &mut self,
+        candidates: Vec<VerifyCandidate>,
+    ) -> Result<(), AppError> {
+        if candidates.is_empty() {
+            return Err(AppError::Precondition(
+                "nothing to compare with: the machine reports no version this app knows and no known OS was sent from this page",
+            ));
+        }
+        self.emit(listening_event(&candidates));
+        self.verify = Some(VerifyWatch { candidates });
         Ok(())
     }
 
@@ -127,21 +129,21 @@ impl Machine {
         if piece.id != OsId::Main {
             return;
         }
-        let expected = watch.expected.clone();
-        let outcome = judge(&watch.expected_written, &piece.verdict);
-        let mut event = result_event(&expected, &watch.expected_written, &outcome);
+        let candidates = watch.candidates.clone();
+        let (chosen, outcome) = judge_all(&candidates, &piece.verdict);
+        let mut event = result_event(&candidates, chosen, &outcome);
         if outcome.is_final() {
             self.verify = None;
-            event = self.keep_result(piece, &expected, &outcome, event);
+            event = self.keep_result(piece, &candidates[chosen], &outcome, event);
         }
         self.emit(event);
     }
 
-    /// Saves the dump as a dated backup and, on a match, records the verification.
+    /// Saves the dump as a dated backup and, on a match with the app's own record, records the verification.
     fn keep_result(
         &mut self,
         piece: &Piece,
-        expected: &InstalledOs,
+        chosen: &VerifyCandidate,
         outcome: &Outcome,
         event: Event,
     ) -> Event {
@@ -154,17 +156,13 @@ impl Machine {
                 event
             }
         };
-        if matches!(outcome, Outcome::Match { .. }) {
+        if matches!(outcome, Outcome::Match { .. }) && chosen.from_record {
             let verified = InstalledOs {
                 verified_at: Some(stamp),
-                ..expected.clone()
+                ..chosen.os.clone()
             };
             match self.storage.set_installed_os(Some(&verified)) {
-                Ok(()) => self.emit(
-                    Event::new("installed")
-                        .with("installed", verified.to_json())
-                        .with("features", features_json(Some(&verified))),
-                ),
+                Ok(()) => self.emit(self.installed_event()),
                 Err(error) => self.emit(Event::error("os_verify", &error)),
             }
         }
@@ -172,20 +170,48 @@ impl Machine {
     }
 }
 
-fn listening_event(expected: &InstalledOs, expected_written: &str) -> Event {
-    Event::new("os_verify")
-        .with("state", "listening")
-        .with("label", expected.label.as_str())
-        .with("version", expected.version.clone())
-        .with("expected", expected_written)
+/// The candidate the dump matches (the first when none does) and what that comparison proves.
+fn judge_all(candidates: &[VerifyCandidate], verdict: &Verdict) -> (usize, Outcome) {
+    let hit = candidates
+        .iter()
+        .position(|c| matches!(judge(&c.written, verdict), Outcome::Match { .. }));
+    let chosen = hit.unwrap_or(0);
+    (chosen, judge(&candidates[chosen].written, verdict))
 }
 
-fn result_event(expected: &InstalledOs, expected_written: &str, outcome: &Outcome) -> Event {
+fn source_of(candidate: &VerifyCandidate) -> &'static str {
+    if candidate.from_record {
+        "sent"
+    } else {
+        "reported"
+    }
+}
+
+fn listening_event(candidates: &[VerifyCandidate]) -> Event {
+    let first = &candidates[0];
+    Event::new("os_verify")
+        .with("state", "listening")
+        .with("label", first.os.label.as_str())
+        .with("version", first.os.version.clone())
+        .with("expected", first.written.as_str())
+        .with("source", source_of(first))
+}
+
+/// `chosen` is the candidate the dump matched, or the first one when it matched none: a mismatch then names the
+/// other candidate too (`also`).
+fn result_event(candidates: &[VerifyCandidate], chosen: usize, outcome: &Outcome) -> Event {
+    let shown = &candidates[chosen];
+    let also = match outcome {
+        Outcome::Match { .. } => None,
+        _ => candidates.get(1).map(|c| c.os.label.clone()),
+    };
     let event = Event::new("os_verify")
         .with("state", outcome.state())
-        .with("label", expected.label.as_str())
-        .with("version", expected.version.clone())
-        .with("expected", expected_written)
+        .with("label", shown.os.label.as_str())
+        .with("version", shown.os.version.clone())
+        .with("expected", shown.written.as_str())
+        .with("source", source_of(shown))
+        .with("also", also)
         .with("found", outcome.found().map(str::to_string))
         .with("flasher", outcome.flasher().map(str::to_string));
     match outcome {

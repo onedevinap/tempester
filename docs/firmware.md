@@ -39,7 +39,7 @@ over USB; « verified » adds that the Main OS read back from the machine matche
 the corrections-only one (and the way back to DSI); the older releases stay listed here and in the app's History, to
 read, not to install. The test versions are built by the verifier only, to prove a patch on its own.
 
-**Which one?** 1.6.4.0 is the latest release, with everything. 1.5.6.0 is the corrections-only release: the bug fixes
+**Which one?** 1.6.5.0 is the latest release, with everything. 1.5.6.0 is the corrections-only release: the bug fixes
 with the sound and beat requests and NRPN, without the 1.6 additions.
 
 | Version | Builds on | Adds | Status |
@@ -62,7 +62,13 @@ with the sound and beat requests and NRPN, without the 1.6 additions.
 | 1.6.4.0-b (test) | 1.6.3.0 | n°38 alone | not installed |
 | 1.6.4.0-c (test) | 1.6.3.0 | n°39, 40: the exact version and the Pad Function mode announced | not installed |
 | 1.6.4.0-d (test) | 1.6.3.0 | n°41, 43, 44, 45, 46: five fixes of reported bugs | not installed |
-| **1.6.4.0** room, reports and fixes | 1.6.3.0 | n°37, 38, 39, 40, 41, 43, 44, 45, 46 together | **installed and verified** (10 Nov: the Main OS read back equals the built image; the exact version answered) |
+| **1.6.4.0** room, reports and fixes | 1.6.3.0 | n°37, 38, 39, 40, 41, 43, 44, 45, 46 together | **installed and verified** (10 Nov: the Main OS read back equals the built image; the exact version answered; hand tests of its new behaviours still to do) |
+| 1.6.5.0-f (test) | 1.6.4.0 | n°48, 49, 50, 51: four fixes of reported bugs | not installed |
+| 1.6.5.0-g (test) | 1.6.4.0 | n°52, 53: compressor Amount to −127, notes longer than 255 | not installed |
+| 1.6.5.0-h (test) | 1.6.4.0 | n°54, 61: the roll follows the swing (option), no roll note lost | not installed |
+| 1.6.5.0-i (test) | 1.6.4.0 | n°55, 56: finer Quantize values, Copy Sound with its sequence | not installed |
+| 1.6.5.0-j (test) | 1.6.4.0 | n°58, 59: a MIDI channel per pad, Shift + pad and the pad settings page | not installed |
+| **1.6.5.0** rolls, channels and long notes | 1.6.4.0 | n°48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 61 together | **installed and verified** (12 Nov: the machine answers 1.6.5.0 to the exact-version request; the Main OS read back equals the built image on the written range) |
 
 The test versions are kept so that each patch can be checked on its own. 1.6.2.0 and 1.6.3.0 were installed on a real
 machine and verified by reading the Main OS back (see [testing](testing.md#verified-on-a-real-machine)); the behaviours
@@ -392,7 +398,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   CC 107. CC 12 / CC 13 are not echoed. Bytes: [MIDI protocol](midi-protocol.md#mixer-beat-and-main-values).
 - **Proof**: simulated with the firmware's own knob handlers and MIDI input: every control x mode x Shift, the other
   messages unchanged, no echo, output rate limit; 18 wrong variants refused.
-- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the Main OS dump equals the built image on the written range; tried by hand: not yet.
 - **Limits**: only the selected pad's mixer values; the tempo is not reported while the machine follows MIDI clock
   (except on CC 107). Requires n°9b.
 - **Found on the way**: Shift + Pan sets Delay Repeats (the remote-panel table said Pan had no Shift function).
@@ -407,7 +413,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   [MIDI protocol](midi-protocol.md#sysex-requests).
 - **Proof**: simulated: the answer on DIN and USB, the number following the screens for other versions, every other
   command and the identity unchanged, the previous version silent; wrong variants refused.
-- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the Main OS dump equals the built image on the written range; tried on the machine: the request `F0 01 28 43 F7` answered 1.6.4.0 (10 November) and 1.6.5.0 after the next installation (12 November).
 - **Limits**: digits up to 16383. Requires n°1.
 
 ### n°40: the Pad Function mode reported
@@ -418,7 +424,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   [MIDI protocol](midi-protocol.md#pad-function-mode-n40-needs-n9b).
 - **Proof**: simulated with the firmware's own panel keys and remote keys: each mode reported once, Off, the output
   buffer guard, CC 107 on the right channel only, every other MIDI input unchanged; wrong variants refused.
-- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the Main OS dump equals the built image on the written range; tried by hand: not yet.
 - **Limits**: the mode cannot be set over MIDI (send the Pad Function keys). Requires n°9b.
 
 ### n°41: MIDI notes in Pad to Note Mode « Mutes », banks A and B
@@ -430,7 +436,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   shown; a note assigned to no pad does nothing. The « MIDI Note: Mute » items are still not used.
 - **Proof**: simulated through the MIDI input and the real note handler, both banks; the other modes identical to
   1.6.3.0; wrong variants refused.
-- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the Main OS dump equals the built image on the written range; tried by hand: not yet.
 
 ### n°43: the first Save no longer offers the Factory folder
 
@@ -438,7 +444,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Effect**: it proposes « Beats 1 » and « Projects 1 »; after that the folder you choose or load from is kept, as
   before, and Factory can still be chosen by hand.
 - **Proof**: simulated from the boot call to the Save dialog.
-- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the Main OS dump equals the built image on the written range; tried by hand: not yet.
 - **Limits**: the folder of the project loaded at startup is not used.
 
 ### n°44: « Undo All Snds » restores everything a single undo does
@@ -449,7 +455,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Effect**: the same restore as Undo Sound, for every pad.
 - **Proof**: simulated on the real Undo screen with a model of the sound memory; the pad after Undo All equals the pad
   after a single Undo Sound; wrong variants refused.
-- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the Main OS dump equals the built image on the written range; tried by hand: not yet.
 
 ### n°45: Reverse Off turns every reverse off
 
@@ -457,7 +463,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   recording reversed notes, or the playback stayed reversed.
 - **Effect**: Reverse off clears the reverse of every beat and the live reverse of 16 Beats / 16 Mutes.
 - **Proof**: simulated through the real Reverse key; Reverse on identical to 1.6.3.0; wrong variants refused.
-- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the Main OS dump equals the built image on the written range; tried by hand: not yet.
 - **Limits**: after a beat change during playback in 16 Beats / 16 Mutes, the LED can still stay lit while the
   playback is forward (unchanged).
 
@@ -469,8 +475,193 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   result (an empty folder, more than 256 files, a folder that changed while it was read), the official listing runs.
 - **Proof**: simulated for sound, beat and project folders: the list equal to 1.6.3.0's, file for file; wrong
   variants refused.
-- **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, and the behaviour was tried by hand on the author's Tempest the same day.
+- **On a machine**: installed in 1.6.4.0 (10 November 2026); the Main OS dump equals the built image on the written range; tried by hand: not yet.
 - **Limits**: the time of a storage read is not modelled.
+
+### n°48: the Reverse LED follows the beat after a beat change
+
+- **Problem**: in 16 Beats / 16 Mutes a beat change turns the reverse off, but the Reverse LED stayed lit; the next
+  press of Reverse only turned the LED off, and a second press was needed to reverse again.
+- **Effect**: after a beat change the LED shows whether pads play reversed now: off in 16 Beats / 16 Mutes; in a sound
+  mode it shows the reverse recorded for the beat now selected (on again when you come back to a reversed beat).
+- **Before / after**: Reverse on in 16 Beats, select another beat: before, LED lit and playback forward; after, LED
+  off, and one press of Reverse reverses again.
+- **Proof**: simulated through the real Reverse key and the two refresh routines that follow a beat change (the beat
+  select and the MIDI Song Position one); with Reverse off, every byte and call identical to 1.6.4.0; wrong variants
+  refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: a beat change made by a MIDI Stop in a playlist redraws nothing, so the LED is updated at the next
+  screen refresh only.
+
+### n°49: « Mixer » opens the Mixer after the compressor pages
+
+- **Problem**: after the compressor envelope page (Shift + Compression) or the Compression / Distortion page, holding
+  Pads + Sounds (« Mixer ») reopened that page instead of the Mixer.
+- **Effect**: Pads + Sounds opens the Mixer when the last page of the mixer group was one of those two; the Mixer Delay
+  page and the others are reopened as before.
+- **Proof**: simulated for the six pages of the group and both key orders; the other pages identical to 1.6.4.0;
+  wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: other ways back into the mixer group (leaving a temporary screen) still return to the page last used.
+
+### n°50: 16 Time Steps pads show and edit every note of their step
+
+- **Problem**: a pad of 16 Time Steps stands for one grid step (three sequencer steps at 1/16) but lit only for a note
+  on its first sequencer step. A note recorded off that step (finer quantize, Time Shift) played with its pad dark, and
+  pressing the pad added a second note next to it.
+- **Effect**: the pad lights when any note of the selected sound starts inside its grid step; pressing a lit pad
+  removes those notes, pressing a dark pad adds one as before.
+- **Proof**: simulated over a model of the sequence memory with random beats at the eight quantize values and three
+  beat lengths: the LEDs equal the rule above, notes on the grid give the same LEDs as 1.6.4.0, a press on a dark pad
+  writes what 1.6.4.0 writes; wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: a refresh of the 16 LEDs reads more of the sequence memory (up to about 13 times more at 1/4, 4 times at
+  1/16); simulated at about 51,000 instructions at 1/4, against 8,000 before. The Beat Events screen is unchanged.
+
+### n°51: Roll repeats stay on the grid with the sequencer stopped
+
+- **Problem**: with the sequencer stopped, Roll / arpeggio repeats started from the moment the pad was pressed, off
+  the click, and moved one tick earlier at every loop of the beat. The Momentary Roll footswitch switched Roll on both
+  edges: with Roll already on it turned it off while held, and a beat change while it was held left Roll stuck on.
+- **Effect**: every repeat falls on the quantize grid of the beat (with the swing at 1/16), the first one at the next
+  grid point after the press; a beat whose length is not a whole number of grid steps restarts on its first step. The
+  footswitch turns Roll on while pressed and off when released.
+- **Proof**: simulated tick by tick and by bunches of ticks over three loops: every repeat on the grid, one per grid
+  point; the press with Roll off or with the sequencer playing identical to 1.6.4.0; the factory drift shown on
+  1.6.4.0; wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Try it**: stopped, 16 Sounds, Quantize 1/16, Roll on, Roll Mode « Retrig »: hold a pad, then a second one a
+  little later. Before, the two repeated shifted by the press offset (heard as a flam); now they sound together on
+  every sixteenth. In an arpeggio mode (Up, Down, Random…) the pads still alternate, by design, one per sixteenth.
+- **Limits**: a repeat can come right after the press when the press is just before a grid point. Playing (Roll
+  driven by the sequencer) is unchanged. With the footswitch, Roll latched on with the Roll key ends off at the
+  release.
+
+### n°52: the compressor Amount reaches −127
+
+- **Problem**: the compressor envelope Amount shows −127 to +127, but the knob stopped at −64 and a beat loaded with
+  less was raised to −64. The Voice chip handles the whole range; the limit was written twice in the Main OS.
+- **Effect**: the knob (and the remote encoder steps) go down to −127; a beat file or SysEx beat keeps its Amount. The
+  Init Beat already sets −127 and n°4b already sends it at every beat selection, so −127 could already be heard.
+- **Proof**: simulated on the real compressor screen (value stored, word sent to voice chip 3, display) and on the beat
+  loader (every Amount 0 to 254, everything else equal to 1.6.4.0); wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); listened to by the author, who keeps it.
+- **Try it**: Shift + Compression knob opens the compressor envelope page (Attack, Peak Hold, Decay, Amount); Amount is
+  the 4th encoder. Turning the Compression knob itself leaves that page (original DSI behaviour).
+- **Limits**: how the analog compressor sounds below −64 was unknown (DSI may have limited it on purpose); listened
+  to by the author: fine.
+
+### n°53: notes longer than 255
+
+- **Problem**: a note lasted at most 255 units of 4 ticks (about 2.7 bars of 4/4), recorded or edited, although the
+  sequencer and the voices handle much longer notes; in a long beat a note could not be held through it.
+- **Effect**: up to 768 units, a whole 8-bar beat. Bit 15 of the event's second word, unused before, now means « ×4 »:
+  durations above 255 are stored as a multiple of 4. Recording keeps up to 764; the Beat Events editor goes up to
+  the beat length (at most 768), by 1 below 256 and by 4 above. Beats made before play exactly as before.
+- **Proof**: simulated on the real accessor, writer, note-off recording, Beat Events editor and display, the Timer 4
+  sequencer (queue, voices; 4 more cycles per read) and the beat file reader and writer (bit 15 kept); wrong
+  variants refused. The original OS 1.5.0.2 was simulated on such a beat: it plays the low byte (a quarter of the
+  length), nothing worse.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: a beat with long notes played on an OS without n°53 plays them short; the Tempester app reads, keeps and
+  exports them.
+
+### n°54: the beat roll follows the swing (option)
+
+- **Problem**: with swing on, the beat roll repeated its window identically: a 1/16 roll played straight 16ths (or every note late, on a swung 16th) instead of the long-short feel of the rest of the beat.
+- **Effect**: an option, System > Swing Source « Project+Roll », « Beat+Roll » or « System+Roll » (the same swing source, and the roll swung), kept in the System file. With it, each repetition of the roll plays as notes recorded on its own steps would: same swing amount, same 16th grid, same Time Shift. 1/8 and longer rolls keep their swing as before; 1/16, 1/16T, 1/32 and 1/32T rolls alternate. Without it (the default), swing 50 % or roll off: exactly as before.
+- **Proof**: simulated on the real sequencer interrupt and the real System screen code, for every roll grid, three swing amounts and three beat lengths: option off and swing 50 % identical to the image without the patch, roll off identical to 1.6.4.0; option on, every note at its swung place, once; wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: « Project+Roll » is 12 characters; its fit on the screen is to be checked on the machine.
+
+### n°61: the beat roll no longer loses notes
+
+- **Problem**: a note of the roll window played past the end of its repetition (a note recorded late in the last 32nd of a 1/16 roll, or a swung one) was never read again by the sequencer: some repetitions lost it.
+- **Effect**: while the roll is on, the sequencer reads the roll window as a ring, so every repetition plays every note. Roll off: unchanged.
+- **Proof**: simulated for every roll grid, swing amount and beat length: no note missing (1.6.4.0 lost 888 of 25,252 in the same runs); roll off identical to 1.6.4.0; the processor time of the sequencer interrupt counted; wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: windows of 1/32 (12 ticks) are read whole already and keep the stock path.
+
+### n°55: more Quantize values for recording (dotted, 64th, tuplets)
+
+- **Problem**: Quantize stopped at 4th, 8th, 8T, 16th, 16T, 32nd, 32T and Off; users asked for dotted values, 1/64
+  and quintuplets / septuplets (forum request n°15).
+- **Effect**: eight more values, « 8 Dot », « 16 Dot », « 32 Dot », « 64th », « 64T », « 8 Quint » (5 per half
+  note), « 16 Quint » (5 per quarter note) and « 16 Sept » (7 per quarter note); Shift + soft knob 3 walks all sixteen
+  from the longest to the shortest: 1/4, 8 Dot, 1/8, 8 Quint, 16 Dot, 1/8T, 1/16, 16 Quint, 32 Dot, 1/16T, 16 Sept,
+  1/32, 1/32T, 64th, 64T, Off. Notes recorded in real time land on the nearest point of that grid (quintuplets and
+  septuplets rounded to the tick, 96 per quarter note). Everything else (step entry, 16 Time Steps, Beat Events, roll
+  and arpeggiator, Loop screen) works as with Off. The value is saved with the project in a word the official OS never
+  reads ([format](midi-protocol.md#fine-quantize-value)): the official OS and earlier Tempester versions load such a
+  project with Off. Beats recorded this way play the same on the official OS.
+- **Proof**: simulated: the knob through the real screen code, every value and label (none too wide), recording at
+  each of the 384 ticks of a bar for each new grid, the note read back by the playback routine at the expected tick;
+  the project saved, read back and saved again; the same file loaded by 1.6.4.0 and by the official 1.5.0.2 (word
+  ignored); with the old values the result equals 1.6.4.0 byte for byte; wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: dotted LFO rates are not possible on the Main alone (the voice chips compute the LFO frequency); the new
+  grids apply to real-time recording only; a dotted grid runs from the beat's start across bar lines; on a machine
+  with an older OS the value falls back to Off.
+
+### n°56: Edit > Copy Sound copies the sequence to another beat
+
+- **Problem**: a sound's sequence could only be copied inside the current beat (Copy held, two pads); Edit > Copy Sound
+  copied the sound alone between beats (forum request n°7, « requested a gazillion times »).
+- **Effect**: Edit > Copy Sound obeys the Seq / NoteFX / Mixer switches of the Copy screen (hold Copy, soft knobs 2-4):
+  with Seq On it also copies the sequence, with NoteFX On the Note FX, with Mixer On the mixer settings, from any beat
+  to any beat. The Dest Sound caption says what goes with the copy (« Dest: Sound+Seq »...). All three Off: the old
+  Copy Sound. It works while the sequencer plays, as the Copy-held copy does.
+- **Proof**: simulated with the real panel keys for the 8 combinations: the result equals 1.6.4.0's Copy Sound followed
+  by the official routines of the Copy-held copy; the source beat and the other sounds unchanged; same sound onto
+  itself and all Off checked. While playing: the real sequencer interrupt taken every few hundred instructions of the
+  copy (far more often than on the machine), the beat played and the copy in the same or another beat: no fault, the
+  copy writes only the target sound, every other sound plays exactly as without the copy; wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: no undo (the target sequence is replaced, as with Copy held); events past a shorter target beat's end are
+  copied too and stay silent until the beat is made longer. Copying into the beat that plays: during the copy (a few
+  milliseconds) the target sound plays only the steps already copied, so a note or two of it can be missing in that
+  pass; never a note that is in neither the old nor the new sequence.
+
+### n°58: one MIDI output channel per pad
+
+- **Problem**: the sequencer sends notes for one pad only (the « MIDI: Sequencer Sound », on the Sequencer Out
+  channel), so the Tempest cannot sequence several external synths (a request of eight users).
+- **Effect**: each pad gets a value: 0 = as before; 1-16 = the pad sends its notes on that channel with the note it
+  plays (chromatic, 16 Tunings heard); 17-32 = channel (value - 16) with the pad's « MIDI Note: Pad » note (a fixed
+  drum note). It applies to the sequencer and to the pads played by hand, DIN and USB, instead of the pad's usual
+  route. Set over MIDI on Remote Pad IN: CC 15 = pad 0-31 (A1-B16; the machine answers CC 16 = its value on Remote Pad
+  OUT), CC 16 = value 0-32, CC 17 = 127 saves the System settings (only when stopped: that save stops the transport).
+  Bytes: [MIDI protocol](midi-protocol.md#channel-per-pad-n58-needs-n9b).
+- **Stored**: in the System settings file, in the unused high byte of each pad's « MIDI Note: Pad » entry. The
+  original OS and older Tempester read the same file and ignore it; a file they save again resets every pad to 0.
+- **Proof**: simulated on the firmware's own code: every pad at 0 gives exactly 1.6.4.0's bytes, RAM and registers;
+  each pad with a channel gives what 1.6.4.0 sends when that pad is the Sequencer Sound on that channel; the real
+  sequencer queue, the live pads, the CCs and the save / load of the settings file; 14 wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: on the machine it is shown and set only on the pad settings page of n°59 (otherwise over MIDI, so the
+  app); changing a pad's value while one of its notes sounds leaves that note on the old channel; « reset System settings » also clears the values.
+  Requires n°9b.
+
+### n°59: Shift + pad selects a pad without playing it, in every mode
+
+- **Problem**: Shift + pad selected a pad silently only in 16 Sounds, 16 Tunings, 16 Mutes and 16 Levels (with the
+  System setting « Shift On + Pad »); in 16 Beats and 16 Time Steps the pad still played or acted.
+- **Effect**: with Shift on (latched, or held with « Shift Held + Pad »), a pad press only selects that pad, in every
+  mode: no sound, no MIDI, no recording, no beat or step change; its pressure and release are ignored too, even if
+  Shift goes off first. Without Shift nothing changes. A **second press of the same pad** with Shift still on opens
+  the « pad settings » page: the pad's MIDI note (System « MIDI Note: Pad »), its MIDI channel (n°58: Off, 1-16,
+  or « n Fix » for the fixed pad note), its play probability in the edited beat (n°36) and its Mixer Level. The four
+  encoders under the screen change them (note 0-127, channel Off / 1-16 / 1-16 Fix, probability 0-100 %, Level
+  0-127 exactly as the Mixer). Any key or another pad leaves the page; leaving saves the note and the channel in
+  the System settings when the transport is stopped (while playing they stay to save: leave the page again once
+  stopped).
+- **Proof**: simulated with the firmware's own panel, dispatcher and main screen: the 6 modes, both Shift settings,
+  4 pads, press / pressure / release, Shift changing while a pad is down; without Shift identical to 1.6.4.0; the
+  page opened, its texts, the four edits, the save on leaving only when stopped; 18 wrong variants refused.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **Limits**: in 16 Beats and 16 Time Steps, Shift + pad now selects the pad's sound instead of a beat or a step; a
+  pad pressed without Shift and released with Shift on keeps the original behaviour (its release action is skipped,
+  as before); selecting in 16 Tunings / 16 Levels still sends the original note-off of the previous pad.
 
 ## How the patches are proved
 
@@ -487,9 +678,8 @@ None of this is a guarantee. Read [Before you install](user-manual.md#before-you
 
 ## Known defects not fixed
 
-Among others: crossed note-offs lost in rare cases; the projection shift in odd-meter loops (n°8 limits); the
-compressor Amount clamp; a latent defect in the factory update routine (a failed read-back of one row erases the whole
+Among others: crossed note-offs lost in rare cases; the projection shift in odd-meter loops (n°8 limits); a latent defect in the factory update routine (a failed read-back of one row erases the whole
 4 KB page and rewrites only that row; it never showed and the page is never modified by Tempester); several forum
-reports studied but not fixed (copy of a beat onto the playing beat, arpeggiator sync, roll swing, and more); the
+reports studied but not fixed (copy of a beat onto the playing beat, arpeggiator sync, and more); the
 « start offset as slave » report is not explained by the code: the first step plays a tenth of a millisecond after the
 first clock, and only the last quarter of each clock is late.

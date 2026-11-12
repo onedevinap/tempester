@@ -14,7 +14,7 @@
 #   4. the Python tools compile, tempest_midi.swift compiles (nothing is sent to the machine), tests/test_*.py pass;
 #   5. Rust workspace app/ (tools/test_app.sh): generated tables up to date, cargo fmt, clippy -D warnings, tests, and the
 #      #[ignore] tests on the real DSI files in <folder> (TEMPESTER_DSI_SYX), with a disposable HOME;
-#   6.-11. option --long: the firmware simulations and their counter-proofs (tools/verify_simulations.sh, private:
+#   6.-13. option --long: the firmware simulations and their counter-proofs (tools/verify_simulations.sh, private:
 #      they run the image's code at DSI's routine addresses; the public tree has no simulator and says so).
 # Works in a temporary folder; writes nothing in the repository outside work/ (decoded images, not versioned).
 set -euo pipefail
@@ -60,6 +60,9 @@ done
 # A combined release is exactly the union of its test builds (each made on the previous release) plus its version
 # digits: no word changed by two test builds, every test build's word in the release, nothing else changed.
 V=$T/versions
+U165=("$V/Main_1.6.4.0.bin" "$V/Main_1.6.5.0.bin" "$P/patch/version_1.6.5.0.json")
+python3 -I "$P/tools/version_union.py" "${U165[@]}" "$V"/Main_1.6.5.0-[f-j].bin > "$T/union.txt" || { cat "$T/union.txt"; exit 1; }
+ok "1.6.5.0 = 1.6.4.0 + $(tail -1 "$T/union.txt")"
 U163=("$V/Main_1.6.2.0.bin" "$V/Main_1.6.3.0.bin" "$P/patch/version_1.6.3.0.json")
 python3 -I "$P/tools/version_union.py" "${U163[@]}" "$V/Main_1.6.3.0-a.bin" "$V/Main_1.6.3.0-b.bin" "$V/Main_1.6.3.0-c.bin" \
   > "$T/union.txt" || { cat "$T/union.txt"; exit 1; }

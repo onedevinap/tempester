@@ -182,6 +182,14 @@ if command -v node > /dev/null; then
   node "$P/app/crates/tempester/ui-tests/panel-mixer-counter-proof.js" "$UI" "$T" > "$T/mixer-counter.log" 2>&1 \
     || { cat "$T/mixer-counter.log"; exit 1; }
   ok "mixer reports with one behaviour broken refused ($(tail -n 1 "$T/mixer-counter.log"))"
+  # The n°58 pad channels (Tempester 1.6.5.0: the commands, the values the machine reports, which OS gets the table),
+  # then broken copies that must fail.
+  node "$P/app/crates/tempester/ui-tests/pad-channels.test.js" "$UI" > "$T/padchan.log" 2>&1 \
+    || { cat "$T/padchan.log"; exit 1; }
+  ok "pad channels ($(cat "$T/padchan.log"))"
+  node "$P/app/crates/tempester/ui-tests/pad-channels-counter-proof.js" "$UI" "$T" > "$T/padchan-counter.log" 2>&1 \
+    || { cat "$T/padchan-counter.log"; exit 1; }
+  ok "pad channels with one behaviour broken refused ($(tail -n 1 "$T/padchan-counter.log"))"
   # No control of either view may move or change size, whatever the page shows (Chrome and WebKit, the standalone
   # preview, nothing is sent); then the same test on broken copies, which must fail. Needs playwright-core (not a
   # dependency of the project): PLAYWRIGHT_CORE, or the author's npx cache.

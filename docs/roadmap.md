@@ -13,10 +13,12 @@ of what owners ask for below is a reading of the forum, kept as a guide for the 
 
 ## Where things stand
 
-- **Tempester OS 1.6.4.0** is the latest release (10 November 2026): room for new functions, the machine reporting
-  its mixer, tempo, mode and exact version to an editor, five bug fixes, on top of 1.6.3.0 (bug fixes, requests for
+- **Tempester OS 1.6.5.0** is the latest release (installed on the project's Tempest on 12 November 2026): a MIDI
+  channel and a settings page for each pad, notes as long as a whole 8-bar beat, finer Quantize values, Copy Sound
+  with its sequence, a beat roll that can follow the swing, six bug fixes, on top of 1.6.4.0 (room for new functions,
+  the machine reporting its mixer, tempo, mode and exact version to an editor) and 1.6.3.0 (bug fixes, requests for
   sounds, beats and projects, NRPN in both directions, the front panel over MIDI, FX ribbons over MIDI, play
-  probability per pad). Installed on the project's Tempest and tried by hand there.
+  probability per pad). The hand tests of the new functions are still to do.
   See [firmware](firmware.md).
 - **The Tempester app** is used daily on macOS; the Windows build is checked to compile, and neither Windows nor
   Linux has been tried by a user yet.
@@ -84,17 +86,17 @@ keep every existing file and every other Tempest working.
 | **More memory** for sounds and projects | 11+ | not planned | Adding memory is hardware. Re-splitting the internal flash between sounds and beats means a new file system: risky for existing data. |
 | **MIDI control** of the FX and a fuller MIDI implementation | 10+ | **largely done** | Tempester OS: every sound parameter by NRPN, FX ribbons over MIDI, beat-wide controls in both directions, the whole front panel, sound, beat and project requests. |
 | **New samples**, sample import | 9+ | not planned | The samples live in the sample chip, whose bank format is unknown; replacing them would change every existing sound. |
-| **Multichannel MIDI**: one channel per pad, sequencing several synths | 8+ | candidate | Likely in the Main: a channel table in the system settings, no file format touched. Needs room. |
+| **Multichannel MIDI**: one channel per pad, sequencing several synths | 8+ | **done** | Tempester OS 1.6.5.0: a channel per pad, set over MIDI (CC 15-17) or on the pad settings page. |
 | **Digital effects** (reverb, delay) | 8+ | not possible | The audio path is analogue; there is no effects processor to program. |
-| **Copy a sound's sequence to another beat** | 6+ | candidate | Likely in the Main: an extension of the Copy screen (the 16 beats are in memory together). |
+| **Copy a sound's sequence to another beat** | 6+ | **done** | Tempester OS 1.6.5.0: Edit > Copy Sound obeys the Seq / NoteFX / Mixer switches of the Copy screen. |
 | **Real-time automation** of knobs and sliders | 6+ | later | A new or denser kind of event in the beat: format change. |
 | **Legato and glide modes** | 6+ | not planned | The envelopes run in the Voice chips. |
 | **Load Sound knob** that stays where it was | 5+ | **done** | Tempester OS 1.6.3.0. |
 | **Song mode**: mutes in the Play List, change project while playing | 5+ | later | Play List format; loading a project during playback is heavy for the processor. |
 | **More modulation routes** and destinations | 5+ | not planned | Applied in the Voice chips, and the 128-byte sound is full. |
-| **Swing on the beat roll**, swing per sound | 5+ | candidate | Beat roll: likely (the swing is already computed for the arpeggio and roll of a sound). Per sound: format change. |
+| **Swing on the beat roll**, swing per sound | 5+ | **partly done** | Beat roll: option « +Roll » of System > Swing Source, Tempester OS 1.6.5.0. Per sound: format change. |
 | **Polyphonic recording** from the pads, MPE | 4+ | later | Voice allocation and the 8 events per step. |
-| **Dotted values**, 1/64 quantize | 4+ | candidate | 1/64 quantize: likely in the Main. Dotted LFO rates: computed in the Voice chips. |
+| **Dotted values**, 1/64 quantize | 4+ | **partly done** | Dotted, 1/64, quintuplet and septuplet Quantize values for recording: Tempester OS 1.6.5.0. Dotted LFO rates: computed in the Voice chips. |
 | **Note FX saved with the sound** | 4+ | not planned | The sound format is full. |
 | **File management**: bulk delete, audition and delete | 4+ | candidate | Likely in the Main. |
 | **Random steps, probability**, Euclidean rhythms | 3+ | **partly done** | Play probability per pad in 1.6.3.0. The app's step sequencer already makes Euclidean patterns. |

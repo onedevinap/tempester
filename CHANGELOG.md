@@ -17,6 +17,15 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
   the app nor its GTK and WebKit libraries call. The Linux app gets glib through wry's GTK 3 bindings, which stop at
   0.18 even in the latest wry; it goes when wry moves on.
 
+### [Unreleased] additions
+
+#### Added
+
+- **Support for Tempester OS 1.6.5.0**: notes up to 768 steps long are read, written and exported; the fine Quantize
+  value (project word 18) is kept; the pad notes panel reads, sets and saves each pad's MIDI channel (a read that
+  times out says « check Remote Pad OUT »). The app edits no System file, so the Swing Source « +Roll » option is set
+  on the machine only.
+
 ### [0.1.0] - 2026-11-10
 
 First public version.
@@ -76,6 +85,40 @@ First public version.
 
 Each version is built from the official Main OS 1.5.0.2 by the user; Voice, Panel and SAM are unchanged.
 
+### [1.6.5.0] - 2026-11-12, installed and verified
+
+For a player:
+
+- n°48: after a beat change, the Reverse LED shows whether the pads play reversed now (off in 16 Beats / 16 Mutes);
+  one press of Reverse reverses again.
+- n°49: Pads + Sounds (« Mixer ») opens the Mixer after the compressor envelope page or the Compression / Distortion
+  page, instead of reopening that page.
+- n°50: in 16 Time Steps a pad lights when any note of the selected sound starts inside its step; pressing a lit pad
+  removes those notes.
+- n°51: with the sequencer stopped, Roll and arpeggio repeats fall on the Quantize grid and no longer drift at each
+  loop; the Momentary Roll footswitch turns Roll on while pressed and off when released.
+- n°52: the compressor envelope Amount reaches −127 as shown (the knob stopped at −64). Shift + Compression knob opens
+  the envelope page; Amount is the 4th encoder. Listened to by the author, who keeps it.
+- n°53: notes up to 768 steps long, a whole 8-bar beat (255 before); a beat with long notes played on an older OS
+  plays them short.
+- n°54: option System > Swing Source « Project+Roll », « Beat+Roll » or « System+Roll »: the beat roll follows the
+  swing (1/16 and shorter rolls alternate long-short). Without it, as before.
+- n°61: a playing beat roll no longer loses notes recorded late in its window.
+- n°55: eight more Quantize values for recording: 8 Dot, 16 Dot, 32 Dot, 64th, 64T, 8 Quint, 16 Quint, 16 Sept.
+  Saved with the project; the official OS and older Tempester versions load such a project with Quantize Off.
+- n°56: Edit > Copy Sound obeys the Seq / NoteFX / Mixer switches of the Copy screen, so a sound's sequence can be
+  copied to another beat, also while playing. No undo.
+- n°58: a MIDI output channel for each pad (Off, 1-16 with the pad's played note, 17-32 = channel minus 16 with the
+  pad's fixed « MIDI Note: Pad »), for the sequencer and the pads played by hand. Set over MIDI on Remote Pad IN:
+  CC 15 pad (0-31), CC 16 value (0-32), CC 17 = 127 saves the System settings (stopped only).
+- n°59: Shift + pad only selects the pad, in every mode, with no sound, MIDI or recording; a second press of the same
+  pad opens the pad settings page: MIDI note, MIDI channel, play probability and Level, on the four encoders.
+- Test versions 1.6.5.0-f, -g, -h, -i and -j hold n°48-n°51, n°52-n°53, n°54 and n°61, n°55-n°56, and n°58-n°59, to
+  prove each group alone.
+- Installed with the author's go on 12 November 2026: the machine answers 1.6.5.0 to the exact-version request, and the
+  Main OS read back equals the built image on the written range. Hand tests of each new function are still to do
+  (n°52 listened to).
+
 ### [1.6.4.0] - 2026-11-10, installed and verified
 
 - n°37: 9,876 bytes of the official code that nothing can run are erased, room for new functions; the machine runs
@@ -91,7 +134,8 @@ Each version is built from the official Main OS 1.5.0.2 by the user; Voice, Pane
 - n°46: the Save/Load browser lists a folder in one pass, much faster.
 - Test versions 1.6.4.0-a, -b, -c and -d hold n°37, n°38, n°39-n°40 and n°41-n°46, to prove each group alone.
 - Not made: n°42 (slave Start: the suspected cause was disproved) and n°47 (Copy Beat onto the playing beat).
-- Every new behaviour tried by hand on the author's Tempest the same day.
+- Installed over USB on 10 November 2026 (the machine had to be power-cycled by hand after the send): the exact version
+  is answered and the Main OS dump equals the built image; hand tests of the new behaviours are still to do.
 
 ### [1.6.3.0] - 2026-11-09, installed and verified
 

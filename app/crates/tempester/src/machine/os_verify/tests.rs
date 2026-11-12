@@ -3,8 +3,10 @@ use crate::command::Command;
 use crate::machine::fake_machine::{debug_send, debug_send_messages};
 use crate::machine::testkit::TestRig;
 use crate::storage::Folder;
+use tempest_proto::identity::TempesterVersion;
 use tempest_proto::os_image::{self, OsId};
 use tempest_proto::sha256::sha256_hex;
+use tempest_proto::versions::find_version;
 use tempest_proto::versions::{written_range, BASE, FLASHER_PAGE, WRITTEN_LEN};
 
 fn main_dump_image() -> Vec<u8> {
@@ -351,4 +353,169 @@ fn test_verify_stop_when_listening_returns_idle_and_later_dumps_are_ignored() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].field("state"), Some(&"idle".into()));
     assert_eq!(backup_folders(&rig), 0);
+}
+
+/// The app's record of an install of `version` (a known release), as a send from the app leaves it.
+fn record_of(version: &str) -> InstalledOs {
+    let v = find_version(version).expect("known version");
+    InstalledOs {
+        label: format!("Tempester {version}"),
+        version: Some(version.into()),
+        at: "2026-11-08_100000Z".into(),
+        sha256_image: v.sha256_image.into(),
+        sha256_image_written: Some(v.sha256_image_written.into()),
+        verified_at: None,
+    }
+}
+
+/// A connected machine that announces `announced`, whose record is `record`, with the check started.
+fn listening_announced(label: &str, announced: [u16; 4], record: Option<&InstalledOs>) -> TestRig {
+    let mut rig = TestRig::connected(label);
+    if let Some(record) = record {
+        rig.machine
+            .storage
+            .set_installed_os(Some(record))
+            .expect("stored");
+    }
+    rig.machine.announced = Some(TempesterVersion(announced));
+    rig.machine.handle(Command::OsVerifyStart);
+    rig
+}
+
+#[test]
+fn test_verify_start_when_record_and_report_differ_returns_listening_on_the_record_first() {
+    let mut rig = listening_announced("verify-two", [1, 6, 5, 0], Some(&record_of("1.6.4.0")));
+
+    let listening = rig.expect("os_verify");
+
+    assert_eq!(listening.field("state"), Some(&"listening".into()));
+    assert_eq!(listening.field("version"), Some(&"1.6.4.0".into()));
+    assert_eq!(listening.field("source"), Some(&"sent".into()));
+    assert_eq!(
+        rig.machine.verify.as_ref().map(|w| w.candidates.len()),
+        Some(2)
+    );
+}
+
+#[test]
+fn test_verify_when_a_test_build_announces_its_base_and_the_dump_is_what_was_sent_returns_match_and_verified(
+) {
+    // A test build keeps the digits of its base: sent 1.6.5.0-j, the machine announces 1.6.4.0. The dump is the proof.
+    let sent = InstalledOs {
+        label: "Tempester 1.6.5.0-j (test build)".into(),
+        version: None,
+        sha256_image: "f".repeat(64),
+        sha256_image_written: Some(main_dump_sha256()),
+        ..record_of("1.6.4.0")
+    };
+    let mut rig = listening_announced("verify-test-build", [1, 6, 4, 0], Some(&sent));
+    rig.events();
+
+    hear_debug_sends(&mut rig);
+
+    let result = rig.expect("os_verify");
+    assert_eq!(result.field("state"), Some(&"match".into()));
+    assert_eq!(result.field("source"), Some(&"sent".into()));
+    assert_eq!(
+        result.field("label"),
+        Some(&"Tempester 1.6.5.0-j (test build)".into())
+    );
+    let record = rig.machine.storage.installed_os().expect("record");
+    assert!(record.verified_at.is_some(), "the sent OS is proved");
+}
+
+#[test]
+fn test_verify_when_the_dump_equals_neither_the_record_nor_the_report_returns_mismatch_naming_both()
+{
+    let mut rig = listening_announced("verify-neither", [1, 6, 5, 0], Some(&record_of("1.6.4.0")));
+    rig.events();
+
+    hear_debug_sends(&mut rig);
+
+    let result = rig.expect("os_verify");
+    assert_eq!(result.field("state"), Some(&"mismatch".into()));
+    assert_eq!(result.field("label"), Some(&"Tempester 1.6.4.0".into()));
+    assert_eq!(result.field("also"), Some(&"Tempester 1.6.5.0".into()));
+    assert_eq!(
+        rig.machine.storage.installed_os(),
+        Some(record_of("1.6.4.0")),
+        "nothing is proved"
+    );
+}
+
+#[test]
+fn test_verify_when_the_dump_equals_the_report_only_returns_match_and_keeps_the_record_unverified()
+{
+    let mut rig = TestRig::connected("verify-report-only");
+    let record = record_of("1.6.4.0");
+    rig.machine
+        .storage
+        .set_installed_os(Some(&record))
+        .expect("stored");
+    // The fake's dump stands for the reported release: the real 1.6.5.0 image is not in the tests (it is built
+    // from DSI's file), so its candidate takes the dump's hash.
+    let mut candidates = verify_candidates(Some("1.6.5.0"), Some(record.clone()));
+    candidates[1].written = main_dump_sha256();
+    rig.machine.listen_for_dump(candidates).expect("listening");
+    rig.events();
+
+    hear_debug_sends(&mut rig);
+
+    let result = rig.expect("os_verify");
+    assert_eq!(result.field("state"), Some(&"match".into()));
+    assert_eq!(result.field("source"), Some(&"reported".into()));
+    assert_eq!(result.field("label"), Some(&"Tempester 1.6.5.0".into()));
+    assert_eq!(backup_folders(&rig), 1);
+    assert_eq!(
+        rig.machine.storage.installed_os(),
+        Some(record),
+        "the record of the last send is neither replaced nor marked verified"
+    );
+}
+
+#[test]
+fn test_verify_start_when_machine_reports_a_known_version_and_nothing_was_sent_returns_listening() {
+    let mut rig = listening_announced("verify-reported-only", [1, 6, 5, 0], None);
+
+    let listening = rig.expect("os_verify");
+
+    assert_eq!(listening.field("state"), Some(&"listening".into()));
+    assert_eq!(listening.field("source"), Some(&"reported".into()));
+}
+
+#[test]
+fn test_verify_start_when_old_record_lacks_its_written_hash_but_is_the_reported_image_returns_listening(
+) {
+    let old = InstalledOs {
+        sha256_image_written: None,
+        ..record_of("1.6.5.0")
+    };
+    let mut rig = listening_announced("verify-old-record", [1, 6, 5, 0], Some(&old));
+
+    let listening = rig.expect("os_verify");
+
+    assert_eq!(listening.field("state"), Some(&"listening".into()));
+    let written = find_version("1.6.5.0").expect("known").sha256_image_written;
+    assert_eq!(listening.field("expected"), Some(&written.into()));
+}
+
+#[test]
+fn test_verify_start_when_nothing_can_be_compared_returns_precondition_error() {
+    let mut rig = listening_announced("verify-unknown-report", [9, 9, 9, 9], None);
+
+    assert_eq!(
+        rig.expect("error").field("code"),
+        Some(&"precondition".into())
+    );
+    assert!(rig.machine.verify.is_none());
+}
+
+#[test]
+fn test_verify_when_the_port_closes_while_listening_returns_no_pending_check() {
+    let mut rig = listening("verify-close", &installed(main_dump_sha256()));
+    assert!(rig.machine.verify.is_some());
+
+    rig.machine.handle(Command::Disconnect);
+
+    assert!(rig.machine.verify.is_none());
 }

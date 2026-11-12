@@ -15,6 +15,9 @@ const FILES = [
   "conn-bar.js",
   "monitor-ui.js",
   "identity-panel.js",
+  "panel-perform.js",
+  "pad-channels.js",
+  "pad-channels-panel.js",
   "pad-notes-panel.js",
   "os-hash.js",
   "os-versions.js",
@@ -75,7 +78,7 @@ const variants = {
   ],
   "verify: enabled without a record": [
     "os-verify.js",
-    "!session.connected || !record || listening",
+    "!session.connected || !canVerify() || listening",
     "!session.connected || listening",
   ],
   "verify: match not said": [
@@ -115,18 +118,98 @@ const variants = {
   ],
   "installed line: not updated by the installed event": [
     "os-verify.js",
-    'bridge.on("installed", (m) => {',
-    'bridge.on("installed-x", (m) => {',
+    'bridge.on("installed", onMachineState);',
+    'bridge.on("installed-x", onMachineState);',
   ],
-  "machine page: installed event ignored": [
+  "installed line: not updated by the state event": [
+    "os-verify.js",
+    'bridge.on("state", onMachineState);',
+    'bridge.on("state-x", onMachineState);',
+  ],
+  "machine page: installed line not watched": [
     "page-machine.js",
-    'bridge.on("installed", (m) => showInstalled(m.installed || null));',
+    "window.Tempester.osVerify.watch(showInstalled);",
     "",
   ],
-  "machine page: installed state ignored": [
-    "page-machine.js",
-    "showInstalled(m.installed || null);\n    });",
-    "});",
+  "reported: the record still stands for what runs": [
+    "os-verify.js",
+    "if (!running)\n      return !record",
+    "if (true)\n      return !record",
+  ],
+  "reported: no note when the two differ": [
+    "os-verify.js",
+    "els.note.hidden = !line.note;",
+    "els.note.hidden = true;",
+  ],
+  "reported: note even when the two agree": [
+    "os-verify.js",
+    "record && record.version !== running.version\n          ?",
+    "record\n          ?",
+  ],
+  "reported: verify allowed for a version the app does not know": [
+    "os-verify.js",
+    "(view.running && view.running.known)",
+    "view.running",
+  ],
+  "reported: proof of one version covers another": [
+    "os-verify.js",
+    "verified === running.version ||",
+    "verified ||",
+  ],
+  "reported: proof kept when the version changes": [
+    "os-verify.js",
+    "running && running.version === view.verified ? view.verified : null",
+    "view.verified",
+  ],
+  "reported: proof kept after a disconnect": [
+    "os-verify.js",
+    "setView({ running: null, verified: null })",
+    "setView({ verified: null })",
+  ],
+  "reported: a mismatch counts as a proof": [
+    "os-verify.js",
+    'm.state === "match" && m.source === "reported"',
+    'm.state !== "idle" && m.source === "reported"',
+  ],
+  "reported: match does not say what it was compared with": [
+    "os-verify.js",
+    '(m.source === "reported" ? S.comparedWithReported : "")',
+    '""',
+  ],
+  "reported: mismatch does not say it is the reported version": [
+    "os-verify.js",
+    '(m.also || m.source === "reported" ? S.tag(m.source) : "") +',
+    '"" +',
+  ],
+  "reported: a mismatch does not name the other candidate": [
+    "os-verify.js",
+    '? " nor " + m.also +',
+    '? "" + m.also +',
+  ],
+  "reported: a match with the sent OS is said to be a comparison with the report": [
+    "os-verify.js",
+    '(m.source === "reported" ? S.comparedWithReported : "")',
+    "S.comparedWithReported",
+  ],
+  "reported: hash called Sent": [
+    "os-verify.js",
+    'const reported = m.source === "reported";',
+    "const reported = false;",
+  ],
+  "pill: a version no longer reported stays": [
+    "conn-bar.js",
+    "running = m.running || null;",
+    "running = m.running || running;",
+  ],
+  "line: a version no longer reported stays": [
+    "os-verify.js",
+    "const running = m.running || null;",
+    "const running = m.running || view.running;",
+  ],
+  "pill: the reported OS is not named": [
+    "conn-bar.js",
+    'if (running) showChip(S.os(running.label), "ok");',
+    'if (false) showChip(S.os(running.label), "ok");',
   ],
 };
 

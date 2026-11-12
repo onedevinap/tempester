@@ -36,6 +36,7 @@ use std::fmt;
 
 use crate::beat::{self, BeatDump, BeatError};
 use crate::pack7::{pack_flushed, pack_padded, unpack_tolerant_with, FlushedError, PackError};
+use crate::quantize::{Quantize, FINE_WORD, QUANTIZE_WORD};
 use crate::DSI_PREFIX;
 
 pub const CMD_PROJECT_HEADER: u8 = 0x5E;
@@ -133,6 +134,9 @@ pub struct ProjectHeader {
     pub play_list_version: Option<u16>,
     /// The name of each of the 4 Play Lists, `None` for an empty list.
     pub play_list_names: [Option<String>; LISTS],
+    /// The project's Quantize, the fine values of Tempester 1.6.5.0 (n°55) included; `None` when the parameter word
+    /// holds no value 0-7.
+    pub quantize: Option<Quantize>,
 }
 
 impl ProjectHeader {
@@ -404,6 +408,9 @@ pub fn read_header(data: &[u8]) -> Result<(ProjectHeader, usize), ProjectError> 
             play_lists_used: play_list_names.iter().flatten().count(),
             play_list_version,
             play_list_names,
+            quantize: word(QUANTIZE_WORD)
+                .zip(word(FINE_WORD))
+                .and_then(|(official, fine)| Quantize::from_words(official, fine)),
         },
         2 * at,
     ))

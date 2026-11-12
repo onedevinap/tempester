@@ -24,6 +24,9 @@ const FILES = [
   "conn-bar.js",
   "monitor-ui.js",
   "identity-panel.js",
+  "panel-perform.js",
+  "pad-channels.js",
+  "pad-channels-panel.js",
   "pad-notes-panel.js",
   "os-hash.js",
   "os-versions.js",
@@ -41,6 +44,7 @@ const OLD_COMMANDS = {
     "connect\tTempest",
     "disconnect",
     "identity",
+    "tempester_version",
     "set_channel\t5",
     "reveal\tdata",
     "monitor\ton",
@@ -63,6 +67,7 @@ const OLD_COMMANDS = {
     "os_send",
     "os_cancel",
     "identity",
+    "tempester_version",
   ],
   /* The pads go out by number (Rust plays the machine's note of the pad), no more as "note 36 + k". */
   play: [
@@ -132,6 +137,7 @@ function checkMachine(env) {
   assert.deepStrictEqual(sentSince(env, before), [
     "set_channel\t5",
     "identity",
+    "tempester_version",
     "reveal\tdata",
     "monitor\ton",
     "monitor_clock\ton",
@@ -313,6 +319,7 @@ async function checkOs(env) {
     "os_send",
     "os_cancel",
     "identity",
+    "tempester_version",
   ]);
 }
 

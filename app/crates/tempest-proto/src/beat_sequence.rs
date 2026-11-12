@@ -29,6 +29,10 @@ const SWING_FROM: u32 = 24;
 /// Time Shift 7 is "on the grid".
 const TIME_SHIFT_CENTRE: i32 = 7;
 const HALF_STEP_TICKS: i32 = 4;
+/// Tempester OS 1.6.5.0 (n°53): bit 15 of an event's second word means "the duration byte is in units of 4".
+const LONG_NOTE_BIT: u16 = 0x8000;
+const LONG_NOTE_SHIFT: u32 = 2;
+const MAX_SHORT_DURATION: u16 = 0xFF;
 
 /// One event of a beat, fields as in `refs/firmware-main.md` 9.4.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,8 +42,9 @@ pub struct BeatEvent {
     pub pad: u8,
     /// 0-127; 0 is never played by the machine.
     pub velocity: u8,
-    /// In 24 ppq ticks (4 ticks of position each); 0 is a free slot.
-    pub duration: u8,
+    /// In 24 ppq units (4 ticks of position each); 0 is a free slot. Above 255 only a beat made by Tempester OS
+    /// 1.6.5.0 or later (n°53) has it: stored as a multiple of 4 with bit 15 of the second word set.
+    pub duration: u16,
     pub time_shift: u8,
     pub half_step: bool,
 }
@@ -51,7 +56,13 @@ impl BeatEvent {
             step,
             pad: (w0 & 0x1F) as u8,
             velocity: ((w1 >> 8) & 0x7F) as u8,
-            duration: (w1 & 0xFF) as u8,
+            // The machine writes bit 15 only above 255; a word such as 0x8010 (x4 of a byte below 64) is not what it
+            // writes, but it is read as the duration it says (64) and written back in the plain form.
+            duration: if w1 & LONG_NOTE_BIT != 0 {
+                (w1 & 0xFF) << LONG_NOTE_SHIFT
+            } else {
+                w1 & 0xFF
+            },
             time_shift: (w0 >> 12) as u8,
             half_step: w2 & 0x4000 != 0,
         }
@@ -62,10 +73,21 @@ impl BeatEvent {
         [
             self.step,
             u16::from(self.time_shift) << 12 | u16::from(self.pad),
-            u16::from(self.velocity) << 8 | u16::from(self.duration),
+            // Masked so that an out-of-range velocity can never reach the "x4" bit.
+            u16::from(self.velocity & 0x7F) << 8 | self.stored_duration(),
             u16::from(self.half_step) << 14,
             0,
         ]
+    }
+
+    /// The duration part of the second word: the duration itself up to 255, above it a multiple of 4 (rounded
+    /// down, at most 1020) behind the "x4" bit.
+    fn stored_duration(&self) -> u16 {
+        if self.duration <= MAX_SHORT_DURATION {
+            self.duration
+        } else {
+            LONG_NOTE_BIT | (self.duration >> LONG_NOTE_SHIFT).min(0xFF)
+        }
     }
 
     /// True when the machine plays it: a free slot (duration 0) and velocity 0 are skipped by the firmware's note
@@ -319,5 +341,66 @@ mod tests {
         data[9] = 6;
 
         assert_eq!(read_sequence(&data), Err(BeatError::UnsupportedTimeUnit(6)));
+    }
+
+    fn long_event(duration: u16) -> BeatEvent {
+        BeatEvent {
+            step: 0,
+            pad: 1,
+            velocity: 90,
+            duration,
+            time_shift: 7,
+            half_step: false,
+        }
+    }
+
+    /// The events of a beat built from `durations`, written and read back through the beat bytes.
+    fn durations_after_round_trip(durations: &[u16]) -> Vec<u16> {
+        let events: Vec<BeatEvent> = durations.iter().map(|d| long_event(*d)).collect();
+        let read = read_sequence(&beat_bytes(&events)).unwrap();
+        read.events.iter().map(|e| e.duration).collect()
+    }
+
+    #[test]
+    fn test_read_sequence_when_long_durations_are_written_returns_them_as_the_machine_keeps_them() {
+        // 256 and 764 and 768 are multiples of 4; 257 is stored as 64 x 4; 1020 = 255 x 4 is the top; more is cut to it.
+        let written = [0, 1, 255, 256, 257, 259, 764, 768, 1020, 1021, 2000];
+        let expected = [0, 1, 255, 256, 256, 256, 764, 768, 1020, 1020, 1020];
+
+        assert_eq!(durations_after_round_trip(&written), expected);
+    }
+
+    #[test]
+    fn test_words_when_duration_is_long_returns_bit_15_and_the_byte_of_units_of_4() {
+        assert_eq!(long_event(255).words()[2], 90 << 8 | 255);
+        assert_eq!(long_event(256).words()[2], 0x8000 | 90 << 8 | 64);
+        assert_eq!(long_event(768).words()[2], 0x8000 | 90 << 8 | 192);
+        assert_eq!(long_event(5000).words()[2], 0x8000 | 90 << 8 | 255);
+    }
+
+    #[test]
+    fn test_words_when_velocity_is_out_of_range_returns_it_masked_off_bit_15() {
+        let mut event = long_event(10);
+        event.velocity = 0xFF;
+
+        assert_eq!(event.words()[2] & 0x8000, 0);
+        assert_eq!(event.words()[2] >> 8, 0x7F);
+    }
+
+    #[test]
+    fn test_from_words_when_raw_second_word_has_bit_15_returns_four_times_the_byte() {
+        let from = |w1| BeatEvent::from_words([0, 1, w1, 0, 0]);
+
+        assert_eq!(from(0x8000 | 0xC0).duration, 768);
+        assert_eq!(from(0x8000 | 0xC0).velocity, 0);
+        assert_eq!(
+            from(0xC0).duration,
+            192,
+            "without bit 15 the byte is the duration"
+        );
+        assert_eq!(from(0x5A00 | 0xFF).duration, 255);
+        // Not what the machine writes (below 256 it keeps the plain form), read as it says and written back plain.
+        assert_eq!(from(0x8010).duration, 64);
+        assert_eq!(from(0x8010).words()[2], 64);
     }
 }

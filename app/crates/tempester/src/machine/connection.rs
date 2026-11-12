@@ -15,6 +15,7 @@ use crate::command::{Command, Place};
 use crate::error::AppError;
 use crate::event::Event;
 use crate::storage::data_dir::Platform;
+use crate::storage::installed::running_json;
 use crate::storage::settings::{KEY_CHANNEL, KEY_PANEL_VIEW, KEY_PANEL_ZOOM, KEY_PORT};
 
 const IDENTITY_TIMEOUT: Duration = Duration::from_millis(1500);
@@ -98,6 +99,10 @@ impl Machine {
                 .with("default_port", DEFAULT_PORT_NAME)
                 .with("features", self.features())
                 .with("announced", self.announced.map(|v| v.to_string()))
+                .with(
+                    "running",
+                    running_json(self.announced.map(|v| v.to_string()).as_deref()),
+                )
                 .with("installed", installed.map(|i| i.to_json())),
         );
         self.emit(super::pad_map::pad_notes_event(&self.pad_notes));
@@ -146,8 +151,10 @@ impl Machine {
         self.forget_remote();
         self.announced = None;
         self.beat_wide_in.forget();
+        self.pad_channels.reset();
         self.stop_clock();
         self.backup = None;
+        self.verify = None;
         self.project = None;
         self.monitor.detach();
         self.session = None;
@@ -180,6 +187,9 @@ impl Machine {
                 .with("version", found.version)
                 .with("tempester", TEMPESTER_VERSIONS.contains(&found.version)),
         );
+        if !TEMPESTER_VERSIONS.contains(&found.version) {
+            self.forget_announced();
+        }
         Ok(())
     }
 

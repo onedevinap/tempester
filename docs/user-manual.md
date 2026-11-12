@@ -200,6 +200,31 @@ pad's note in the pad note table (Machine page), with the velocities and lengths
   with pad numbers, named CCs and keys, NRPN with parameter names, SysEx by type and size). It is off until you switch
   it on; pause, clear, copy, direction filter and clock display are in its toolbar. While it is off, nothing is copied.
 
+### New on the machine with Tempester 1.6.5.0
+
+These work on the Tempest itself; the app follows them where it edits the data (see the details in the
+[firmware notes](firmware.md)).
+
+- **Pad settings page**: with Shift on, a pad press only selects the pad, in every mode (no sound, no MIDI, no
+  recording). Press the same pad a second time to open the page: MIDI note, MIDI channel, play probability and Level
+  on the four encoders. Any key or another pad leaves the page; leaving saves the note and the channel when the
+  transport is stopped.
+- **A MIDI channel per pad** (Off, 1-16 with the pad's played note, 1-16 Fix with its fixed note): used by the
+  sequencer and by the pads you play. The Machine page's pad notes panel reads, sets and saves it over MIDI (CC 15, 16
+  and 17 on Remote Pad IN); if a read times out, check that Remote Pad OUT is not Off.
+- **Notes up to 768 steps long** (a whole 8-bar beat); a beat with long notes played on an older OS plays them short.
+- **Finer Quantize** (Shift + soft knob 3): 8 Dot, 16 Dot, 32 Dot, 64th, 64T, 8 Quint, 16 Quint and 16 Sept join the
+  eight usual values. A project saved with one loads with Quantize Off on the official OS.
+- **Copy Sound** (Edit menu) copies the sequence, the Note FX or the mixer settings as the Seq / NoteFX / Mixer
+  switches of the Copy screen say, to any beat, also while playing. No undo.
+- **Rolls**: with the sequencer stopped, Roll and arpeggio repeats stay on the Quantize grid; the Momentary Roll
+  footswitch turns Roll on while pressed and off when released. System > Swing Source « Project+Roll », « Beat+Roll »
+  or « System+Roll » makes the beat roll follow the swing (set on the machine; the app edits no System file).
+- **Compressor envelope Amount** goes down to −127: Shift + Compression knob opens the envelope page (Attack, Peak
+  Hold, Decay, Amount, the 4th encoder); turning the Compression knob itself leaves that page.
+- **Small fixes**: the Reverse LED follows the beat after a beat change; Pads + Sounds (« Mixer ») opens the Mixer
+  after the compressor pages; in 16 Time Steps a pad lights for every note of its step.
+
 ## Backup
 
 ![Backup](images/backup.png)

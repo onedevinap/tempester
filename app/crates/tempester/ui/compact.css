@@ -67,6 +67,12 @@ button.chip:hover { color: var(--text); }
 .padnote.learned { box-shadow: inset 0 0 0 2px var(--ok); }
 .padnote-pad { color: var(--mid); font-weight: 600; font-size: 15px; }
 .padnote .padnote-in { width: 76px; min-height: 36px; padding: 4px 8px; font-size: 15px; }
+.padchans { margin-top: 12px; padding-top: 8px; border-top: 1px solid #3d444d; }
+.padchans .toolbar strong { font-size: 17px; margin-right: 6px; }
+.padchans .statusline { display: block; min-height: 22px; margin: 4px 0 8px; font-size: 15px; }
+.padchan-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 12px; }
+.padchan { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 6px; padding: 2px 4px; }
+.padchan .padchan-in { width: 100%; min-height: 38px; padding: 4px 8px; font-size: 17px; }
 .padnote-name { color: var(--mid); font: 15px/1 var(--mono); }
 
 @media (prefers-reduced-motion: reduce) { .ibtn { transition: none; } }

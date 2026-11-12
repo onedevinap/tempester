@@ -719,3 +719,41 @@ fn test_project_send_when_real_capture_is_sent_to_the_fake_returns_it_back_ident
     assert_eq!(text(&result, "beats_compared"), "16");
     assert_eq!(wire_project(&rig), project.send_messages());
 }
+
+/// A project whose Quantize words are `word4` and `word18`.
+fn project_with_quantize(word4: u16, word18: u16) -> Project {
+    let mut words = vec![0u16; 44];
+    words[0] = 5;
+    words[4] = word4;
+    words[18] = word18;
+    words.push(2);
+    words.extend([0xFEFE; 4]);
+    let data: Vec<u8> = words.iter().flat_map(|w| w.to_be_bytes()).collect();
+    let mut assembler = ProjectAssembler::new();
+    assembler.accept(&header_data_message(&data)).unwrap();
+    assembler.finish().unwrap()
+}
+
+#[test]
+fn test_replaced_lines_when_quantize_is_a_fine_value_says_only_tempester_1_6_5_0_keeps_it() {
+    let lines = replaced_lines(&project_with_quantize(7 << 8, 0x5107));
+
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.contains("16 Quint") && l.contains("1.6.5.0")),
+        "{lines:?}"
+    );
+}
+
+#[test]
+fn test_replaced_lines_when_quantize_is_official_or_fine_word_is_invalid_says_nothing_of_it() {
+    for (word4, word18) in [(3 << 8, 0), (3 << 8, 0x5107), (7 << 8, 0x5109), (7 << 8, 0)] {
+        let lines = replaced_lines(&project_with_quantize(word4, word18));
+
+        assert!(
+            lines.iter().all(|l| !l.contains("Quantize")),
+            "{word4:#x} {word18:#x}: {lines:?}"
+        );
+    }
+}

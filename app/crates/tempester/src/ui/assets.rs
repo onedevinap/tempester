@@ -54,6 +54,8 @@ static ASSETS: &[Asset] = &[
     asset!("/panel-perform.js", JS, "panel-perform.js"),
     asset!("/monitor-ui.js", JS, "monitor-ui.js"),
     asset!("/identity-panel.js", JS, "identity-panel.js"),
+    asset!("/pad-channels.js", JS, "pad-channels.js"),
+    asset!("/pad-channels-panel.js", JS, "pad-channels-panel.js"),
     asset!("/pad-notes-panel.js", JS, "pad-notes-panel.js"),
     asset!("/os-hash.js", JS, "os-hash.js"),
     asset!("/os-versions.js", JS, "os-versions.js"),

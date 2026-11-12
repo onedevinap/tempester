@@ -1,8 +1,8 @@
 //! A scripted Tempest for demos and tests (`TEMPESTER_FAKE_MIDI=1`): answers the identity request, `40` with a
 //! `60` sound, `41` with a `5F` beat, `42` with a whole project (`5E` + 16 x `5C`), all synthetic, and keeps the sound or beat it is sent, so that a restore
 //! can be seen. With its remote panel (Tempester 1.6.0.0, `fake_panel`) it also answers keys and LED requests, reports
-//! its Pad Function mode (n°40) and answers the version request (n°39) with 1.6.3.0, as the test build 1.6.4.0-c does
-//! (it keeps the version digits of 1.6.3.0).
+//! its Pad Function mode (n°40) and answers the version request (n°39) with 1.6.5.0, so that every control of the app is on
+//! (it keeps the 32 pad channels of n°58 in its panel).
 //! A project sent to it (`5E`, then `5C n`) is stored and answered by request `42` (beats not sent keep their content,
 //! as on the machine); with the n°28 defect switched on it reads the Play Lists like the stock OS (`shifted_lists`).
 //! `debug_send` plays the Debug-menu OS sends, one of them as a constant (as seen on the real machine).
@@ -30,7 +30,7 @@ const IDENTITY_REPLY: [u8; 14] = [
 ];
 
 /// What the fake announces to the version request (n°39).
-const ANNOUNCED: TempesterVersion = TempesterVersion([1, 6, 3, 0]);
+const ANNOUNCED: TempesterVersion = TempesterVersion([1, 6, 5, 0]);
 
 /// The project in the machine's RAM: its decoded `5E` data and the decoded data of each of the 16 beats.
 struct StoredProject {
@@ -376,13 +376,13 @@ mod tests {
     }
 
     #[test]
-    fn test_scripted_when_version_requested_returns_1_6_3_0_only_with_the_remote_panel() {
+    fn test_scripted_when_version_requested_returns_1_6_5_0_only_with_the_remote_panel() {
         let reply = ask(&scripted(true), &VERSION_REQUEST);
         let silent = ask(&scripted(false), &VERSION_REQUEST);
 
         assert_eq!(
             tempest_proto::identity::parse_version(&reply),
-            Some(TempesterVersion([1, 6, 3, 0]))
+            Some(TempesterVersion([1, 6, 5, 0]))
         );
         assert!(silent.is_empty());
     }

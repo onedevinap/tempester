@@ -122,6 +122,7 @@ window.Tempester.padNotesPanel = (function () {
       ),
       els.status,
       grid,
+      window.Tempester.padChannelsPanel.build().section,
     );
     panel.hidden = true;
     const opener = button("kit", S.open, () => toggle(panel.hidden), {

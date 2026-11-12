@@ -195,7 +195,7 @@ mod tests {
     use super::*;
     use crate::beat_sequence::BeatEvent;
 
-    fn event(pad: u8, step: u16, velocity: u8, duration: u8) -> BeatEvent {
+    fn event(pad: u8, step: u16, velocity: u8, duration: u16) -> BeatEvent {
         BeatEvent {
             step,
             pad,
@@ -217,6 +217,26 @@ mod tests {
             events,
             sound_names: std::array::from_fn(|_| None),
         }
+    }
+
+    #[test]
+    fn test_pad_notes_when_duration_is_over_255_returns_the_full_length() {
+        let mut beat = sequence(vec![event(0, 0, 100, 300)]);
+        beat.measures = 8;
+        let mut counts = Export {
+            bytes: Vec::new(),
+            notes: 0,
+            tracks: 0,
+            silent: 0,
+            beyond_end: 0,
+            overlapped: 0,
+        };
+
+        let notes = pad_notes(&beat, 0, &mut counts);
+
+        // 300 units x 4 ticks: a duration cut to its low byte (44) would end at tick 176.
+        assert_eq!(notes.len(), 1);
+        assert_eq!((notes[0].start, notes[0].end), (0, 1200));
     }
 
     #[test]

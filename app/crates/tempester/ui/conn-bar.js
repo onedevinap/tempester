@@ -17,6 +17,7 @@
     disconnect: "Disconnect",
     chipTip: "Show the whole identity answer on the Machine page",
     idUnchecked: "OS: unchecked",
+    os: (label) => "OS: " + label,
     idTempester: "Tempester OS",
     idDsi: "DSI OS",
     idNoAnswer: "No answer",
@@ -45,7 +46,9 @@
   let ports = [];
   let select = null,
     toggle = null,
-    chip = null;
+    chip = null,
+    answered = null,
+    running = null;
 
   function fill(list) {
     ports = list;
@@ -76,7 +79,23 @@
     toggle.classList.toggle("primary", !state.connected);
     toggle.disabled = !state.connected && !ports.length;
     select.disabled = state.connected;
-    if (!state.connected) showChip(S.idUnchecked, "");
+    if (!state.connected) {
+      answered = null;
+      running = null;
+      showChip(S.idUnchecked, "");
+    }
+  }
+
+  /* The exact version the machine reports (n°39) is more precise than the identity word: it wins when known. */
+  function paintChip() {
+    if (running) showChip(S.os(running.label), "ok");
+    else if (answered) showChip(answered, "ok");
+    else showChip(S.idUnchecked, "");
+  }
+
+  function onRunning(m) {
+    running = m.running || null;
+    paintChip();
   }
 
   function onToggle() {
@@ -102,7 +121,12 @@
     bar.append(select, reload, toggle, chip);
     onSession(refresh);
     bridge.on("ports", (m) => fill(m.ports));
-    bridge.on("identity", (m) => showChip(identity.kind(m), "ok"));
+    bridge.on("identity", (m) => {
+      answered = identity.kind(m);
+      paintChip();
+    });
+    bridge.on("state", onRunning);
+    bridge.on("installed", onRunning);
     bridge.on("error", (m) => {
       if (m.during === "identity" && m.code === "timeout")
         showChip(S.idNoAnswer, "warn");

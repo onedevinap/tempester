@@ -797,3 +797,30 @@ fn test_decode_received_when_messages_come_in_either_layout_returns_the_same_dec
         Ok(None)
     );
 }
+
+/// The data of a `5E` header (no Play List used) with the given words 4 and 18.
+fn header_with_quantize(word4: u16, word18: u16) -> Vec<u8> {
+    let mut words = vec![0u16; PARAM_WORDS];
+    words[0] = LAST_PARAMS_VERSION;
+    words[QUANTIZE_WORD] = word4;
+    words[FINE_WORD] = word18;
+    words.push(LIST_VERSION);
+    words.extend([EMPTY_LIST; LISTS]);
+    words.iter().flat_map(|w| w.to_be_bytes()).collect()
+}
+
+#[test]
+fn test_read_header_when_quantize_words_are_set_returns_the_fine_or_official_value() {
+    let read = |w4, w18| {
+        read_header(&header_with_quantize(w4, w18))
+            .unwrap()
+            .0
+            .quantize
+    };
+
+    assert_eq!(read(7 << 8, 0x5107), Some(Quantize::Fine(7)));
+    assert_eq!(read(7 << 8, 0x5101).map(Quantize::label), Some("8 Dot"));
+    assert_eq!(read(3 << 8, 0xFFFF), Some(Quantize::Official(3)));
+    assert_eq!(read(7 << 8, 0x5100), Some(Quantize::Official(7)));
+    assert_eq!(read(9 << 8, 0), None);
+}

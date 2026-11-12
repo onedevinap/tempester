@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/onedevinap/tempester/actions/workflows/ci.yml"><img src="https://github.com/onedevinap/tempester/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="https://github.com/onedevinap/tempester/releases"><img src="https://img.shields.io/github/v/release/onedevinap/tempester?include_prereleases&sort=semver&label=app" alt="Latest app release"></a>
-  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.6.4.0-e8833a" alt="Tempester OS 1.6.4.0"></a>
+  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.6.5.0-e8833a" alt="Tempester OS 1.6.5.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--3.0--or--later-blue" alt="Licence: GPL-3.0-or-later"></a>
   <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-555" alt="Platforms: macOS, Windows, Linux">
 </p>
@@ -124,7 +124,7 @@ installs these; the older releases stay listed in its History, to read only:
 
 | Release | What it is | Choose it if |
 |---|---|---|
-| **1.6.4.0** (latest) | Every fix and every addition: requests, NRPN, remote panel, project transfers, beat-wide positions, FX ribbons over MIDI, footswitch pads, Load Sound memory and alphabetical order, Revert confirmation, per-pad play probability; plus room for new functions (9.9 KB of dead code erased), the machine reporting its mixer, tempo, Pad Function mode and exact version to an editor, and five bug fixes; installed on the project's Tempest on 10 November 2026, the OS read back equal to the built image, every new behaviour tried by hand | you want everything |
+| **1.6.5.0** (latest) | Every fix and every addition: requests, NRPN, remote panel, project transfers, beat-wide positions, FX ribbons over MIDI, footswitch pads, Load Sound memory and alphabetical order, Revert confirmation, per-pad play probability, the machine reporting its mixer, tempo, Pad Function mode and exact version to an editor (up to 1.6.4.0); plus a MIDI channel and a settings page for each pad, notes as long as a whole 8-bar beat, finer Quantize values, Copy Sound with its sequence, a roll that can follow the swing, and six bug fixes; installed on 12 November 2026 (the Main OS read back equals the built image); the hand tests of the new functions are still to do | you want everything |
 | **1.5.6.0** (corrections only) | The bug fixes, plus the sound and beat requests and NRPN; no remote panel, project request or new performance features | you want the fixes and as few changes as possible |
 | **DSI 1.5.0.2** (back to official) | The official OS, rebuilt unchanged from your own file | you want to go back |
 
@@ -160,6 +160,12 @@ Full details: [firmware notes](docs/firmware.md) (each change, how it was proved
 | Undo All Snds and Undo Beat restore sound types, play states, Voice Assign and pad LEDs | 1.6.4.0 |
 | Reverse Off clears the reverse of every beat and the live reverse | 1.6.4.0 |
 | The Save/Load browser lists a folder in one pass (much faster) | 1.6.4.0 |
+| After a beat change the Reverse LED shows whether the pads play reversed | 1.6.5.0 |
+| « Mixer » (Pads + Sounds) opens the Mixer after the compressor pages | 1.6.5.0 |
+| 16 Time Steps: a pad lights for every note of its step, a press on it removes them | 1.6.5.0 |
+| Roll and arpeggio repeats on the grid with the sequencer stopped; Momentary Roll footswitch on while pressed only | 1.6.5.0 |
+| A playing beat roll no longer loses notes recorded late in its window | 1.6.5.0 |
+| The compressor envelope Amount reaches −127 as shown | 1.6.5.0 |
 
 **Additions and changes**
 
@@ -179,6 +185,12 @@ Full details: [firmware notes](docs/firmware.md) (each change, how it was proved
 | 9.9 KB of dead official code erased: room for new functions, same instructions run | 1.6.4.0 |
 | Level, Pan, Delay Send, Delay Time, Delay Repeats, BPM, Swing, Volume, Distort and Compress reported over MIDI (NRPN 230-239) | 1.6.4.0 |
 | The Pad Function mode reported (CC 106); the exact Tempester version on request (SysEx `43`) | 1.6.4.0 |
+| A MIDI channel for each pad, with its played note or a fixed drum note (CC 15-17) | 1.6.5.0 |
+| Shift + pad selects a pad silently in every mode; a second press opens its settings page (note, channel, probability, Level) | 1.6.5.0 |
+| Notes up to 768 steps long, a whole 8-bar beat (255 before) | 1.6.5.0 |
+| More Quantize values for recording: dotted, 64th, quintuplets, septuplets | 1.6.5.0 |
+| Edit > Copy Sound copies the sequence, Note FX and mixer settings to another beat | 1.6.5.0 |
+| System > Swing Source « +Roll »: the beat roll follows the swing | 1.6.5.0 |
 
 Each release contains everything of the earlier ones. Release by release: [firmware notes](docs/firmware.md#versions).
 The new MIDI messages: [MIDI protocol](docs/midi-protocol.md).

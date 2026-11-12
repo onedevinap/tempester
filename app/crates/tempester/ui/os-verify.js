@@ -32,6 +32,19 @@ window.Tempester.osVerify = (function () {
       (r.version ? "" : " (unknown build)") +
       ", " +
       (r.verified_at ? "verified " + TICK : "not verified"),
+    running: (running, proved) =>
+      "The machine runs " +
+      running.label +
+      (running.known ? "" : " (not in this app's table)") +
+      " (it reports it), " +
+      (proved ? "verified " + TICK : "not verified"),
+    differs: (running, record) =>
+      "The machine reports " +
+      running.label +
+      "; this app last sent " +
+      record.label +
+      ".",
+    sentTitle: (r) => "Last sent by this app: " + r.label + ", " + stampText(r.at),
     installedTitle: (r) =>
       "Sent " +
       stampText(r.at) +
@@ -46,7 +59,11 @@ window.Tempester.osVerify = (function () {
       'Listening: on the Tempest hold SHIFT + SYSTEM, then choose "Send Main OS".',
     match: (m) =>
       m.version
-        ? "The machine runs exactly Tempester " + m.version + " " + TICK
+        ? "The machine runs exactly Tempester " +
+          m.version +
+          " " +
+          TICK +
+          (m.source === "reported" ? S.comparedWithReported : "")
         : "The machine runs exactly the file you sent (" +
           m.label +
           ") " +
@@ -54,7 +71,17 @@ window.Tempester.osVerify = (function () {
     mismatch: (m) =>
       "Mismatch: the machine does not run " +
       m.label +
+      (m.also || m.source === "reported" ? S.tag(m.source) : "") +
+      (m.also
+        ? " nor " + m.also + S.tag(m.source === "reported" ? "sent" : "reported")
+        : "") +
       ". Its Main image below the flasher page is another one (both hashes below). Update again, or restore your backup.",
+    comparedWithReported:
+      " (compared with the image of the version the machine reports)",
+    tag: (source) =>
+      source === "reported"
+        ? " (the version the machine reports)"
+        : " (sent by this app)",
     flasher: (m) =>
       "Update routine (flasher page): the machine's own, never rewritten by an update, so it is not compared; it may differ from DSI's file, as expected." +
       (m.flasher ? " SHA-256 " + m.flasher : ""),
@@ -69,9 +96,11 @@ window.Tempester.osVerify = (function () {
     savedIn: (dir) => "Dump kept as a backup in " + dir,
     evidenceLabels: {
       expected: "Sent, written range",
+      expectedReported: "Reported version, written range",
       found: "Machine, written range",
       flasher: "Machine flasher page",
       shortExpected: "Sent",
+      shortExpectedReported: "Reported",
       shortFound: "Machine",
     },
   };
@@ -82,15 +111,68 @@ window.Tempester.osVerify = (function () {
     return m ? m[1] + " " + m[2] + ":" + m[3] + " UTC" : String(stamp || "");
   }
 
-  /* The text, tone and full title of the installed-OS line (`record` is null when nothing was sent). */
-  function installedLine(record) {
-    if (!record) return { text: S.noneInstalled, tone: "", title: "" };
+  /* The text, tone, full title and note of the installed-OS line. `record`: what this app last sent (null when
+     nothing); `running`: the OS the machine reports (n°39: version, label, known) or null; `verified`: the reported
+     version a read-back has proved, or null. A reported OS is what the machine runs: the record then only says what
+     this app last sent, and a note says so when the two differ. */
+  function installedLine(record, running, verified) {
+    if (!running)
+      return !record
+        ? { text: S.noneInstalled, tone: "", title: "", note: "" }
+        : {
+            text: S.installed(record),
+            tone: record.verified_at ? "good" : "",
+            title: S.installedTitle(record),
+            note: "",
+          };
+    const proved =
+      verified === running.version ||
+      !!(
+        record &&
+        record.verified_at &&
+        record.version === running.version
+      );
     return {
-      text: S.installed(record),
-      tone: record.verified_at ? "good" : "",
-      title: S.installedTitle(record),
+      text: S.running(running, proved),
+      tone: proved ? "good" : "",
+      title: record ? S.sentTitle(record) : "",
+      note:
+        record && record.version !== running.version
+          ? S.differs(running, record)
+          : "",
     };
   }
+
+  /* What the pages show: the record, the reported OS and the reported version a read-back proved. Kept here so
+     the OS page and the Machine page always say the same thing. */
+  const view = { record: null, running: null, verified: null };
+  const watchers = [];
+  function setView(patch) {
+    Object.assign(view, patch);
+    watchers.forEach((watcher) => watcher(view));
+  }
+  function watch(watcher) {
+    watchers.push(watcher);
+    watcher(view);
+  }
+  function onMachineState(m) {
+    const running = m.running || null;
+    setView({
+      record: m.installed || null,
+      running,
+      verified:
+        running && running.version === view.verified ? view.verified : null,
+    });
+  }
+  bridge.on("state", onMachineState);
+  bridge.on("installed", onMachineState);
+  bridge.on("os_verify", (m) => {
+    if (m.state === "match" && m.source === "reported")
+      setView({ verified: m.version });
+  });
+  kit.onSession((session) => {
+    if (!session.connected) setView({ running: null, verified: null });
+  });
 
   function stepList() {
     return el(
@@ -102,20 +184,25 @@ window.Tempester.osVerify = (function () {
 
   function create() {
     const els = {};
-    let record = null,
-      listening = false,
+    let listening = false,
       sending = false;
 
-    function showInstalled() {
-      const line = installedLine(record);
+    function showInstalled(state) {
+      const line = installedLine(state.record, state.running, state.verified);
       els.installed.textContent = line.text;
       els.installed.setAttribute("class", "statusline " + line.tone);
       els.installed.setAttribute("title", line.title);
+      els.note.textContent = line.note;
+      els.note.hidden = !line.note;
     }
+
+    /* The read-back compares with the OS the app sent, or with the release the machine reports when it is known. */
+    const canVerify = () =>
+      !!(view.record || (view.running && view.running.known));
 
     function refresh(session) {
       els.start.disabled =
-        !session.connected || !record || listening || sending;
+        !session.connected || !canVerify() || listening || sending;
       els.stop.disabled = !listening;
     }
 
@@ -125,10 +212,15 @@ window.Tempester.osVerify = (function () {
     }
 
     function hashes(m) {
+      const reported = m.source === "reported";
       return [
         {
-          label: S.evidenceLabels.expected,
-          shownAs: S.evidenceLabels.shortExpected,
+          label: reported
+            ? S.evidenceLabels.expectedReported
+            : S.evidenceLabels.expected,
+          shownAs: reported
+            ? S.evidenceLabels.shortExpectedReported
+            : S.evidenceLabels.shortExpected,
           value: m.expected,
         },
         ...(m.found
@@ -183,6 +275,11 @@ window.Tempester.osVerify = (function () {
     }
 
     els.installed = el("span", { class: "statusline", role: "status" });
+    els.note = el("p", {
+      class: "statusbox warn",
+      role: "status",
+      hidden: true,
+    });
     els.start = button("check", S.start, () => bridge.send("os_verify_start"), {
       text: S.start,
     });
@@ -193,6 +290,7 @@ window.Tempester.osVerify = (function () {
       "div",
       { class: "verify-block" },
       el("div", { class: "toolbar" }, els.installed),
+      els.note,
       el(
         "div",
         { class: "toolbar" },
@@ -204,19 +302,11 @@ window.Tempester.osVerify = (function () {
       els.evidence.node,
     );
 
-    showInstalled();
+    watch((state) => {
+      showInstalled(state);
+      refresh(kit.session);
+    });
     kit.onSession(refresh);
-    refresh(kit.session);
-    bridge.on("state", (m) => {
-      record = m.installed || null;
-      showInstalled();
-      refresh(kit.session);
-    });
-    bridge.on("installed", (m) => {
-      record = m.installed || null;
-      showInstalled();
-      refresh(kit.session);
-    });
     bridge.on("os_verify", onVerify);
     bridge.on("os_started", () => {
       sending = true;
@@ -235,5 +325,5 @@ window.Tempester.osVerify = (function () {
     return { node };
   }
 
-  return { installedLine, create, stampText };
+  return { installedLine, watch, create, stampText };
 })();

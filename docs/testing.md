@@ -79,7 +79,7 @@ recipes to its recorded hashes) and the app's tests.
 ## Verified on a real machine
 
 One Tempest, over USB, each installation with the author's go. Each version replaced the previous one; the machine
-now runs 1.6.4.0. The installations up to 1.6.2.0 were made with a SysEx sender of this repository
+now runs 1.6.5.0. The installations up to 1.6.2.0 were made with a SysEx sender of this repository
 (`tools/tempest_midi.swift`), not with the app's OS update page.
 
 | Date | Version | What was checked on the machine |
@@ -94,6 +94,8 @@ now runs 1.6.4.0. The installations up to 1.6.2.0 were made with a SysEx sender 
 | 8 Nov | 1.6.1.0 | the project request works (n°24); a project captured this way is read by the app (16 beats, Play Lists) |
 | 8 Nov | 1.6.2.0 | the Debug-menu *Send Main OS* dump is byte-identical to the built 1.6.2.0 image over the whole range an update writes (`0x9D000000`-`0x9D07EFFF`); the last page differs as expected (below) |
 | 9 Nov | 1.6.3.0 | started normally showing 1.6.3.0; the *Send Main OS* dump is byte-identical to the built image over the range an update writes, the last page is the machine's own; the behaviours of n°26 to n°36 used on the machine and confirmed by the author |
+| 10 Nov | 1.6.4.0 | installed over USB, the machine power-cycled by hand after the send; request 43 answers 1.6.4.0; the *Send Main OS* dump equals the built image on the written range; hand tests of its new behaviours: not yet |
+| 12 Nov | 1.6.5.0 | the machine answers 1.6.5.0 to the exact-version request; the *Send Main OS* dump equals the built image on the written range (a first capture was damaged in transit, bytes of 0x80 and above inside the SysEx; a second dump was clean); n°52 listened to by the author, who keeps it; hand tests of the new behaviours: not yet (n°52 listened to, kept) |
 
 **Why the last flash page is left out of the comparison.** The last 4 KB page (`0x9D07F000` and up) holds the routine
 that writes the flash during an update. No update rewrites it, official or Tempester: every machine keeps the copy it

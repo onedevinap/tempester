@@ -9,6 +9,7 @@ const assert = require("assert");
 const {
   all,
   textOf,
+  isShown,
   load,
   tick,
   control,
@@ -24,6 +25,9 @@ const FILES = [
   "conn-bar.js",
   "monitor-ui.js",
   "identity-panel.js",
+  "panel-perform.js",
+  "pad-channels.js",
+  "pad-channels-panel.js",
   "pad-notes-panel.js",
   "os-hash.js",
   "os-versions.js",
@@ -283,6 +287,176 @@ function checkVerifyWithoutRecord(env) {
   assert.ok(!control(root, "Verify the installed OS").disabled);
 }
 
+const RUNNING = {
+  version: "1.6.5.0",
+  label: "Tempester 1.6.5.0",
+  known: true,
+};
+const REPORTED_LINE =
+  "The machine runs Tempester 1.6.5.0 (it reports it), not verified";
+
+/* What the machine reports (n°39) is what it runs, even when this app sent another OS or none. */
+function checkReportedVersion(env) {
+  const os = env.roots.os;
+  const machine = env.roots.machine;
+  env.kit.updateSession({ connected: true });
+  env.receive({ event: "installed", installed: record(), running: RUNNING });
+  for (const root of [os, machine]) {
+    const shown = textOf(root);
+    assert.ok(shown.includes(REPORTED_LINE), "the reported version is shown");
+    assert.ok(
+      !shown.includes("Installed: Tempester 1.6.1.1"),
+      "the record no longer stands for what runs",
+    );
+  }
+  const note = all(os).find(
+    (n) =>
+      n.attrs.class === "statusbox warn" &&
+      textOf(n).includes("this app last sent"),
+  );
+  assert.ok(note && isShown(note), "the difference is said in a note");
+  assert.strictEqual(
+    textOf(note),
+    "The machine reports Tempester 1.6.5.0; this app last sent Tempester 1.6.1.1.",
+  );
+  assert.ok(
+    textOf(env.byId.connbar).includes("OS: Tempester 1.6.5.0"),
+    "the pill names the OS",
+  );
+
+  env.receive({
+    event: "installed",
+    installed: record({ label: "Tempester 1.6.5.0", version: "1.6.5.0" }),
+    running: RUNNING,
+  });
+  assert.ok(!isShown(note), "no note when the record agrees");
+
+  env.receive({ event: "installed", installed: null, running: RUNNING });
+  assert.ok(textOf(os).includes(REPORTED_LINE), "no record: still shown");
+  assert.ok(!isShown(note), "no record: nothing to differ from");
+  assert.ok(
+    !control(os, "Verify the installed OS").disabled,
+    "a known reported version can be verified without any record",
+  );
+  env.receive({
+    event: "installed",
+    installed: null,
+    running: { ...RUNNING, version: "9.9.9.9", known: false },
+  });
+  assert.ok(
+    control(os, "Verify the installed OS").disabled,
+    "an unknown reported version and no record: nothing to compare with",
+  );
+  env.receive({ event: "installed", installed: record(), running: null });
+  assert.ok(
+    textOf(os).includes("Installed: Tempester 1.6.1.1, not verified"),
+    "an OS that cannot answer keeps the record line",
+  );
+  assert.ok(
+    !textOf(env.byId.connbar).includes("1.6.5.0"),
+    "a version no longer reported leaves the pill",
+  );
+}
+
+function checkReportedVerify(env) {
+  const os = env.roots.os;
+  const machine = env.roots.machine;
+  env.receive({ event: "installed", installed: record(), running: RUNNING });
+  press(os, "Verify the installed OS");
+  const base = {
+    event: "os_verify",
+    label: "Tempester 1.6.5.0",
+    version: "1.6.5.0",
+    source: "reported",
+    expected: IMAGE,
+  };
+  env.receive({ ...base, state: "match", found: IMAGE, dir: "/d/b" });
+  assert.ok(
+    textOf(os).includes(
+      "The machine runs exactly Tempester 1.6.5.0 " +
+        TICK +
+        " (compared with the image of the version the machine reports)",
+    ),
+    "the match says what it was compared with",
+  );
+  assert.ok(textOf(os).includes("Reported 4fa3c1b2d5e6"), "reported hash");
+  for (const root of [os, machine])
+    assert.ok(
+      textOf(root).includes(
+        "The machine runs Tempester 1.6.5.0 (it reports it), verified " + TICK,
+      ),
+      "verified is shown for the reported version",
+    );
+  env.receive({
+    event: "installed",
+    installed: record(),
+    running: { ...RUNNING, version: "1.6.4.0", label: "Tempester 1.6.4.0" },
+  });
+  assert.ok(
+    !textOf(os).includes("Tempester 1.6.4.0 (it reports it), verified"),
+    "a proof of one version never covers another",
+  );
+  const other = { ...RUNNING, version: "1.6.4.0", label: "Tempester 1.6.4.0" };
+  assert.strictEqual(
+    env.window.Tempester.osVerify.installedLine(null, other, "1.6.5.0").tone,
+    "",
+    "the line itself refuses a proof made for another version",
+  );
+  assert.strictEqual(
+    env.window.Tempester.osVerify.installedLine(null, RUNNING, "1.6.5.0").tone,
+    "good",
+  );
+  env.receive({ event: "installed", installed: record(), running: RUNNING });
+  assert.ok(
+    textOf(os).includes(REPORTED_LINE),
+    "the proof is forgotten once the version changed",
+  );
+  env.receive({ ...base, state: "mismatch", found: OTHER, dir: "/d/b" });
+  assert.ok(
+    textOf(os).includes(
+      "Mismatch: the machine does not run Tempester 1.6.5.0 (the version the machine reports)",
+    ),
+  );
+  assert.ok(textOf(os).includes(REPORTED_LINE), "a mismatch proves nothing");
+  env.receive({
+    ...base,
+    label: "Tempester 1.6.4.0",
+    version: "1.6.4.0",
+    source: "sent",
+    also: "Tempester 1.6.5.0",
+    state: "mismatch",
+    found: OTHER,
+    dir: "/d/b",
+  });
+  assert.ok(
+    textOf(os).includes(
+      "Mismatch: the machine does not run Tempester 1.6.4.0 (sent by this app) nor Tempester 1.6.5.0 (the version the machine reports)",
+    ),
+    "a mismatch against two candidates names both",
+  );
+  env.receive({
+    ...base,
+    source: "sent",
+    also: null,
+    state: "match",
+    found: IMAGE,
+    dir: "/d/b",
+  });
+  assert.ok(
+    textOf(os).includes("The machine runs exactly Tempester 1.6.5.0 " + TICK),
+    "a match with what was sent says so, whatever the machine announces",
+  );
+  assert.ok(
+    !textOf(os).includes("compared with the image of the version"),
+    "a match with the sent OS is not said to be a comparison with the report",
+  );
+  env.kit.updateSession({ connected: false });
+  assert.ok(
+    textOf(os).includes("Installed: Tempester 1.6.1.1, not verified"),
+    "disconnected: the reported version is forgotten",
+  );
+}
+
 function checkSlots(env) {
   const row = all(env.roots.os).find((n) => n.attrs.class === "evidence");
   assert.strictEqual(
@@ -301,9 +475,11 @@ function checkSlots(env) {
   checkInstalledLines(env);
   checkVerify(env);
   checkVerifyWithoutRecord(env);
+  checkReportedVersion(env);
+  checkReportedVerify(env);
   checkSlots(env);
   console.log(
-    "ok, built, known, unknown, refused, installed line, read-back, slots",
+    "ok, built, known, unknown, refused, installed line, read-back, reported version, slots",
   );
 })().catch((e) => {
   console.error(e.stack || e);

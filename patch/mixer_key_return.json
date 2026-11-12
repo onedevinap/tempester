@@ -1,0 +1,24 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°49: « Mixer » (Pads + Sounds) opens the Mixer after the compressor pages",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "Tempester n°49: « Mixer » (Pads + Sounds) opens the Mixer, not the compressor pages (Main 1.5.0.2). Before: [routine] records every screen 0x12-0x17 it enters in ctx+0x137, « last screen of the mixer group » (0x12 Mixer, 0x13 Mixer Delay, 0x14, 0x15 Compression / Distortion, 0x16 compressor envelope, 0x17). Pads + Sounds held together (keys 0x1C / 0x1D, either order, [routine]) open ctx+0x137. After Shift + Compression (the compressor envelope page, [routine]) or the Compression / Distortion page, « Mixer » reopened that page. Docs/analyses/bugs-open-2026-11.md §11. After: in the two Pads + Sounds branches only, 0x15 and 0x16 read from ctx+0x137 open the Mixer (0x12); 0x12, 0x13, 0x14, 0x17 open as before. The record itself is unchanged: the other readers of ctx+0x137 ([routine]'s caller at l. 15077, the return of l. 19211 after a temporary screen) still go back to the compressor page they left, as before. Context: main loop (UI). No RAM. Free flash 0x9D07A840-0x9D07A86F (12 words), 3 words in place; [address] (the old delay slot) is no longer reached.",
+ "edits": [
+  {"at": "0x9d021d90", "jal": "0x9d07a840", "why": "jal 0x9d07a840 ; key 0x1C branch: was \"lbu a1,0x137(s8)\"; delay slot \"li v0,0x2\" kept; returns to [address] (jal [address])"},
+  {"at": "0x9d026f94", "j": "0x9d07a85c", "why": "j 0x9d07a85c ; key 0x1D branch (a1 = ctx+0x137 loaded in the delay slot of [address]): was \"li t4,0x2\""},
+  {"at": "0x9d026f98", "word": "02000c24", "why": "li t4,0x2 ; delay slot: was \"b [address]\" (made by MIX_1D)"},
+  {"at": "0x9d07a840", "copy": "0x9d021d90", "why": "last screen of the mixer group"},
+  {"at": "0x9d07a844", "word": "ebffb924", "why": "addiu t9,a1,-0x15"},
+  {"at": "0x9d07a848", "word": "0200392f", "why": "sltiu t9,t9,0x2 ; 0x15 (Compression / Distortion) or 0x16 (compressor envelope)"},
+  {"at": "0x9d07a84c", "word": "01002057", "why": "bnel t9,zero,0x9d07a854"},
+  {"at": "0x9d07a850", "word": "12000524", "why": "li a1,0x12 ; delay slot, taken only: the Mixer"},
+  {"at": "0x9d07a854", "word": "0800e003", "why": "jr ra"},
+  {"at": "0x9d07a858", "word": "00000000", "why": "nop"},
+  {"at": "0x9d07a85c", "word": "4801ccaf", "why": "sw t4,0x148(s8) ; was the delay slot of \"b [address]\": ctx+0x148 = 2"},
+  {"at": "0x9d07a860", "jal": "0x9d07a844", "why": "jal 0x9d07a844 ; ra is not live here ([address] calls [routine])"},
+  {"at": "0x9d07a864", "word": "00000000", "why": "nop"},
+  {"at": "0x9d07a868", "j": "0x9d021cbc", "why": "j [address] ; jal [address](ctx, a1) as before"},
+  {"at": "0x9d07a86c", "word": "00000000", "why": "nop"}
+ ]
+}

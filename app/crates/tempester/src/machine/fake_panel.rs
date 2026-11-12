@@ -11,11 +11,13 @@
 //! reported as the machine does, CC 12 / 13 change Distort and Compress without a report, and a state request
 //! sends all 10 after the beat-wide positions. Like the author's machine, it listens on one
 //! channel and answers on the next one (Remote Pad IN = ch 1, OUT = ch 2), which exercises the app's choice of
-//! accepting LED changes on any channel.
+//! accepting LED changes on any channel. The 32 MIDI channels of n°58 (CC 15 addresses a pad and is answered with CC 16 =
+//! its value, CC 16 sets it, CC 17 = 127 saves them, which changes nothing here) follow the protocol of 1.6.5.0.
 
 use tempest_proto::beat::PADS;
 use tempest_proto::mixer_report::{report_bytes, MixerItem};
 use tempest_proto::nrpn::{Nrpn, NrpnDecoder};
+use tempest_proto::pad_channel::{CC_PAD_CHANNEL, CC_PAD_SELECT, CC_SYSTEM_SAVE, VALUE_MAX};
 use tempest_proto::pad_notes::{PadNotes, BANK_PADS};
 use tempest_proto::performance::{
     self, BeatWideReader, BEAT_WIDE_COUNT, BEAT_WIDE_NEUTRAL, CC_PLAY_PROBABILITY, PROBABILITY_MAX,
@@ -78,6 +80,9 @@ pub struct FakePanel {
     selected_pad: u8,
     /// Play probability of each pad of the current beat, in percent.
     pub probability: [u8; PADS],
+    /// The MIDI channel value (0-32) of each pad (n°58) and the pad CC 15 addressed last.
+    pub pad_channels: [u8; PADS],
+    addressed_pad: u8,
     /// Where each FX ribbon is touched (`None`: released).
     pub ribbons: [Option<u8>; 2],
     /// The machine's note of each pad.
@@ -101,6 +106,8 @@ impl Default for FakePanel {
             beat_wide,
             selected_pad: 0,
             probability: [PROBABILITY_MAX; PADS],
+            pad_channels: [0; PADS],
+            addressed_pad: 0,
             ribbons: [None; 2],
             pad_notes: PadNotes::default(),
             nrpn_in: NrpnDecoder::new(),
@@ -132,6 +139,9 @@ impl FakePanel {
             if let Some(change) = self.nrpn_in.feed_message(status, controller, value) {
                 return self.apply_nrpn(out & 0x0F, change);
             }
+            if let Some(reply) = self.pad_channel(out, controller, value) {
+                return reply;
+            }
             if self.performance(controller, value) {
                 return Vec::new();
             }
@@ -156,6 +166,30 @@ impl FakePanel {
             out,
             changed.into_iter().map(|i| (i, self.leds[usize::from(i)])),
         )
+    }
+
+    /// The pad channel controls of n°58: CC 15 is answered with the addressed pad's value, CC 16 sets it, CC 17 saves
+    /// (nothing to keep here). `None` for any other controller.
+    fn pad_channel(&mut self, out: u8, controller: u8, value: u8) -> Option<Vec<u8>> {
+        match controller {
+            CC_PAD_SELECT if usize::from(value) < PADS => {
+                self.addressed_pad = value;
+                Some(vec![
+                    0xB0 | out & 0x0F,
+                    CC_PAD_CHANNEL,
+                    self.pad_channels[usize::from(value)],
+                ])
+            }
+            CC_PAD_SELECT => Some(Vec::new()),
+            CC_PAD_CHANNEL => {
+                if value <= VALUE_MAX {
+                    self.pad_channels[usize::from(self.addressed_pad)] = value;
+                }
+                Some(Vec::new())
+            }
+            CC_SYSTEM_SAVE => Some(Vec::new()),
+            _ => None,
+        }
     }
 
     /// The performance control changes, none answered (the firmware never echoes them). `true` when it was one.
@@ -410,6 +444,20 @@ mod tests {
             vec![0xB1, CC_LED_ON, 0x10, 0xB1, CC_LED_OFF, 0x19, 0xB1, 106, 0]
         );
         assert_eq!(panel.mode, 0);
+    }
+
+    #[test]
+    fn test_on_channel_when_pad_channels_are_set_and_asked_returns_each_pad_s_own_value() {
+        let mut panel = FakePanel::default();
+
+        assert!(panel.on_channel(0xB0, &[15, 9]).eq(&[0xB1, 16, 0]));
+        assert!(panel.on_channel(0xB0, &[16, 20]).is_empty());
+        assert!(panel.on_channel(0xB0, &[15, 10]).eq(&[0xB1, 16, 0]));
+        assert!(panel.on_channel(0xB0, &[15, 9]).eq(&[0xB1, 16, 20]));
+        assert!(panel.on_channel(0xB0, &[17, 127]).is_empty());
+        assert_eq!(panel.pad_channels[9], 20);
+        panel.on_channel(0xB0, &[16, 33]);
+        assert_eq!(panel.pad_channels[9], 20, "above 32 is ignored");
     }
 
     #[test]
