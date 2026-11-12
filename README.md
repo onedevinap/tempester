@@ -119,13 +119,12 @@ simulated Tempest and nothing reaches a MIDI port.
 
 ## Tempester OS releases
 
-Tempester OS replaces only the Main OS. Voice, Panel and SAM stay those of the official 1.5.0.2 package. The app offers
-every release; these are the ones most people need:
+Tempester OS replaces only the Main OS. Voice, Panel and SAM stay those of the official 1.5.0.2 package. The app
+installs these; the older releases stay listed in its History, to read only:
 
 | Release | What it is | Choose it if |
 |---|---|---|
-| **1.6.4.0** (latest) | 1.6.3.0 plus room for new functions (9.9 KB of dead code erased), the machine reporting its mixer, tempo, Pad Function mode and exact version to an editor, and five bug fixes; installed on the project's Tempest on 10 November 2026, the OS read back equal to the built image, every new behaviour tried by hand | you want everything |
-| **1.6.3.0** | Every fix and every addition: requests, NRPN, remote panel, project transfers, beat-wide positions, FX ribbons over MIDI, footswitch pads, Load Sound memory and alphabetical order, Revert confirmation, per-pad play probability | you want all of Tempester |
+| **1.6.4.0** (latest) | Every fix and every addition: requests, NRPN, remote panel, project transfers, beat-wide positions, FX ribbons over MIDI, footswitch pads, Load Sound memory and alphabetical order, Revert confirmation, per-pad play probability; plus room for new functions (9.9 KB of dead code erased), the machine reporting its mixer, tempo, Pad Function mode and exact version to an editor, and five bug fixes; installed on the project's Tempest on 10 November 2026, the OS read back equal to the built image, every new behaviour tried by hand | you want everything |
 | **1.5.6.0** (corrections only) | The bug fixes, plus the sound and beat requests and NRPN; no remote panel, project request or new performance features | you want the fixes and as few changes as possible |
 | **DSI 1.5.0.2** (back to official) | The official OS, rebuilt unchanged from your own file | you want to go back |
 
@@ -218,7 +217,7 @@ We try to say exactly what was checked, and on what.
 - **Every Tempester OS release on real hardware.** Each release from 1.5.1.0 to 1.6.4.0 was installed over USB on the
   project's Tempest, one after the other, without any programmer. For 1.5.5.0, 1.6.2.0, 1.6.3.0 and 1.6.4.0, the Main OS read
   back from the machine was identical to the built image over the whole range an update writes.
-- **The new features on the machine**: requests, NRPN, the remote panel, the project request and the 1.6.3.0
+- **The new features on the machine**: requests, NRPN, the remote panel, the project request, the 1.6.3.0 and 1.6.4.0
   additions were used on the machine, over USB.
 - **Proofs before any install.** Every change is checked word by word against the official image; the later ones
   also run in an instruction-level simulator of the Main processor on the real firmware code, and the same checks must
