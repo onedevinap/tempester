@@ -23,6 +23,11 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
   the old guesses.
 - **MIDI monitor**: names for the play probability, the pad channel, the ribbons and the mixer reports (CC 14 to 17,
   107 to 113, NRPN 230 to 239).
+- **Ubuntu 26.04 packages**: the Linux app and plugins packages are built on Ubuntu 24.04 and on Ubuntu 26.04, and
+  their file names say which: take `*_ubuntu24.04.deb` on Ubuntu 24.04 (and Linux Mint 22), `*_ubuntu26.04.deb` on
+  Ubuntu 26.04 ([Installing a release package](docs/building.md#installing-a-release-package)). Each pair depends on
+  the library packages of its release with minimum versions, so `apt` refuses a pair on a system older than the one
+  it was built on. CI checks the app and the plugin on both.
 
 #### Changed
 

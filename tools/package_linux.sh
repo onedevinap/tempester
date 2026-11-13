@@ -1,12 +1,21 @@
 #!/bin/bash
 # Builds two packages in dist/:
-#   tempester_<version>_<arch>.deb          the app: release binary, desktop entry, icons
-#   tempester-plugins_<version>_<arch>.deb  the DAW plugin "Tempester Control": CLAP in /usr/lib/clap, VST3 in
-#                                           /usr/lib/vst3 (the folders every Linux DAW scans)
+#   tempester_<version>_<arch>[_<distro>].deb          the app: release binary, desktop entry, icons
+#   tempester-plugins_<version>_<arch>[_<distro>].deb  the DAW plugin "Tempester Control": CLAP in /usr/lib/clap, VST3
+#                                                      in /usr/lib/vst3 (the folders every Linux DAW scans)
 #
-# usage: tools/package_linux.sh      (needs dpkg-deb; on the GitHub ubuntu runner it is there)
-# Build libraries (Debian/Ubuntu): libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev (see .github/workflows/ci.yml).
+# usage: [TEMPESTER_DISTRO=ubuntu24.04] tools/package_linux.sh   (needs dpkg-deb, and dpkg-shlibdeps on Linux)
+# Build libraries (Debian/Ubuntu): libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev dpkg-dev (see
+# .github/workflows/release.yml).
+# TEMPESTER_DISTRO=<id><release> (ubuntu24.04, ubuntu26.04) ends both file names with `_<distro>`, so the debs built on
+# two releases can sit side by side; on Linux it must be the build system's own ID and VERSION_ID (/etc/os-release).
+# The package name and version inside the debs do not change. Unset (the default), the names have no suffix.
 # TEMPESTER_BIN=<file> packages an existing binary instead of running cargo (layout tests off Linux).
+#
+# The Depends of both packages are computed by dpkg-shlibdeps from the libraries the app binary and the plugin
+# libraries link on the build system, so each release gets its own package names (libasound2t64, libgtk-3-0t64 after
+# the 64-bit time_t transition, the WebKitGTK 4.1 runtime) and minimum versions (libc6): apt refuses a system older
+# than the build system. Off Linux (layout tests only, never published) fixed lists stand in.
 #
 # Why two packages: the plugin links no GUI toolkit, so a machine that only runs a DAW should not have to pull WebKitGTK
 # and GTK; `sudo apt install ./tempester*.deb` installs both. The app only suggests the plugins.
@@ -23,13 +32,45 @@ set -euo pipefail
 command -v dpkg-deb > /dev/null || { echo "dpkg-deb not found: build the .deb on Debian or Ubuntu"; exit 1; }
 
 ARCH=$(dpkg --print-architecture)
-DEB="$DIST/tempester_${VERSION}_$ARCH.deb"
-PLUGINS_DEB="$DIST/tempester-plugins_${VERSION}_$ARCH.deb"
+DISTRO="${TEMPESTER_DISTRO:-}"
+SUFFIX=""
+if [ -n "$DISTRO" ]; then
+  [[ "$DISTRO" =~ ^[a-z]+[0-9][0-9.]*$ ]] || { echo "TEMPESTER_DISTRO must look like ubuntu24.04: $DISTRO"; exit 1; }
+  if [ "$(uname -s)" = Linux ]; then
+    # shellcheck disable=SC1091
+    OS_RELEASE=$(. /etc/os-release && echo "$ID$VERSION_ID")
+    [ "$OS_RELEASE" = "$DISTRO" ] || { echo "TEMPESTER_DISTRO=$DISTRO but this system is $OS_RELEASE"; exit 1; }
+  fi
+  SUFFIX="_$DISTRO"
+fi
+DEB="$DIST/tempester_${VERSION}_$ARCH$SUFFIX.deb"
+PLUGINS_DEB="$DIST/tempester-plugins_${VERSION}_$ARCH$SUFFIX.deb"
 ICONS="$P/app/crates/tempester/icons"
 STAGE=$(mktemp -d)
 PLUGIN_STAGE=$(mktemp -d)
 CHECK=$(mktemp -d)
-trap 'rm -rf "$STAGE" "$PLUGIN_STAGE" "$CHECK"' EXIT
+SHLIBS=$(mktemp -d)
+trap 'rm -rf "$STAGE" "$PLUGIN_STAGE" "$CHECK" "$SHLIBS"' EXIT
+
+# shlib_depends <package> <fallback> <ELF file>...: the Depends line of a package, computed by dpkg-shlibdeps from the
+# libraries the files link on the build system. It carries minimum versions (`libc6 (>= 2.39)`), so apt refuses a
+# system older than the build system instead of installing a binary that fails with « GLIBC_x not found ».
+# dpkg-shlibdeps needs a debian/control naming the package; it prints `shlibs:Depends=...`. Off Linux (layout tests
+# only, never published) it prints <fallback>.
+shlib_depends() {
+  local package="$1" fallback="$2" depends
+  shift 2
+  if [ "$(uname -s)" != Linux ]; then
+    echo "$fallback"
+    return
+  fi
+  command -v dpkg-shlibdeps > /dev/null || { echo "dpkg-shlibdeps not found: install dpkg-dev" >&2; exit 1; }
+  install -d "$SHLIBS/debian"
+  printf 'Source: tempester\n\nPackage: %s\nArchitecture: any\n' "$package" > "$SHLIBS/debian/control"
+  depends=$(cd "$SHLIBS" && dpkg-shlibdeps -O "$@" | sed -n 's/^shlibs:Depends=//p')
+  [[ "$depends" == *libc6* ]] || { echo "no libc6 in the computed Depends of $package: $depends" >&2; exit 1; }
+  echo "$depends"
+}
 
 # write_control <stage> <package> <depends> <suggests or empty> <summary> <long description>: DEBIAN/control, the licence
 # notice and text as the Debian copyright file (the GPL-3 text is also at /usr/share/common-licenses/GPL-3 on Debian).
@@ -77,8 +118,13 @@ Terminal=false
 Categories=AudioVideo;Audio;Midi;
 DESKTOP
 
-# The WebKitGTK and ALSA package names changed with the 64-bit time_t transition (libasound2t64): accept both.
-write_control "$STAGE" tempester "libwebkit2gtk-4.1-0, libgtk-3-0, libasound2t64 | libasound2" tempester-plugins \
+APP_DEPENDS=$(shlib_depends tempester "libc6, libwebkit2gtk-4.1-0, libgtk-3-0t64 | libgtk-3-0, libasound2t64 | libasound2" \
+  "$STAGE/usr/bin/tempester")
+echo "tempester Depends: $APP_DEPENDS"
+# Without WebKitGTK 4.1 and ALSA in the list, the binary was not the real app.
+[[ "$APP_DEPENDS" == *libwebkit2gtk-4.1* ]] || { echo "no WebKitGTK 4.1 in the app Depends: $APP_DEPENDS"; exit 1; }
+[[ "$APP_DEPENDS" == *libasound2* ]] || { echo "no ALSA in the app Depends: $APP_DEPENDS"; exit 1; }
+write_control "$STAGE" tempester "$APP_DEPENDS" tempester-plugins \
   "Controller, librarian and updater for the DSI Tempest" \
   " MIDI only, no audio. Backs up and restores sounds, beats and projects, updates the
  operating system, and plays the machine from the computer. Nothing is sent to the
@@ -91,7 +137,15 @@ cp -R "$BUNDLES/$PLUGIN_NAME.vst3" "$PLUGIN_STAGE/usr/lib/vst3/"
 find "$PLUGIN_STAGE/usr/lib" -type d -exec chmod 0755 {} +
 find "$PLUGIN_STAGE/usr/lib" -type f -exec chmod 0644 {} +
 find "$PLUGIN_STAGE/usr/lib" -type f \( -name '*.clap' -o -name '*.so' \) -exec chmod 0755 {} +
-write_control "$PLUGIN_STAGE" tempester-plugins "libc6, libgcc-s1" tempester \
+# The CLAP file and the VST3 .so are the plugin's two ELF libraries.
+PLUGIN_LIBS=()
+while IFS= read -r -d '' lib; do
+  PLUGIN_LIBS+=("$lib")
+done < <(find "$PLUGIN_STAGE/usr/lib" -type f \( -name '*.clap' -o -name '*.so' \) -print0)
+[ "${#PLUGIN_LIBS[@]}" -eq 2 ] || { echo "expected the CLAP and VST3 libraries, found ${#PLUGIN_LIBS[@]}"; exit 1; }
+PLUGIN_DEPENDS=$(shlib_depends tempester-plugins "libc6, libgcc-s1" "${PLUGIN_LIBS[@]}")
+echo "tempester-plugins Depends: $PLUGIN_DEPENDS"
+write_control "$PLUGIN_STAGE" tempester-plugins "$PLUGIN_DEPENDS" tempester \
   "Tempester Control, DAW plugin (CLAP and VST3) for the DSI Tempest" \
   " A MIDI effect whose parameters are the Tempest sound parameters: automation or a
  learned controller goes out on the plugin MIDI output, for the DAW to route to the

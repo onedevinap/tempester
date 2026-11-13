@@ -1,7 +1,11 @@
 # Builds the packages and attaches them to a DRAFT GitHub release (tags v*): per system the app and the DAW plugin
 # Tempester Control (CLAP and VST3): macOS dmg (app only) and pkg (app and plugins), Linux deb for the app and a
-# separate deb for the plugins, Windows portable zip (with plugins/) and setup exe (app and plugins).
-# Run by hand (workflow_dispatch), it only builds the packages as workflow artifacts: no release is created.
+# separate deb for the plugins, built twice (Ubuntu 24.04 and 26.04: each deb depends on the library package names of
+# its release, and its file name ends with `_ubuntu<release>`), Windows portable zip (with plugins/) and setup exe (app
+# and plugins).
+# The draft release (last job) is created whenever the run's ref is a v* tag: a tag push, or a run by hand
+# (workflow_dispatch) started on a tag, which then fails if that tag already has a release. Run by hand on a branch
+# (main, for example), it only builds the packages as workflow artifacts: no release is created.
 # No secret: the release uses the workflow's own token. Nothing DSI is packaged: each script copies the release binaries,
 # the plugin bundles, the licence, the icons and (Linux) a desktop entry, and the last job refuses any file name outside
 # the expected package list.
@@ -24,7 +28,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-latest, windows-latest]
+        os: [ubuntu-24.04, ubuntu-26.04, macos-latest, windows-latest]
+        # The Ubuntu release written in the deb file names (TEMPESTER_DISTRO, tools/package_linux.sh).
+        include:
+          - os: ubuntu-24.04
+            distro: ubuntu24.04
+          - os: ubuntu-26.04
+            distro: ubuntu26.04
     steps:
       - uses: actions/checkout@v4
 
@@ -35,11 +45,20 @@ jobs:
           version=$(sed -n 's/^version = "\(.*\)"/\1/p' app/Cargo.toml | head -1)
           [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME, app/Cargo.toml says $version"; exit 1; }
 
+      # One list per Ubuntu release, so a new runner image is checked by hand before it builds packages. The -dev
+      # names are the same on 24.04 and 26.04 (the 64-bit time_t transition renamed runtime libraries, such as
+      # libasound2t64, not the -dev packages); the runtime names go into the deb through dpkg-shlibdeps (dpkg-dev).
       - name: Linux libraries (WebKitGTK, GTK, ALSA)
         if: runner.os == 'Linux'
         run: |
+          . /etc/os-release
+          case "$VERSION_ID" in
+            24.04|26.04) packages="libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev dpkg-dev" ;;
+            *) echo "no library list for Ubuntu $VERSION_ID"; exit 1 ;;
+          esac
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev
+          # shellcheck disable=SC2086
+          sudo apt-get install -y --no-install-recommends $packages
 
       - name: Rust toolchain
         # The version pinned in app/rust-toolchain.toml, with its components.
@@ -52,16 +71,17 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             app/target
-          key: cargo-release-${{ runner.os }}-${{ hashFiles('app/Cargo.lock') }}
-          restore-keys: cargo-release-${{ runner.os }}-
+          # Per runner image, not per system: a binary built against the glibc of 26.04 must never be reused on 24.04.
+          key: cargo-release-${{ matrix.os }}-${{ hashFiles('app/Cargo.lock') }}
+          restore-keys: cargo-release-${{ matrix.os }}-
 
       # The plugin is an isolated crate (own workspace, lock file and target/): its own cache. The package scripts build
       # the bundles themselves (`cargo xtask bundle tempester-plugin --release --locked`) and fail without them.
       - uses: actions/cache@v4
         with:
           path: app/crates/tempester-plugin/target
-          key: cargo-release-plugin-${{ runner.os }}-${{ hashFiles('app/crates/tempester-plugin/Cargo.lock') }}
-          restore-keys: cargo-release-plugin-${{ runner.os }}-
+          key: cargo-release-plugin-${{ matrix.os }}-${{ hashFiles('app/crates/tempester-plugin/Cargo.lock') }}
+          restore-keys: cargo-release-plugin-${{ matrix.os }}-
 
       - name: Package (macOS dmg and pkg)
         if: runner.os == 'macOS'
@@ -69,6 +89,8 @@ jobs:
 
       - name: Package (Linux debs, app and plugins)
         if: runner.os == 'Linux'
+        env:
+          TEMPESTER_DISTRO: ${{ matrix.distro }}
         run: tools/package_linux.sh
 
       - name: Install NSIS
@@ -93,7 +115,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: tempester-${{ runner.os }}
+          name: tempester-${{ matrix.os }}
           path: dist/*
           if-no-files-found: error
 
@@ -110,18 +132,20 @@ jobs:
           path: dist
           merge-multiple: true
 
-      # Exactly one file per pattern, and nothing else: 6 packages (macOS dmg and pkg, Linux app deb and plugins deb,
-      # Windows zip and setup exe).
+      # Exactly one file per pattern, and nothing else: 8 packages (macOS dmg and pkg, Linux app deb and plugins deb for
+      # Ubuntu 24.04 and for 26.04, Windows zip and setup exe).
       - name: Only the expected packages
         run: |
           ls -l dist
-          for pattern in 'Tempester-*-macos-*.dmg' 'Tempester-*-macos-*.pkg' 'tempester_*_*.deb' \
-            'tempester-plugins_*_*.deb' 'Tempester-*-windows-x64.zip' 'Tempester-*-windows-x64-setup.exe'; do
+          for pattern in 'Tempester-*-macos-*.dmg' 'Tempester-*-macos-*.pkg' \
+            'tempester_*_*_ubuntu24.04.deb' 'tempester-plugins_*_*_ubuntu24.04.deb' \
+            'tempester_*_*_ubuntu26.04.deb' 'tempester-plugins_*_*_ubuntu26.04.deb' \
+            'Tempester-*-windows-x64.zip' 'Tempester-*-windows-x64-setup.exe'; do
             found=$(find dist -type f -name "$pattern" | wc -l)
             [ "$found" -eq 1 ] || { echo "expected one $pattern, found $found"; exit 1; }
           done
           count=$(find dist -type f | wc -l)
-          [ "$count" -eq 6 ] || { echo "expected 6 packages, found $count"; exit 1; }
+          [ "$count" -eq 8 ] || { echo "expected 8 packages, found $count"; exit 1; }
 
       - name: Create the draft release
         env:

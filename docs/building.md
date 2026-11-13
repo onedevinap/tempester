@@ -54,11 +54,15 @@ so a host may ask you to approve them.
 | System | Command | Output in `dist/` |
 |---|---|---|
 | macOS | `tools/package_mac.sh` | `Tempester-<version>-macos-<arch>.dmg` (the app, checked by mounting it) and `.pkg` (the app and the plugins as options) |
-| Linux | `tools/package_linux.sh` | `tempester_<version>_<arch>.deb` (the app) and `tempester-plugins_<version>_<arch>.deb` |
+| Linux | `tools/package_linux.sh` | `tempester_<version>_<arch>.deb` (the app) and `tempester-plugins_<version>_<arch>.deb`; with `TEMPESTER_DISTRO=ubuntu24.04` (the system's own release, checked) the names end with `_ubuntu24.04` |
 | Windows | `tools/package_windows.ps1 -Installer` | portable zip (with the plugins in `plugins/`) and a setup with the plugins as options (NSIS) |
 
-The release workflow (`.github/workflows/release.yml`) builds the same three packages on a `v*` tag and attaches them to
-a **draft** release. It packages the app only: no firmware, no DSI file.
+The release workflow (`.github/workflows/release.yml`) builds the same packages on a `v*` tag and attaches them to
+a **draft** release, the Linux pair twice: on Ubuntu 24.04 and on Ubuntu 26.04 (`_ubuntu24.04.deb`,
+`_ubuntu26.04.deb`). The dependencies of both debs are computed on each build system (`dpkg-shlibdeps`), so each pair
+names the library packages of its own release, with minimum versions. It packages the app only: no firmware, no DSI
+file. Run by hand (*Run workflow*) on a branch, it only builds the packages as workflow artifacts; run on a `v*` tag,
+it also creates the draft release.
 
 ## Installing a release package
 
@@ -97,11 +101,23 @@ SHA-256 of each package (`shasum -a 256 <file>` on macOS and Linux, `certutil -h
 - **Linux (Debian/Ubuntu)**: nothing blocks an unsigned package, but `apt` warns that it is not from a repository:
 
   ```bash
-  sudo apt install ./tempester_<version>_<arch>.deb            # the app
-  sudo apt install ./tempester-plugins_<version>_<arch>.deb    # the plugins, in /usr/lib/clap and /usr/lib/vst3
+  sudo apt install ./tempester_<version>_amd64_ubuntu24.04.deb            # the app
+  sudo apt install ./tempester-plugins_<version>_amd64_ubuntu24.04.deb    # the plugins, in /usr/lib/clap and /usr/lib/vst3
   ```
 
-  The app depends on `libwebkit2gtk-4.1-0`, `libgtk-3-0` and ALSA, which `apt` installs with it.
+  Each release has two pairs of packages. Pick the one built for your system:
+
+  | Your system | Packages to take |
+  |---|---|
+  | Ubuntu 24.04 LTS and systems built on it (Linux Mint 22, Pop!_OS 24.04...) | `*_ubuntu24.04.deb` |
+  | Ubuntu 26.04 LTS and systems built on it | `*_ubuntu26.04.deb` |
+  | Another Debian-based system | the pair of the newest Ubuntu release that is not newer than your system; if it does not fit, `apt` refuses it and names the missing or too old library |
+
+  The two pairs hold the same app and plugins, built on each release. Their dependencies are the library packages
+  of that release (WebKitGTK 4.1, GTK 3 and ALSA for the app, the C library for both: `libasound2t64`, for example)
+  with minimum versions, so `apt` installs what is missing and refuses a system older than the build system (for
+  example the 26.04 pair on Ubuntu 24.04 or Debian 12) instead of installing a program or plugin that would not start.
+  Both pairs carry the same package names, so installing one replaces the other.
 
 ## Rebuilding a firmware version from your own DSI file
 

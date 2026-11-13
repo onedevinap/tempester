@@ -97,7 +97,9 @@ back up what it holds. It has three parts that work together.
 You need a Tempest, a USB cable (or a MIDI interface on the DIN ports) and a computer.
 
 1. **Install the app.** Download the package for your system from the
-   [Releases](https://github.com/onedevinap/tempester/releases) page (macOS, Windows, Debian and Ubuntu). The packages
+   [Releases](https://github.com/onedevinap/tempester/releases) page (macOS, Windows, Debian and Ubuntu). On Linux,
+   take the two `.deb` files whose name ends with your Ubuntu release: `_ubuntu24.04.deb` or `_ubuntu26.04.deb`
+   ([which one for another Debian-based system](docs/building.md#installing-a-release-package)). The packages
    are not signed, so each system blocks the first launch: the commands and clicks that get past it, per system, are
    in [Installing a release package](docs/building.md#installing-a-release-package).
    You can also [build it from source](docs/building.md#building-and-running-the-app).
