@@ -17,7 +17,9 @@
     disconnect: "Disconnect",
     chipTip: "Show the whole identity answer on the Machine page",
     idUnchecked: "OS: unchecked",
-    os: (label) => "OS: " + label,
+    os: (running) => "OS: " + running.version,
+    osTip: (running) =>
+      running.label + " (reported by the machine). " + S.chipTip,
     idTempester: "Tempester OS",
     idDsi: "DSI OS",
     idNoAnswer: "No answer",
@@ -39,7 +41,11 @@
     hint: S.identityHint,
     kind: (m) => (m.tempester ? S.idTempester : S.idDsi),
     hex,
-    short: (m) => identity.kind(m) + ", version word 0x" + hex(m.version),
+    /* The exact release the machine reports (n°39) when known, else what the identity word says. */
+    short: (m, running) =>
+      running
+        ? running.label
+        : identity.kind(m) + ", version word 0x" + hex(m.version),
   };
   window.Tempester.identity = identity;
 
@@ -65,8 +71,9 @@
     refresh(session);
   }
 
-  function showChip(text, tone) {
+  function showChip(text, tone, tip) {
     chip.textContent = text;
+    chip.setAttribute("data-tip", tip || S.chipTip);
     chip.setAttribute("class", "chip" + (tone ? " " + tone : ""));
   }
 
@@ -88,7 +95,7 @@
 
   /* The exact version the machine reports (n°39) is more precise than the identity word: it wins when known. */
   function paintChip() {
-    if (running) showChip(S.os(running.label), "ok");
+    if (running) showChip(S.os(running), "ok", S.osTip(running));
     else if (answered) showChip(answered, "ok");
     else showChip(S.idUnchecked, "");
   }

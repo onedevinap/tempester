@@ -130,6 +130,9 @@ pub struct Machine {
     remote: RemoteState,
     /// The exact version the machine announced (n°39), until the port closes or an OS update starts.
     announced: Option<TempesterVersion>,
+    /// True once the machine answered the identity request as the original DSI OS, until the port closes or it answers as
+    /// a Tempester: no Tempester feature is available then, whatever the install record says.
+    dsi_identity: bool,
     monitor: Monitor,
     /// The Panel page's editing tools: history, A/B, variations, MIDI learn.
     edit: editor::EditState,
@@ -175,6 +178,7 @@ impl Machine {
             pad_channels: pad_channel::Link::default(),
             remote: RemoteState::Unknown,
             announced: None,
+            dsi_identity: false,
             monitor: Monitor::new(),
             edit,
             pad_notes,

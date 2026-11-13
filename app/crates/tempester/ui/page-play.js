@@ -42,7 +42,7 @@
     { key: "rotation", short: "Rot", label: "rotation", min: 0, max: 31 },
     { key: "probability", short: "%", label: "probability %", min: 0, max: 100 },
   ];
-  const els = { pads: [], cells: [], seqOn: false };
+  const els = { pads: [], cells: [], seqOn: false, bpmRunning: 0, message: "" };
 
   function velocity() {
     return Number(els.velocity.value);
@@ -177,17 +177,24 @@
     els.start.disabled = !session.connected || els.running;
     els.stop.disabled = !els.running;
     els.channel.textContent = S.channelChip(session.channel);
-    if (!session.connected) els.status.textContent = S.notConnected;
+    if (!session.connected) els.message = "";
+    showStatus(session);
+  }
+
+  /* One sentence from the whole state, so a connection after the page was built updates it too. */
+  function showStatus(session) {
+    els.status.textContent = !session.connected
+      ? S.notConnected
+      : els.running
+        ? S.running(els.bpmRunning)
+        : els.message || S.stopped;
   }
 
   function onClock(m) {
     els.running = m.running;
+    els.bpmRunning = m.bpm;
+    els.message = m.message || "";
     if (m.running) kit.setTempo(m.bpm, "clock");
-    els.status.textContent = m.running
-      ? S.running(m.bpm)
-      : m.message
-        ? m.message
-        : S.stopped;
     refresh(kit.session);
   }
 

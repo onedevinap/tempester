@@ -2,7 +2,8 @@
    : Pad). A button of the strip opens a panel over the page (fixed, so opening it moves nothing): one number per pad
    with its note name, « Learn » (tap the pads on the machine, the app fills the table from what it sends) and
    « Reset » (the default: the author's machine, A1-A15 white keys from C2, A16 61, B 62-77). Each note plays one pad only:
-   Rust refuses a note another pad has, and the entry goes back to the table.
+   Rust refuses a note another pad has, and the entry goes back to the table. Under the notes, the same panel holds
+   the MIDI channel of each pad (pad-channels-panel.js): this is the only way to it, so the button says "Pads".
 
    Tempester.padNotesPanel.build() -> {button, panel}   both go in the page; Rust owns the table (pad-notes.js) */
 "use strict";
@@ -14,8 +15,9 @@ window.Tempester.padNotesPanel = (function () {
   const padNotes = window.Tempester.padNotes;
 
   const S = {
-    open: "Pad notes: the MIDI note of each pad",
-    title: "Pad notes",
+    open: "Pads: the MIDI note and the MIDI channel of each pad",
+    openText: "Pads",
+    title: "Pad notes and channels",
     lead: "The Tempest plays each pad with its own MIDI note (System > MIDI Note : Pad A1-B16), not 36 + pad. The app plays, sequences and exports every pad with the note shown here. Learn: set Pad Function to 16 Sounds on the Tempest (Remote Pad OUT on, Tempester 1.6.0.0 or later for the pad LEDs) and tap the pads; press Sound Bank B first for B1-B16. The app also learns on its own whenever a pad is tapped. Each note plays one pad only.",
     learnOn: "Stop learning",
     learnOff: "Learn: tap the pads on the machine",
@@ -127,6 +129,7 @@ window.Tempester.padNotesPanel = (function () {
     panel.hidden = true;
     const opener = button("kit", S.open, () => toggle(panel.hidden), {
       pressed: false,
+      text: S.openText,
     });
     function toggle(open) {
       panel.hidden = !open;

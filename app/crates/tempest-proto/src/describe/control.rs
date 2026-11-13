@@ -4,8 +4,13 @@
 //! same number (`Docs/analyses/feature-remote-panel.md` §5), shown as such.
 
 use super::{tables, Describer, Kind, Line};
+use crate::mixer_report::MixerItem;
 use crate::nrpn::{CC_DATA_LSB, CC_DATA_MSB, CC_NRPN_LSB, CC_NRPN_MSB};
+use crate::pad_channel::{CC_PAD_CHANNEL, CC_PAD_SELECT, CC_SYSTEM_SAVE};
 use crate::pad_notes::{self, PadNotes};
+use crate::performance::{
+    CC_PLAY_PROBABILITY, CC_RIBBON_PRESSURE, CC_RIBBON_RELEASE, CC_RIBBON_TOUCH, RIBBON_COUNT,
+};
 use crate::remote::{
     CC_KEY_PRESS, CC_KEY_RELEASE, CC_LED_OFF, CC_LED_ON, CC_PAD_MODE, CC_STATE_REQUEST,
     FIRST_PAD_LED, PAD_MODE_COUNT,
@@ -210,18 +215,38 @@ fn cc_text(controller: u8, value: u8) -> String {
             format!("Pad Function: {}", PAD_MODES[usize::from(value)])
         }
         CC_STATE_REQUEST => format!(
-            "LED state request ({})",
+            "LED state request ({}); the machine also reports the mixer values and the Pad Function mode",
             if value & 1 == 1 {
                 "pad LEDs included"
             } else {
                 "without pad LEDs"
             }
         ),
-        _ => match cc_name(controller) {
-            Some(name) => format!("{name} = {value}"),
-            None => format!("= {value}"),
+        _ => match ribbon_text(controller, value) {
+            Some(text) => text,
+            None => match cc_name(controller) {
+                Some(name) => format!("{name} = {value}"),
+                None => format!("= {value}"),
+            },
         },
     }
+}
+
+/// The ribbon controllers of n°31: `Ribbon 2 touched at 64` (a remote touch, or the machine reporting a hand move).
+fn ribbon_text(controller: u8, value: u8) -> Option<String> {
+    let ribbon = |first: u8| {
+        controller
+            .checked_sub(first)
+            .filter(|k| *k < RIBBON_COUNT)
+            .map(|k| k + 1)
+    };
+    if let Some(n) = ribbon(CC_RIBBON_TOUCH) {
+        return Some(format!("Ribbon {n} touched at {value}"));
+    }
+    if let Some(n) = ribbon(CC_RIBBON_RELEASE) {
+        return Some(format!("Ribbon {n} released"));
+    }
+    ribbon(CC_RIBBON_PRESSURE).map(|n| format!("Ribbon {n} pressure = {value}"))
 }
 
 /// Tempester n°40's mode numbers.
@@ -252,6 +277,10 @@ fn cc_name(controller: u8) -> Option<&'static str> {
         11 => "Expression",
         12 => "Distort",
         13 => "Compress",
+        CC_PLAY_PROBABILITY => "Play probability",
+        CC_PAD_SELECT => "Pad channel: pad selected",
+        CC_PAD_CHANNEL => "Pad channel: value",
+        CC_SYSTEM_SAVE => "Save System settings",
         19 => "Revert beat-wide parameters",
         20 => "All Osc Freq",
         21 => "Feedback",
@@ -286,9 +315,14 @@ fn nrpn_name(number: u16) -> String {
     match number {
         156 => "Osc 3 Sample".into(),
         157 => "Osc 4 Sample".into(),
-        _ => tables::remote_control(number)
-            .map(|name| format!("remote {name}"))
-            .unwrap_or_else(|| "(not a Tempest parameter)".into()),
+        _ => MixerItem::from_number(number).map_or_else(
+            || {
+                tables::remote_control(number)
+                    .map(|name| format!("remote {name}"))
+                    .unwrap_or_else(|| "(not a Tempest parameter)".into())
+            },
+            |item| format!("mixer report {}", item.name().replace('_', " ")),
+        ),
     }
 }
 
@@ -412,9 +446,50 @@ mod tests {
         );
         assert_eq!(
             label_of(&d.feed(0, &[0xB0, 107, 1])),
-            "Ch 1 CC 107 LED state request (pad LEDs included)"
+            "Ch 1 CC 107 LED state request (pad LEDs included); the machine also reports the mixer values and the Pad Function mode"
         );
         assert!(label_of(&d.feed(0, &[0xB0, 107, 0])).contains("without pad LEDs"));
+    }
+
+    #[test]
+    fn test_feed_when_tempester_1_6_controllers_returns_their_names() {
+        let mut d = Describer::new();
+        let label = |d: &mut Describer, cc: u8, v: u8| label_of(&d.feed(0, &[0xB0, cc, v]));
+
+        assert_eq!(label(&mut d, 14, 50), "Ch 1 CC 14 Play probability = 50");
+        assert_eq!(
+            label(&mut d, 15, 3),
+            "Ch 1 CC 15 Pad channel: pad selected = 3"
+        );
+        assert_eq!(label(&mut d, 16, 5), "Ch 1 CC 16 Pad channel: value = 5");
+        assert_eq!(
+            label(&mut d, 17, 127),
+            "Ch 1 CC 17 Save System settings = 127"
+        );
+        assert_eq!(label(&mut d, 108, 64), "Ch 1 CC 108 Ribbon 1 touched at 64");
+        assert_eq!(label(&mut d, 109, 10), "Ch 1 CC 109 Ribbon 2 touched at 10");
+        assert_eq!(label(&mut d, 110, 0), "Ch 1 CC 110 Ribbon 1 released");
+        assert_eq!(label(&mut d, 111, 0), "Ch 1 CC 111 Ribbon 2 released");
+        assert_eq!(label(&mut d, 112, 90), "Ch 1 CC 112 Ribbon 1 pressure = 90");
+        assert_eq!(label(&mut d, 113, 7), "Ch 1 CC 113 Ribbon 2 pressure = 7");
+        // The neighbours are not ribbons.
+        assert_eq!(label(&mut d, 114, 7), "Ch 1 CC 114 = 7");
+        assert_eq!(label(&mut d, 18, 7), "Ch 1 CC 18 = 7");
+    }
+
+    #[test]
+    fn test_feed_when_mixer_report_nrpn_returns_the_item_name() {
+        let mut d = Describer::new();
+
+        for (number, name) in [(230u16, "level"), (234, "delay repeats"), (239, "compress")] {
+            let lines = feed_all(&mut d, 0, &frame(0, number, 72));
+            assert!(
+                label_of(&lines).contains(&format!("NRPN {number} mixer report {name} = 72")),
+                "{lines:?}"
+            );
+        }
+        let after = feed_all(&mut d, 0, &frame(0, 240, 1));
+        assert!(label_of(&after).contains("(not a Tempest parameter)"));
     }
 
     #[test]

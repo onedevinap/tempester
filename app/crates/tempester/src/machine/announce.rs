@@ -13,7 +13,7 @@ use crate::command::Command;
 use crate::error::AppError;
 use crate::event::Event;
 use crate::json::Json;
-use crate::storage::installed::{features_for, running_json};
+use crate::storage::installed::{features_for, os_known, running_json};
 
 impl Machine {
     pub(super) fn handle_announce(&mut self, command: Command) -> Option<Command> {
@@ -37,6 +37,19 @@ impl Machine {
         if self.announced.take().is_some() {
             self.emit(self.installed_event());
         }
+    }
+
+    /// The version the machine announced (n°39) as the text the storage helpers take.
+    pub(super) fn announced_text(&self) -> Option<String> {
+        self.announced.map(|v| v.to_string())
+    }
+
+    /// Whether the app can name the OS of the connected machine (announced, else the record).
+    pub(super) fn os_known(&self) -> bool {
+        os_known(
+            self.announced_text().as_deref(),
+            self.storage.installed_os().as_ref(),
+        )
     }
 
     /// The features of the connected machine: from its announced version when the app knows it, else the record.
@@ -64,6 +77,7 @@ impl Machine {
                 self.storage.installed_os().map(|r| r.to_json()),
             )
             .with("features", self.features())
+            .with("os_known", self.os_known())
             .with("announced", announced.clone())
             .with("running", running_json(announced.as_deref()))
     }
@@ -102,6 +116,7 @@ mod tests {
             .find(|e| e.name == "installed")
             .expect("installed");
         assert_eq!(installed.field("announced"), Some(&"1.6.5.0".into()));
+        assert_eq!(installed.field("os_known"), Some(&true.into()));
         let features = installed.field("features").expect("features").render();
         // The fake plays 1.6.5.0: every feature the app has a control for is on.
         for name in [
@@ -204,6 +219,9 @@ mod tests {
 
         let events = rig.events();
         assert_eq!(rig.machine.announced, None);
+        assert!(rig.machine.dsi_identity, "a DSI answer is remembered");
+        rig.machine.handle(Command::Disconnect);
+        assert!(!rig.machine.dsi_identity, "and forgotten with the port");
         assert_eq!(installed_running(&events), vec![Some("null".to_string())]);
         let features = rig.machine.features().render();
         assert!(!features.contains(r#""on":true"#), "{features}");
@@ -219,6 +237,7 @@ mod tests {
         rig.machine.handle(Command::Identity);
 
         assert!(rig.machine.announced.is_some());
+        assert!(!rig.machine.dsi_identity);
         assert!(installed_running(&rig.events()).is_empty());
     }
 
@@ -238,6 +257,11 @@ mod tests {
         };
         let features = state.field("features").expect("features").render();
         assert!(!features.contains(r#""on":true"#), "{features}");
+        assert_eq!(
+            state.field("os_known"),
+            Some(&false.into()),
+            "no version and no record: the OS is unknown"
+        );
     }
 
     #[test]

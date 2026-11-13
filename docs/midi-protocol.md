@@ -30,8 +30,8 @@ DIN and USB unless stated; replies and reports leave on the cable or channel sta
 | Request `42` (whole project); 4 Pole / AD Mode LEDs follow NRPN | 1.6.1.0 | n°24, n°25 |
 | Request `42` draws nothing on the screen; standard last packed group; project receive fixed; beat-wide CC 52-59 and reports; SysEx timeout | 1.6.2.0 | n°26 to n°30 |
 | FX ribbons over MIDI (CC 108-113); play probability per pad (CC 14) | 1.6.3.0 | n°31, n°36 |
-| Mixer, beat and main values reported (NRPN 230-239) | test build 1.6.4.0-b | n°38 |
-| Request `43` (exact Tempester version); Pad Function mode reported (CC 106) | not in a release yet (test build 1.6.4.0-c) | n°39, n°40 |
+| Mixer, beat and main values reported (NRPN 230-239) | 1.6.4.0 | n°38 |
+| Request `43` (exact Tempester version); Pad Function mode reported (CC 106) | 1.6.4.0 | n°39, n°40 |
 
 ## SysEx requests
 
@@ -117,7 +117,7 @@ release**, also when your program closes: a key left pressed stays pressed. Valu
 pad of banks A and B, each note on one pad only), not 36 + pad. On the author's machine A1-A15 are the white keys from
 C2 (36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60), A16 is 61 and B1-B16 are 62-77. A pad tapped on
 the machine sends its note on Remote Pad OUT, then the pad LED of the selected pad: the app pairs the two to learn the
-table (Machine page, *Pad notes*).
+table (Machine page, *Pads* button).
 
 LED indexes are in [`refs/panel_leds.tsv`](../refs/panel_leds.tsv) (0x00-0x2B: keys and indicators; 0x2C-0x3B:
 pads 1-16, sent only after a `CC 107` with value bit 0 set; 0x12 is Sound Bank B, lit when the pads are B1-B16). Only on/off is reported, not brightness or flashing.
@@ -212,7 +212,7 @@ The footswitch pads of the same release (n°32) are a setting on the machine (Sy
 
 ## Mixer, beat and main values
 
-From the test build 1.6.4.0-b (n°38, needs n°9b). The machine **reports** these values on Remote Pad OUT as NRPN
+From 1.6.4.0 (n°38, needs n°9b). The machine **reports** these values on Remote Pad OUT as NRPN
 `230 + item`: `Bm 63 01`, `Bm 62 <66 + item>`, `Bm 06 <v >> 7>`, `Bm 26 <v & 7F>` (full status every time). Example:
 Level 72 on channel 3 = `B2 63 01 B2 62 66 B2 06 00 B2 26 48`.
 

@@ -1,6 +1,6 @@
 /* The remote panel of Tempester 1.6.0.0 on the drawn machine: the keys press and release by key code, the LEDs of the
    machine light the keys and the pads, and everything stays greyed until Rust reports that the machine answered the
-   LED probe (the identity reply cannot tell 1.6.0.0 from other versions).
+   LED probe (the exact version, when the machine reports it, is shown on the Machine page; only the probe tells that the remote panel itself answers: Remote Pad OUT may be Off).
 
    Tempester.panelRemote.attach(root, onKey)   binds every [data-key] button and [data-led] pad; onKey(code, down)
                                                goes to Rust. Called once per drawing (Full, Machine): the keys and
@@ -16,7 +16,7 @@
 window.Tempester = window.Tempester || {};
 window.Tempester.panelRemote = (function () {
   const NEEDS =
-    "Needs Tempester 1.6.0.0 and Remote Pad OUT not Off: the remote panel did not answer";
+    "Needs Tempester 1.6.0.0 or later and Remote Pad OUT not Off: the remote panel did not answer";
   const keys = [];
   const pads = [];
   const held = new Set();

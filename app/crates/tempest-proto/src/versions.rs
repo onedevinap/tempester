@@ -603,6 +603,26 @@ mod tests {
         }
     }
 
+    /// The author listened to n°52 and kept it: no text of 1.6.5.0 may still call it optional or pending.
+    #[test]
+    fn test_version_1650_when_patch_52_is_kept_returns_texts_without_optional() {
+        let v = find_version("1.6.5.0").expect("1.6.5.0 is in the table");
+        let c = v.changes;
+        let texts = c
+            .fixes
+            .iter()
+            .chain(c.additions)
+            .chain(c.changes)
+            .copied()
+            .chain([v.summary, v.description]);
+
+        for text in texts {
+            assert!(!text.contains("optional"), "still optional: {text}");
+            assert!(!text.contains("listening test refuses"), "{text}");
+        }
+        assert!(v.description.contains("n°52 was kept"));
+    }
+
     #[test]
     fn test_versions_when_manifest_is_archived_returns_it_absent_from_the_table() {
         let archive =

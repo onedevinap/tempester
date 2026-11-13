@@ -23,7 +23,7 @@ use crate::command::Command;
 use crate::error::AppError;
 use crate::event::{Emitter, Event};
 use crate::json::{obj, Json};
-use crate::storage::installed::{features_json, InstalledOs};
+use crate::storage::installed::{features_json, os_known, InstalledOs};
 use crate::storage::stamp::now_stamp;
 use crate::storage::Storage;
 
@@ -379,10 +379,12 @@ impl OsJob {
             return None;
         }
         let features = features_json(record.as_ref());
+        let known = os_known(None, record.as_ref());
         Some(
             Event::new("installed")
                 .with("installed", record.map(|r| r.to_json()))
-                .with("features", features),
+                .with("features", features)
+                .with("os_known", known),
         )
     }
 

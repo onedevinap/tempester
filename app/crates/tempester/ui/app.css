@@ -45,7 +45,8 @@ input, textarea, [contenteditable], .log, .hint, .mono, [role=status], table.lis
 .pill.error { color: var(--bad); border-color: var(--bad); }
 .connbar { display: flex; align-items: center; gap: 4px; flex: none; }
 .connbar select { width: 150px; min-height: 38px; padding: 4px 8px; }
-.connbar .chip { width: 124px; justify-content: center; overflow: hidden; text-overflow: ellipsis; }
+/* A block, not an inline-flex: text-overflow does nothing on a flex container, and a centred overflow is cut at both ends. */
+.connbar .chip { display: block; width: 124px; padding: 0 8px; line-height: 24px; text-align: center; overflow: hidden; text-overflow: ellipsis; }
 .banner { display: flex; align-items: center; height: 32px; background: #2e2809; color: var(--warn); padding: 0 20px; border-bottom: 1px solid #5a4e14; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .banner[hidden] { display: none; }
 body.fake { --banner-h: 33px; }

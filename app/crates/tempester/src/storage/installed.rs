@@ -94,20 +94,50 @@ impl InstalledOs {
     }
 }
 
-/// The Tempester features the app has controls for, each with the patch that brings it (`patch/*.json`).
-pub const FEATURES: [(&str, &str); 8] = [
-    ("beat_wide", "patch/beat_wide_emission.json"),
-    ("ribbons", "patch/ribbon_remote.json"),
-    ("pedal_pad", "patch/pedal_pad.json"),
-    ("probability", "patch/step_probability.json"),
-    ("mixer_reports", "patch/mixer_reports.json"),
-    ("long_notes", "patch/note_length_x4.json"),
-    ("quantize_fine", "patch/quantize_fine.json"),
-    ("pad_channels", "patch/multichannel_out.json"),
+/// The Tempester features the app knows, in the order of the release that brings each: its id (what the controls ask
+/// for), the name the Machine page shows, and the patch that brings it (`patch/*.json`). The single source of truth:
+/// the Machine page's identity card builds its rows from the `features` event field and keeps no list of its own.
+pub const FEATURES: [(&str, &str, &str); 12] = [
+    (
+        "dump_requests",
+        "Sound and beat requests",
+        "patch/dump_request.json",
+    ),
+    (
+        "nrpn_reception",
+        "NRPN reception",
+        "patch/nrpn_reception.json",
+    ),
+    ("remote_panel", "Remote panel", "patch/remote_controls.json"),
+    (
+        "project_request",
+        "Project request",
+        "patch/project_request.json",
+    ),
+    (
+        "beat_wide",
+        "Wide beat positions",
+        "patch/beat_wide_emission.json",
+    ),
+    ("ribbons", "FX ribbons", "patch/ribbon_remote.json"),
+    ("pedal_pad", "Pedal as pad", "patch/pedal_pad.json"),
+    (
+        "probability",
+        "Step probability",
+        "patch/step_probability.json",
+    ),
+    ("mixer_reports", "Mixer reports", "patch/mixer_reports.json"),
+    ("long_notes", "Long notes", "patch/note_length_x4.json"),
+    ("quantize_fine", "Fine quantize", "patch/quantize_fine.json"),
+    (
+        "pad_channels",
+        "MIDI channel per pad",
+        "patch/multichannel_out.json",
+    ),
 ];
 
-/// For each of `FEATURES`: whether the installed OS has it (`on`, only for a known Tempester build: an unknown file or
-/// no record is off) and the first version that brings it (`since`), for the page's tooltips.
+/// For each of `FEATURES`: its page `label`, whether the installed OS has it (`on`, only for a known Tempester build:
+/// an unknown file or no record is off) and the first version that brings it (`since`), for the page's tooltips.
 pub fn features_json(record: Option<&InstalledOs>) -> Json {
     features_of(version_of(None, record))
 }
@@ -183,13 +213,20 @@ pub fn verify_candidates(
 
 /// The version the machine runs as far as the app knows: the exact one it announced (n°39) when this app knows that
 /// release, else the build the install record names. `None` for an OS the app cannot name.
-fn version_of(
+pub(crate) fn version_of(
     announced: Option<&str>,
     record: Option<&InstalledOs>,
 ) -> Option<&'static versions::Version> {
     announced
         .and_then(versions::find_version)
         .or_else(|| record.and_then(|r| versions::find_by_image_sha256(&r.sha256_image)))
+}
+
+/// Whether the app can name the OS the machine runs (announced, else the install record): the `os_known` field of the
+/// events that carry `features`, so that the page can say « OS unknown » rather than guess from a feature table that
+/// is all off for an OS it cannot name.
+pub fn os_known(announced: Option<&str>, record: Option<&InstalledOs>) -> bool {
+    version_of(announced, record).is_some()
 }
 
 fn has_patch(version: &versions::Version, file: &str) -> bool {
@@ -206,26 +243,52 @@ fn features_of(installed: Option<&versions::Version>) -> Json {
     Json::Obj(
         FEATURES
             .iter()
-            .map(|(name, file)| {
+            .map(|(name, label, file)| {
                 let since = versions::versions()
                     .iter()
                     .find(|v| has_patch(v, file))
                     .map(|v| v.version);
                 let on = installed.is_some_and(|v| has_patch(v, file));
-                (*name, obj([("on", on.into()), ("since", since.into())]))
+                (
+                    *name,
+                    obj([
+                        ("on", on.into()),
+                        ("since", since.into()),
+                        ("label", (*label).into()),
+                    ]),
+                )
             })
             .collect(),
     )
 }
 
-/// True when the OS the machine runs is known (announced, else the install record) and is a build without the
-/// feature `name` of `FEATURES`. An OS the app cannot name is not proof of absence: it says false.
-pub fn lacks_feature(announced: Option<&str>, record: Option<&InstalledOs>, name: &str) -> bool {
-    let file = FEATURES.iter().find(|(n, _)| *n == name).map(|(_, f)| *f);
-    match (version_of(announced, record), file) {
-        (Some(v), Some(file)) => !has_patch(v, file),
-        _ => false,
-    }
+/// Whether the OS the machine runs (announced, else the install record) has the feature `name` of `FEATURES`:
+/// `Some` for an OS the app can name, `None` for one it cannot (nothing announced and no usable record, or an unknown
+/// name).
+pub fn feature_in_os(
+    announced: Option<&str>,
+    record: Option<&InstalledOs>,
+    name: &str,
+) -> Option<bool> {
+    let file = FEATURES
+        .iter()
+        .find(|(n, _, _)| *n == name)
+        .map(|(_, _, f)| *f)?;
+    version_of(announced, record).map(|v| has_patch(v, file))
+}
+
+/// The one rule for a command that needs a feature, shared with the page (`panel-perform.js` `status`, which greys
+/// the control): an OS the app can name decides; an OS it cannot name does not have the feature, except on the fake
+/// machine (it plays the newest release and the page enables everything there). An identity answer of the original
+/// DSI OS (`dsi`) beats everything, the record and the fake machine included: it has none of them.
+pub fn has_feature(
+    announced: Option<&str>,
+    record: Option<&InstalledOs>,
+    name: &str,
+    fake: bool,
+    dsi: bool,
+) -> bool {
+    !dsi && feature_in_os(announced, record, name).unwrap_or(fake)
 }
 
 impl Storage {
@@ -269,31 +332,37 @@ mod tests {
             }))
             .render()
         };
-        let line = |on: [bool; 8]| {
+        let line = |on: [bool; 12]| {
             let rows = [
-                ("beat_wide", "1.6.2.0"),
-                ("ribbons", "1.6.3.0"),
-                ("pedal_pad", "1.6.3.0"),
-                ("probability", "1.6.3.0"),
-                ("mixer_reports", "1.6.4.0"),
-                ("long_notes", "1.6.5.0"),
-                ("quantize_fine", "1.6.5.0"),
-                ("pad_channels", "1.6.5.0"),
+                ("dump_requests", "Sound and beat requests", "1.5.2.0"),
+                ("nrpn_reception", "NRPN reception", "1.5.3.0"),
+                ("remote_panel", "Remote panel", "1.6.0.0"),
+                ("project_request", "Project request", "1.6.1.0"),
+                ("beat_wide", "Wide beat positions", "1.6.2.0"),
+                ("ribbons", "FX ribbons", "1.6.3.0"),
+                ("pedal_pad", "Pedal as pad", "1.6.3.0"),
+                ("probability", "Step probability", "1.6.3.0"),
+                ("mixer_reports", "Mixer reports", "1.6.4.0"),
+                ("long_notes", "Long notes", "1.6.5.0"),
+                ("quantize_fine", "Fine quantize", "1.6.5.0"),
+                ("pad_channels", "MIDI channel per pad", "1.6.5.0"),
             ];
             let body: Vec<String> = rows
                 .iter()
                 .zip(on)
-                .map(|((name, since), on)| format!(r#""{name}":{{"on":{on},"since":"{since}"}}"#))
+                .map(|((name, label, since), on)| {
+                    format!(r#""{name}":{{"on":{on},"since":"{since}","label":"{label}"}}"#)
+                })
                 .collect();
             format!("{{{}}}", body.join(","))
         };
-        let upto = |count: usize| -> [bool; 8] { std::array::from_fn(|i| i < count) };
+        let upto = |count: usize| -> [bool; 12] { std::array::from_fn(|i| i < count) };
 
-        assert_eq!(of("1.6.5.0"), line(upto(8)));
-        assert_eq!(of("1.6.4.0"), line(upto(5)));
-        assert_eq!(of("1.6.3.0"), line(upto(4)));
-        assert_eq!(of("1.6.2.0"), line(upto(1)));
-        assert_eq!(of("1.6.1.0"), line(upto(0)));
+        assert_eq!(of("1.6.5.0"), line(upto(12)));
+        assert_eq!(of("1.6.4.0"), line(upto(9)));
+        assert_eq!(of("1.6.3.0"), line(upto(8)));
+        assert_eq!(of("1.6.2.0"), line(upto(5)));
+        assert_eq!(of("1.6.1.0"), line(upto(4)));
         assert_eq!(features_json(Some(&record())).render(), line(upto(0)));
         assert_eq!(features_json(None).render(), line(upto(0)));
     }
@@ -344,6 +413,85 @@ mod tests {
             features_for(Some("9.9.9.9"), None).render(),
             features_json(None).render()
         );
+    }
+
+    #[test]
+    fn test_has_feature_when_the_os_is_unknown_returns_false_on_a_real_machine_and_true_on_the_fake(
+    ) {
+        // Nothing announced, a record whose image the app does not know, a number it does not know.
+        for announced in [None, Some("9.9.9.9")] {
+            assert!(!has_feature(announced, None, "pad_channels", false, false));
+            assert!(!has_feature(
+                announced,
+                Some(&record()),
+                "pad_channels",
+                false,
+                false
+            ));
+            assert!(has_feature(announced, None, "pad_channels", true, false));
+        }
+        assert_eq!(feature_in_os(None, None, "pad_channels"), None);
+        assert_eq!(
+            feature_in_os(Some("1.6.5.0"), None, "no_such_feature"),
+            None
+        );
+    }
+
+    #[test]
+    fn test_has_feature_when_the_os_is_known_returns_what_it_has_whatever_the_fake_flag() {
+        for fake in [false, true] {
+            assert!(has_feature(
+                Some("1.6.5.0"),
+                None,
+                "pad_channels",
+                fake,
+                false
+            ));
+            assert!(!has_feature(
+                Some("1.6.4.0"),
+                None,
+                "pad_channels",
+                fake,
+                false
+            ));
+            assert!(has_feature(
+                Some("1.6.4.0"),
+                None,
+                "mixer_reports",
+                fake,
+                false
+            ));
+        }
+    }
+
+    #[test]
+    fn test_has_feature_when_the_machine_answered_as_the_dsi_os_returns_false_for_everything() {
+        let record_1650 = InstalledOs {
+            sha256_image: versions::find_version("1.6.5.0")
+                .expect("1.6.5.0 in the table")
+                .sha256_image
+                .into(),
+            ..record()
+        };
+        for fake in [false, true] {
+            for (announced, record) in [
+                (Some("1.6.5.0"), None),
+                (None, Some(&record_1650)),
+                (None, None),
+            ] {
+                for (name, _, _) in FEATURES {
+                    assert!(!has_feature(announced, record, name, fake, true), "{name}");
+                }
+            }
+        }
+        // Counter-proof: without the DSI answer the same record has the feature.
+        assert!(has_feature(
+            None,
+            Some(&record_1650),
+            "pad_channels",
+            false,
+            false
+        ));
     }
 
     #[test]

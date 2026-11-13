@@ -47,6 +47,31 @@ const variants = {
     'bridge.on("identity"',
     'bridge.on("identity-x"',
   ],
+  "top bar: reported release not shown": [
+    "conn-bar.js",
+    'if (running) showChip(S.os(running), "ok", S.osTip(running));',
+    'if (false) showChip(S.os(running), "ok", S.osTip(running));',
+  ],
+  "top bar: label instead of the short release": [
+    "conn-bar.js",
+    'os: (running) => "OS: " + running.version',
+    'os: (running) => "OS: " + running.label',
+  ],
+  "machine: version word kept after the release is reported": [
+    "conn-bar.js",
+    "running\n        ? running.label",
+    "false\n        ? running.label",
+  ],
+  "machine: release not repainted when reported after the answer": [
+    "page-machine.js",
+    "showAnswer(view.running);",
+    "",
+  ],
+  "play: status not refreshed on connection": [
+    "page-play.js",
+    "    showStatus(session);\n",
+    "    if (!session.connected) showStatus(session);\n",
+  ],
   "machine: set_channel removed": send("page-machine.js", "set_channel"),
   "machine: identity removed": send("page-machine.js", "identity"),
   "machine: version request removed": send("page-machine.js", "tempester_version"),

@@ -5,8 +5,9 @@
 //! is backed up when it is different and unknown, a silent machine needs an explicit « send without a backup ».
 //!
 //! The stock receiver (and every Tempester before n°28, 1.6.1.3) reads Play Lists one word late after a used list
-//! (`Docs/analyses/bug-project-receive.md`). The identity answer cannot tell versions apart, so the guard uses the
-//! version the OS update page recorded (`storage::installed`): if it includes n°28 the send is plain; if not, and the
+//! (`Docs/analyses/bug-project-receive.md`). The guard uses the exact version the machine reports (n°39) when the app
+//! knows that release, else the version the OS update page recorded (`storage::installed`): if it includes n°28 the
+//! send is plain; if not (or if neither is known), and the
 //! project uses a Play List that can be misread, the page must show the warning and the user must choose
 //! « send anyway » or « send without Play Lists » (the four lists go out empty: all four are then read correctly, the
 //! machine's own lists are emptied). Rust refuses a plain send in that case, whatever the page does.
@@ -31,7 +32,7 @@ use crate::event::{Emitter, Event};
 use crate::library::command::ProjectMode;
 use crate::library::inspect::{inspect, messages_of, Facts};
 use crate::library::model::{kind_name, Index};
-use crate::storage::installed::InstalledOs;
+use crate::storage::installed::{feature_in_os, version_of, InstalledOs};
 use tempest_midi::message::Message;
 
 /// The patch that makes the SysEx receiver read each Play List with the sender's length.
@@ -73,13 +74,21 @@ pub(super) fn includes_play_list_fix(version: &str) -> bool {
     parts.is_some_and(|parts| parts.len() == 4 && parts[..] >= FIRST_RELEASE_WITH_FIX[..])
 }
 
-pub(super) fn guard_of(installed: Option<&InstalledOs>, project: &Project) -> Guard {
+/// The guard for `project` on the OS the machine runs: the exact version it announced (n°39) when the app knows that
+/// release, else the build the install record names (the same choice as `features_for`), else the record's version
+/// number.
+pub(super) fn guard_of(
+    announced: Option<&str>,
+    installed: Option<&InstalledOs>,
+    project: &Project,
+) -> Guard {
     let used = project.header.lists_used();
     if !used[..LISTS_AT_RISK].contains(&true) {
         return Guard::NoRisk;
     }
-    let fixed = installed
-        .and_then(|i| i.version.as_deref())
+    let fixed = version_of(announced, installed)
+        .map(|v| v.version)
+        .or_else(|| installed.and_then(|i| i.version.as_deref()))
         .is_some_and(includes_play_list_fix);
     if fixed {
         Guard::Fixed
@@ -229,7 +238,11 @@ impl Machine {
             .map(Self::machine_project_facts)
             .transpose()?;
         let index = self.library().snapshot()?;
-        let guard = guard_of(self.storage.installed_os().as_ref(), &subject.project);
+        let guard = guard_of(
+            self.announced_text().as_deref(),
+            self.storage.installed_os().as_ref(),
+            &subject.project,
+        );
         self.emit(self.plan_event(
             id,
             version,
@@ -259,7 +272,11 @@ impl Machine {
         }
         let subject = self.project_subject(id, version)?;
         let installed = self.storage.installed_os();
-        let guard = guard_of(installed.as_ref(), &subject.project);
+        let guard = guard_of(
+            self.announced_text().as_deref(),
+            installed.as_ref(),
+            &subject.project,
+        );
         if guard == Guard::AtRisk && mode == ProjectMode::Normal {
             return Err(AppError::Precondition(
                 "the machine's OS may misread Play Lists: choose Send anyway or Send without Play Lists",
@@ -428,7 +445,11 @@ impl Machine {
                 ),
             },
         };
-        let mut lines = replaced_lines(&subject.project);
+        let announced = self.announced_text();
+        let installed = self.storage.installed_os();
+        let fine_quantize =
+            feature_in_os(announced.as_deref(), installed.as_ref(), "quantize_fine");
+        let mut lines = replaced_lines(&subject.project, fine_quantize);
         lines.push(backup);
         if changed {
             lines.insert(
@@ -436,7 +457,6 @@ impl Machine {
                 "The machine's project changed since you looked: check again.".to_string(),
             );
         }
-        let installed = self.storage.installed_os();
         Event::new("lib_project_plan")
             .with("kind", kind_name(Kind::Projects))
             .with("id", id)
@@ -462,7 +482,12 @@ impl Machine {
             .with("lines", lines)
             .with(
                 "warning",
-                warning_lines(guard, installed.as_ref(), &subject.project),
+                warning_lines(
+                    guard,
+                    announced.as_deref(),
+                    installed.as_ref(),
+                    &subject.project,
+                ),
             )
             .with("without_lists", without_lists_lines())
     }
@@ -476,8 +501,9 @@ fn identical_text(name: &str) -> String {
     format!("The machine already holds exactly this project (\"{name}\"): nothing to send, nothing replaced.")
 }
 
-/// What a send replaces, and which beats it leaves alone.
-fn replaced_lines(project: &Project) -> Vec<String> {
+/// What a send replaces, and which beats it leaves alone. `fine_quantize`: whether the machine's OS keeps the fine
+/// Quantize values (`None`: the OS is not known).
+fn replaced_lines(project: &Project, fine_quantize: Option<bool>) -> Vec<String> {
     let mut lines = vec![
         "Sending replaces the machine's whole project in RAM: its beats, their sounds and its 4 Play Lists. It is not saved to the machine's flash until you save it there.".to_string(),
     ];
@@ -490,21 +516,33 @@ fn replaced_lines(project: &Project) -> Vec<String> {
         ));
     }
     if let Some(quantize) = project.header.quantize.filter(|q| q.needs_tempester()) {
+        let verdict = match fine_quantize {
+            Some(true) => "this machine's OS keeps it",
+            Some(false) => "this machine's OS does not keep it: it loads the project with Quantize Off",
+            None => "the machine keeps it only with that OS or a later one (any other loads the project with Quantize Off)",
+        };
         lines.push(format!(
-            "The project records in Quantize {quantize}, a Tempester 1.6.5.0 value: the machine keeps it only with that OS (any other loads the project with Quantize Off)."
+            "The project records in Quantize {quantize}, a Tempester 1.6.5.0 or later value: {verdict}."
         ));
     }
     lines
 }
 
-fn warning_lines(guard: Guard, installed: Option<&InstalledOs>, project: &Project) -> Vec<String> {
+fn warning_lines(
+    guard: Guard,
+    announced: Option<&str>,
+    installed: Option<&InstalledOs>,
+    project: &Project,
+) -> Vec<String> {
     if guard != Guard::AtRisk {
         return Vec::new();
     }
-    let installed = installed.map_or_else(
-        || "The app has no record of the OS installed on the machine (the OS update page records it after a send).".to_string(),
-        |i| format!("The OS the app last installed is \"{}\", which does not include the Play List fix (n°28, Tempester 1.6.2.0 or later).", i.label),
-    );
+    let reported = announced.filter(|v| versions::find_version(v).is_some());
+    let installed = match (reported, installed) {
+        (Some(version), _) => format!("The machine reports Tempester {version}, which does not include the Play List fix (n°28, Tempester 1.6.2.0 or later)."),
+        (None, Some(i)) => format!("The OS the app last installed is \"{}\", which does not include the Play List fix (n°28, Tempester 1.6.2.0 or later).", i.label),
+        (None, None) => "The app does not know the OS of the machine: it reports no version it knows, and the OS update page has no record (it records the OS after a send).".to_string(),
+    };
     vec![
         "The machine's OS may misread Play Lists: lists after a used one can come back wrong; beats and sounds are not affected.".to_string(),
         installed,

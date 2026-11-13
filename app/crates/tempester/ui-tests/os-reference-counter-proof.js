@@ -208,8 +208,8 @@ const variants = {
   ],
   "pill: the reported OS is not named": [
     "conn-bar.js",
-    'if (running) showChip(S.os(running.label), "ok");',
-    'if (false) showChip(S.os(running.label), "ok");',
+    'if (running) showChip(S.os(running), "ok", S.osTip(running));',
+    'if (false) showChip(S.os(running), "ok", S.osTip(running));',
   ],
 };
 

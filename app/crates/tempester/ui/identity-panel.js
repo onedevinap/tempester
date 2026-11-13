@@ -1,7 +1,8 @@
 /* The answer to an identity check, shown in full on the Machine page (not behind an info badge): device id,
-   manufacturer and family, version word and what it means (Tempester OS or DSI OS, and which features follow), the
-   cable or port it came from, and when it was checked. The panel always has the same rows, so a new answer never
-   moves the page. The top bar only keeps a one-word summary (conn-bar.js). */
+   manufacturer and family, version word and what it means (Tempester OS or DSI OS), the exact version the machine
+   reports when it does (n°39, from the shared state of os-verify.js), which features that version has, the cable or
+   port the answer came from, and when it was checked. The fact rows are always the same, so a new answer never moves
+   the page. The top bar only keeps a one-word summary (conn-bar.js). */
 "use strict";
 (function () {
   const { el, session, onSession } = window.Tempester.kit;
@@ -14,19 +15,29 @@
     answered: "Answered",
     noAnswer: "No answer",
     notChecked: "Check the identity (button above) to fill this in.",
-    tempesterNote:
+    wordNote:
       "The version word (0x7F0 to 0x7FF) says this is a Tempester OS, not which release: a feature shown as 'From x on' needs that release or later. The exact version is on the Tempest: System > Main OS Version.",
+    reportedNote:
+      "The version is the one the machine reports; each feature is resolved from it.",
+    unknownNote:
+      "The machine reports a version this app does not know: its features cannot be resolved.",
     dsiNote:
-      "The version word is the Voice OS version, as the original DSI OS announces it. The features on the right need a Tempester OS.",
+      "The version word is the Voice OS version, as the original DSI OS announces it. The features below need a Tempester OS.",
     none: "-",
     featuresNo: "Not in the DSI OS",
+    featuresNotHere: "Not in this version",
     featuresMaybe: (since) => "From " + since + " on",
     featuresYes: "Available",
+    reported: (running) =>
+      running.label +
+      " (reported by the machine" +
+      (running.known ? ")" : ", not in this app's table)"),
     unknownPort: "unknown",
     fakeSuffix: " (fake machine)",
     rows: {
       status: "Status",
       os: "OS",
+      version: "Version",
       port: "Came from",
       time: "Checked at",
       device: "Device id",
@@ -39,15 +50,10 @@
     family: "Tempest (0x28 0x01)",
   };
 
-  /* What each Tempester release added, and the first release that has it. */
-  const FEATURES = [
-    { name: "Sound and beat requests", since: "1.5.2.0" },
-    { name: "NRPN reception", since: "1.5.3.0" },
-    { name: "Remote panel", since: "1.6.0.0" },
-    { name: "Project request", since: "1.6.1.0" },
-  ];
-
-  /* The oldest release a version word proves. Words from the early patches (0x7F1) prove nothing: they stay out. */
+  /* The feature rows (id, name, first release) are not listed here: Rust owns the table (`FEATURES` in
+     src/storage/installed.rs) and sends it with every `state` and `installed` event, so a new release's features
+     appear without touching this file. The only fact kept here is about the identity word, which Rust cannot know:
+     the oldest release a word proves. Words from the early patches (0x7F1) prove nothing: they stay out. */
   const PROVEN_FROM = { 0x7f2: "1.5.2.0" };
 
   const compare = (a, b) => {
@@ -56,10 +62,14 @@
     return left.reduce((diff, n, k) => diff || n - right[k], 0);
   };
 
-  /* The text and tone of a feature row for an answer `m` (or null: nothing checked). */
-  function featureValue(feature, m) {
-    if (!m) return [S.none, "off"];
-    if (!m.tempester) return [S.featuresNo, "off"];
+  /* The text and tone of a feature row. `m`: the identity answer or null; `running`: the OS the machine reports
+     or null; `feature`: Rust's {label, on, since}. A reported release the app knows decides alone; otherwise the
+     identity word gives only a "from" guess. */
+  function featureValue(feature, m, running) {
+    if (m && !m.tempester) return [S.featuresNo, "off"];
+    if (running && running.known)
+      return feature.on ? [S.featuresYes, "good"] : [S.featuresNotHere, "off"];
+    if (!m || !feature.since) return [S.none, "off"];
     const proven = PROVEN_FROM[m.version];
     if (proven && compare(proven, feature.since) >= 0)
       return [S.featuresYes, "good"];
@@ -85,18 +95,47 @@
   }
 
   const cells = {};
+  const featureCells = {};
+  let featureList = null;
   let note = null;
+  /* The last identity answer (or its absence), kept so a change of the shared state re-renders the same card. */
+  let current = { m: null, status: "unchecked", checked: null, port: "" };
 
-  function set(key, text, tone) {
-    cells[key].value.textContent = text;
-    cells[key].value.setAttribute("class", tone || "off");
+  function set(cell, text, tone) {
+    cell.value.textContent = text;
+    cell.value.setAttribute("class", tone || "off");
   }
 
-  /* `m`: the identity event, or null; `status`: "answered" | "none" | "unchecked"; `checked`: a Date. */
-  function render(m, status, checked, port) {
+  /* One row per feature Rust lists, added the first time it is seen; the area keeps its height meanwhile. */
+  function ensureFeatureRows(features) {
+    for (const [id, feature] of Object.entries(features)) {
+      if (featureCells[id]) continue;
+      featureCells[id] = row(feature.label);
+      featureList.append(
+        el(
+          "div",
+          { class: "idrow" },
+          featureCells[id].label,
+          featureCells[id].value,
+        ),
+      );
+    }
+  }
+
+  function noteText(m, running, status) {
+    if (m && !m.tempester) return S.dsiNote;
+    if (running) return running.known ? S.reportedNote : S.unknownNote;
+    if (m) return S.wordNote;
+    return status === "none" ? identity.hint : S.notChecked;
+  }
+
+  function render(view) {
+    const { m, status, checked, port } = current;
+    const running = view.running;
     const unchecked = status === "unchecked";
+    const tone = (on, good) => (on ? good : "off");
     set(
-      "status",
+      cells.status,
       status === "answered"
         ? S.answered
         : status === "none"
@@ -104,28 +143,32 @@
           : S.unchecked,
       status === "answered" ? "good" : status === "none" ? "warn" : "off",
     );
-    set("os", m ? identity.kind(m) : S.none, m ? "good" : "off");
-    set("port", unchecked ? S.none : port, unchecked ? "off" : "");
-    set("time", unchecked ? S.none : clock(checked), unchecked ? "off" : "");
+    set(cells.os, m ? identity.kind(m) : S.none, tone(m, "good"));
     set(
-      "device",
-      m ? "0x" + identity.hex(m.device, 2) : S.none,
-      m ? "" : "off",
+      cells.version,
+      running ? S.reported(running) : S.none,
+      running ? (running.known ? "good" : "warn") : "off",
     );
-    set("manufacturer", m ? S.manufacturer : S.none, m ? "" : "off");
-    set("family", m ? S.family : S.none, m ? "" : "off");
-    set("word", m ? "0x" + identity.hex(m.version) : S.none, m ? "" : "off");
-    FEATURES.forEach((feature, k) => {
-      const [text, tone] = featureValue(feature, m);
-      set("feature" + k, text, tone);
-    });
-    note.textContent = m
-      ? m.tempester
-        ? S.tempesterNote
-        : S.dsiNote
-      : status === "none"
-        ? identity.hint
-        : S.notChecked;
+    set(cells.port, unchecked ? S.none : port, unchecked ? "off" : "");
+    set(cells.time, unchecked ? S.none : clock(checked), unchecked ? "off" : "");
+    set(
+      cells.device,
+      m ? "0x" + identity.hex(m.device, 2) : S.none,
+      tone(m, ""),
+    );
+    set(cells.manufacturer, m ? S.manufacturer : S.none, tone(m, ""));
+    set(cells.family, m ? S.family : S.none, tone(m, ""));
+    set(
+      cells.word,
+      m ? "0x" + identity.hex(m.version) : S.none,
+      tone(m, ""),
+    );
+    ensureFeatureRows(view.features);
+    for (const [id, feature] of Object.entries(view.features)) {
+      const [text, featureTone] = featureValue(feature, m, running);
+      set(featureCells[id], text, featureTone);
+    }
+    note.textContent = noteText(m, running, status);
     note.setAttribute("class", "idnote" + (status === "none" ? " warn" : ""));
   }
 
@@ -133,20 +176,31 @@
     (session.port || S.unknownPort) + (session.fake ? S.fakeSuffix : "");
 
   function build() {
+    const { osVerify } = window.Tempester;
     for (const [key, label] of Object.entries(S.rows)) cells[key] = row(label);
-    FEATURES.forEach(
-      (feature, k) => (cells["feature" + k] = row(feature.name)),
-    );
+    featureList = el("dl", { class: "idfeatures" });
     note = el("p", { class: "idnote", role: "status" });
-    render(null, "unchecked");
-    bridge.on("identity", (m) => render(m, "answered", new Date(), portName()));
+    const answer = (next) => {
+      current = next;
+      render(osVerify.state());
+    };
+    bridge.on("identity", (m) =>
+      answer({ m, status: "answered", checked: new Date(), port: portName() }),
+    );
     bridge.on("error", (m) => {
       if (m.during === "identity" && m.code === "timeout")
-        render(null, "none", new Date(), portName());
+        answer({
+          m: null,
+          status: "none",
+          checked: new Date(),
+          port: portName(),
+        });
     });
     onSession((state) => {
-      if (!state.connected) render(null, "unchecked");
+      if (!state.connected)
+        answer({ m: null, status: "unchecked", checked: null, port: "" });
     });
+    osVerify.watch(render);
     return el(
       "section",
       { class: "panel fixed", "aria-label": S.title },
@@ -154,12 +208,12 @@
       el(
         "div",
         { class: "idgrid" },
-        column(["status", "os", "port", "time"].map((k) => cells[k])),
+        column(["status", "os", "version", "port", "time"].map((k) => cells[k])),
         column(
           ["device", "manufacturer", "family", "word"].map((k) => cells[k]),
         ),
-        column(FEATURES.map((_, k) => cells["feature" + k])),
       ),
+      featureList,
       note,
     );
   }

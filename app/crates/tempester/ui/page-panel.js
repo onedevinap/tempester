@@ -21,16 +21,20 @@
     close: "Close",
     info: [
       "Full view: every sound parameter, one knob each. The parameters are NRPN, which need a Tempester Main 1.5.3.0 or later (the original DSI OS ignores them). They always change the pad selected on the machine. Distort and Compress go through the remote panel when it answers (the machine's own 0-255 knob), else they are MIDI CC 12 and 13 (up to 127), the 16 pads play notes, and Play and Stop send MIDI Start and Stop for a Tempest set to slave its clock to MIDI. The BPM knob sets the tempo of this app's clock (Play page), used when the app is the clock master.",
-      "Machine view: only what the physical Tempest has, at the same place. Absolute knobs, encoders (endless, shown without a position) and keys act like the machine's own, so the machine decides what each one does: in 16 Beats and 16 Mutes the sound knobs are beat-wide, as on the machine, and the controls the machine ignores there are greyed. An encoder shows its turning (a dot, the ring it crossed, a count); the parameter it changed, with its value, appears under it when the machine reports it. It needs Tempester 1.6.0.0 with Remote Pad IN set to the channel of this app and Remote Pad OUT not Off; without it the controls stay greyed.",
+      "Machine view: only what the physical Tempest has, at the same place. Absolute knobs, encoders (endless, shown without a position) and keys act like the machine's own, so the machine decides what each one does: in 16 Beats and 16 Mutes the sound knobs are beat-wide, as on the machine, and the controls the machine ignores there are greyed. An encoder shows its turning (a dot, the ring it crossed, a count); the parameter it changed, with its value, appears under it when the machine reports it. It needs Tempester 1.6.0.0 or later with Remote Pad IN set to the channel of this app and Remote Pad OUT not Off; without it the controls stay greyed.",
       "Sync works from Tempester 1.5.2.0. With Tempester 1.6.0.0 the machine's LEDs light the keys and pads here, and Volume sets the machine's Volume.",
       "Tempester 1.6.2.0: in 16 Beats and 16 Mutes the Machine view's beat-wide knobs show and set the beat-wide positions (127 = neutral). Tempester 1.6.3.0: the FX ribbons of both views touch the machine's ribbons and show its own; the dice button shows each pad's play probability (read by Sync) and lets you change it in 16 Sounds. A control the installed OS lacks is greyed and its tooltip names the version that brings it.",
       "Tempester 1.6.4.0: the machine reports what its own knobs and encoders change (Level, Pan, Delay Repeats, Volume, Distort, Compress, and Delay Send, Delay Time, BPM, Swing) and sends them all again when the app asks for its state (Sync). The Machine view moves the matching knobs, and shows an encoder's number in its bubble for a moment; the Full view follows Volume, Distort and Compress. A knob you are turning is not moved by the machine.",
+      "Tempester 1.6.5.0: Shift + a pad selects that pad silently in every Pad Function (no sound, no MIDI, nothing recorded), so a pad can be chosen without playing it. The compressor envelope's Amount reaches -127 (the Compress screen and saved beats). The MIDI channel of each pad is set on the Machine page: its \"Pads\" button opens the table, the channels are under the notes.",
       "Zoom: the - and + buttons, or Cmd/Ctrl with - and +; Cmd/Ctrl 0 fits the width of the window. A zoomed panel scrolls inside its frame.",
     ],
     remoteLooking: "Remote panel: looking...",
     remoteOn: "Remote panel: on",
     remoteOff: "Remote panel: not detected",
     notConnected: "Not connected",
+    /* The status slot is 100 px (the toolbar stays under half of the window): both sentences must fit it. */
+    offline: "Offline",
+    notSynced: "Not synced",
     views: { full: "Full view", machine: "Machine view" },
     viewLabel: "Panel view",
     zoomLabel: "Zoom",
@@ -69,7 +73,7 @@
     const icons = window.Tempester.icons;
     syncButton = icons.button("fetch", S.sync, sync, { variant: "primary" });
     status = el("span", { class: "statusline slot-status", role: "status" });
-    say(status, S.notConnected);
+    say(status, kit.session.connected ? S.notSynced : S.offline);
     remoteStatus = el("span", { class: "chip slot-remote", role: "status" });
     const modeChip = el("span", {
       class: "chip slot-mode",
@@ -294,10 +298,13 @@
       syncButton.disabled = !session.connected;
       tools.setConnected(session.connected);
       if (!session.connected) {
-        say(status, S.notConnected);
+        say(status, S.offline);
         sayRemote("");
         setRemote(false);
-      } else if (!wasConnected) probeRemote();
+      } else if (!wasConnected) {
+        say(status, S.notSynced);
+        probeRemote();
+      }
       wasConnected = session.connected;
       features.setFake(session.fake);
       if (!session.connected) perform.probabilities.reset();
@@ -306,7 +313,7 @@
     syncButton.disabled = !kit.session.connected;
     bridge.on("state", (m) => {
       if (m.features) {
-        features.set(m.features);
+        features.set(m.features, m.os_known);
         refreshFeatures();
       }
       if (m.panel_full === undefined) return;
@@ -319,7 +326,7 @@
     });
     bridge.on("installed", (m) => {
       if (!m.features) return;
-      features.set(m.features);
+      features.set(m.features, m.os_known);
       refreshFeatures();
     });
     bridge.on("identity", (m) => {

@@ -143,9 +143,10 @@ window.Tempester.osVerify = (function () {
     };
   }
 
-  /* What the pages show: the record, the reported OS and the reported version a read-back proved. Kept here so
-     the OS page and the Machine page always say the same thing. */
-  const view = { record: null, running: null, verified: null };
+  /* What the pages show: the record, the reported OS, the reported version a read-back proved and the feature table
+     Rust resolved for them (`features`: id -> {label, on, since}). Kept here so the OS page and the Machine page
+     always say the same thing. */
+  const view = { record: null, running: null, verified: null, features: {} };
   const watchers = [];
   function setView(patch) {
     Object.assign(view, patch);
@@ -160,6 +161,7 @@ window.Tempester.osVerify = (function () {
     setView({
       record: m.installed || null,
       running,
+      features: m.features || view.features,
       verified:
         running && running.version === view.verified ? view.verified : null,
     });
@@ -325,5 +327,5 @@ window.Tempester.osVerify = (function () {
     return { node };
   }
 
-  return { installedLine, watch, create, stampText };
+  return { installedLine, watch, state: () => view, create, stampText };
 })();

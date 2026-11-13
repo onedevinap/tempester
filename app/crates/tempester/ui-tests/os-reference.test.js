@@ -320,7 +320,7 @@ function checkReportedVersion(env) {
     "The machine reports Tempester 1.6.5.0; this app last sent Tempester 1.6.1.1.",
   );
   assert.ok(
-    textOf(env.byId.connbar).includes("OS: Tempester 1.6.5.0"),
+    textOf(env.byId.connbar).includes("OS: 1.6.5.0"),
     "the pill names the OS",
   );
 
@@ -353,7 +353,7 @@ function checkReportedVersion(env) {
     "an OS that cannot answer keeps the record line",
   );
   assert.ok(
-    !textOf(env.byId.connbar).includes("1.6.5.0"),
+    !/\d\.\d\.\d\.\d/.test(textOf(env.byId.connbar)),
     "a version no longer reported leaves the pill",
   );
 }

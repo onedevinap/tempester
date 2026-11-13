@@ -69,7 +69,9 @@ button.chip:hover { color: var(--text); }
 .padnote .padnote-in { width: 76px; min-height: 36px; padding: 4px 8px; font-size: 15px; }
 .padchans { margin-top: 12px; padding-top: 8px; border-top: 1px solid #3d444d; }
 .padchans .toolbar strong { font-size: 17px; margin-right: 6px; }
-.padchans .statusline { display: block; min-height: 22px; margin: 4px 0 8px; font-size: 15px; }
+.padchans .statusline { display: block; margin: 4px 0 8px; font-size: 17px; }
+/* An empty status line takes no room: no gap between the title and the grid (the author wants no empty space). */
+.padchans .statusline:empty { display: none; }
 .padchan-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 12px; }
 .padchan { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 6px; padding: 2px 4px; }
 .padchan .padchan-in { width: 100%; min-height: 38px; padding: 4px 8px; font-size: 17px; }
@@ -159,6 +161,15 @@ button.chip:hover { color: var(--text); }
 .idcol dd.good { color: var(--ok); }
 .idcol dd.warn { color: var(--warn); }
 .idcol dd.off { color: var(--mid); }
+/* The feature rows (one per feature Rust lists): three columns filled top to bottom, four rows high, reserved before
+   the first `state` event so that the rows arriving move nothing. */
+.idfeatures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, 24px); grid-auto-flow: column; gap: 0 24px; margin: 0; flex: none; }
+.idrow { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0 12px; }
+.idrow dt { color: var(--mid); height: 24px; line-height: 24px; font-size: 15px; white-space: nowrap; }
+.idrow dd { margin: 0; height: 24px; line-height: 24px; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.idrow dd.good { color: var(--ok); }
+.idrow dd.warn { color: var(--warn); }
+.idrow dd.off { color: var(--mid); }
 .idnote { flex: none; margin: 0; height: 48px; line-height: 24px; font-size: 15px; color: var(--mid); overflow: hidden; }
 .idnote.warn { color: var(--warn); }
 /* SHA-256 evidence row (os-hash.js): fixed height, every part keeps its slot so that nothing moves when a result

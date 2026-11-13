@@ -10,10 +10,10 @@
 
    A control the installed OS cannot use is greyed and says which version brings it: the features come from Rust
    (`features` of the `state` and `installed` events: on, since), from the identity answer (a DSI OS has none) and from
-   the fake machine (it plays Tempester 1.6.3.0).
+   the fake machine (it plays Tempester 1.6.5.0, the newest release).
 
-   Tempester.panelPerform.createFeatures() -> {set(features), setFake(on), setIdentity(tempester), status(name)}
-        status(name) = {on, why}: name is beat_wide, ribbons, probability
+   Tempester.panelPerform.createFeatures() -> {set(features, osKnown), setFake(on), setIdentity(tempester), status(name)}
+        status(name) = {on, why}: name is a key of Rust's table (beat_wide, ribbons, probability, pad_channels...)
    Tempester.panelPerform.createRibbon(r, send) -> {touch(fraction, pressure), release(), report(position), state()}
         send(r, position | null, pressure | undefined)
    Tempester.panelPerform.createProbability(send) -> {fromBeat(list), report(pad, p), value(pad), begin(pad),
@@ -42,9 +42,11 @@ window.Tempester.panelPerform = (function () {
   };
   const S = {
     needs: (name, since) =>
-      LABELS[name] + " Tempester " + (since || "1.6.3.0") + " or later",
+      since
+        ? LABELS[name] + " Tempester " + since + " or later"
+        : LABELS[name] + " a Tempester OS (version not known yet)",
     unknown:
-      " (the installed OS is not known to the app: install it from the OS page)",
+      " (the OS of the machine is unknown to the app: connect and check the identity, or install a Tempester from the OS page)",
     dsi: " (the machine answered as the DSI OS)",
     notConnected: "Not connected",
     ribbon: (n) =>
@@ -62,21 +64,29 @@ window.Tempester.panelPerform = (function () {
   /* ---------- What the installed OS can do ---------- */
   function createFeatures() {
     let features = {},
+      osKnown = null,
       fake = false,
       tempester = null;
+    /* The same rule as Rust's `has_feature` (storage/installed.rs): an OS the app can name decides, an OS it cannot
+       name has no feature (greyed, and the tooltip says the OS is unknown), except on the fake machine; an identity
+       answer of the DSI OS beats both. `osKnown` is the `os_known` field of the `state` and `installed` events:
+       `since` always arrives, so it cannot tell. */
     function status(name) {
-      if (fake) return { on: true, why: "" };
       const f = features[name] || {};
       if (tempester === false)
         return { on: false, why: S.needs(name, f.since) + S.dsi };
+      if (fake) return { on: true, why: "" };
       if (f.on) return { on: true, why: "" };
       return {
         on: false,
-        why: S.needs(name, f.since) + (f.since ? "" : S.unknown),
+        why: S.needs(name, f.since) + (osKnown === false ? S.unknown : ""),
       };
     }
     return {
-      set: (next) => (features = next || {}),
+      set: (next, known) => {
+        features = next || {};
+        osKnown = known === undefined ? null : !!known;
+      },
       setFake: (on) => (fake = !!on),
       setIdentity: (isTempester) => (tempester = isTempester),
       status,

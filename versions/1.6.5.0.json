@@ -11,7 +11,7 @@
       "In 16 Time Steps a pad lights for every note of its step, and a press on a lit pad removes those notes.",
       "With the sequencer stopped, Roll and arpeggio repeats fall on the beat's grid; the Momentary Roll footswitch turns Roll on while pressed and off when released.",
       "A playing beat roll no longer loses the notes recorded late in its window.",
-      "The compressor envelope Amount goes down to −127 as shown, on the knob and in a loaded beat (optional: kept after a listening test)."
+      "The compressor envelope Amount goes down to −127 as shown, on the knob and in a loaded beat."
     ],
     "additions": [
       "Each pad can send its notes on its own MIDI channel, with its played note or a fixed drum note (set over MIDI with CC 15-17 or on the pad settings page, kept in the System settings).",
@@ -25,7 +25,7 @@
       "In 16 Beats and 16 Time Steps, Shift + pad now selects the pad's sound (silently) instead of a beat or a step."
     ]
   },
-  "description": "1.6.4.0 plus n°48-n°56, n°58, n°59 and n°61, each proved on the test builds 1.6.5.0-f (n°48-n°51), -g (n°52, n°53), -h (n°54, n°61), -i (n°55, n°56) and -j (n°58, n°59), and together on this image. n°52 is optional: its recipe is the last but one of the list, to be removed if the listening test refuses it. n°37's recipe is the 1.6.5.0 copy patch/dead_code_reclaim_1650.json (the range n°58 and n°59 use is left out of it). Voice, Panel and SAM unchanged.",
+  "description": "1.6.4.0 plus n°48-n°56, n°58, n°59 and n°61, each proved on the test builds 1.6.5.0-f (n°48-n°51), -g (n°52, n°53), -h (n°54, n°61), -i (n°55, n°56) and -j (n°58, n°59), and together on this image. n°52 was kept after the author's listening test. n°37's recipe is the 1.6.5.0 copy patch/dead_code_reclaim_1650.json (the range n°58 and n°59 use is left out of it). Voice, Panel and SAM unchanged.",
   "sha256_image": "55a4888412fa3f90e58b16f14749751071d472612ba21cb72750e44647c60f5d",
   "sha256_image_written": "a1ddc2278e48a3a319475bfb0b91ea47617d967c5636f69c699d4659fc8c1585",
   "sha256_syx": "4a9df3e26801f176fefc12371d24965dcbe43d871c72371c0cfb0379f53b6da9",

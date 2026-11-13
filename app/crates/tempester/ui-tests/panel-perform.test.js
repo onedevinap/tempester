@@ -65,11 +65,34 @@ check(
     }
   },
 );
-check("no record: nothing, and the tooltip says the OS is unknown", () => {
+/* What Rust really sends for an OS it cannot name: every feature off, `since` always present, `os_known` false. */
+const UNNAMED_OS = {
+  beat_wide: { on: false, since: "1.6.2.0" },
+  ribbons: { on: false, since: "1.6.3.0" },
+  probability: { on: false, since: "1.6.3.0" },
+};
+check("an OS the app cannot name: nothing, and the tooltip says it is unknown", () => {
+  const f = P.createFeatures();
+  f.set(UNNAMED_OS, false);
+  const s = f.status("ribbons");
+  assert.strictEqual(s.on, false);
+  assert.ok(s.why.includes("unknown to the app"), s.why);
+  assert.ok(s.why.includes("1.6.3.0"), s.why);
+});
+check("a named OS without the feature does not say it is unknown", () => {
+  const f = P.createFeatures();
+  f.set(UNNAMED_OS, true);
+  assert.ok(!f.status("ribbons").why.includes("unknown"), f.status("ribbons").why);
+});
+check("before any state: no version is guessed, and nothing is called unknown", () => {
   const f = P.createFeatures();
   const s = f.status("ribbons");
   assert.strictEqual(s.on, false);
-  assert.ok(s.why.includes("not known"), s.why);
+  assert.ok(!/\d\.\d\.\d\.\d/.test(s.why), s.why);
+  assert.ok(s.why.includes("version not known yet"), s.why);
+  assert.ok(!s.why.includes("unknown"), s.why);
+  f.set(undefined);
+  assert.ok(!f.status("ribbons").why.includes("1.6.3.0"));
 });
 check(
   "a DSI identity answer turns everything off whatever the record says",
@@ -84,7 +107,17 @@ check(
     assert.strictEqual(f.status("probability").on, true);
   },
 );
-check("the fake machine plays 1.6.3.0", () => {
+check("a DSI identity answer beats the fake machine too, as in Rust", () => {
+  const f = P.createFeatures();
+  f.set(ON_163, true);
+  f.setFake(true);
+  f.setIdentity(false);
+  assert.strictEqual(f.status("ribbons").on, false);
+  assert.ok(f.status("ribbons").why.includes("DSI OS"));
+  f.setIdentity(true);
+  assert.strictEqual(f.status("ribbons").on, true);
+});
+check("the fake machine plays 1.6.5.0: every control is on", () => {
   const f = P.createFeatures();
   f.setFake(true);
   assert.strictEqual(f.status("ribbons").on, true);

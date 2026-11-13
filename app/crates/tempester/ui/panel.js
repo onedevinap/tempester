@@ -102,7 +102,7 @@ window.Tempester.panel = (function () {
       min: 0,
       max: 127,
       def: 100,
-      title: "Volume (remote panel, NRPN 228): needs Tempester 1.6.0.0",
+      title: "Volume (remote panel, NRPN 228): needs Tempester 1.6.0.0 or later",
     },
   };
   const local = Object.fromEntries(

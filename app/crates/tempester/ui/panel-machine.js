@@ -61,7 +61,7 @@ window.Tempester.panelMachine = (function () {
     ["enc", 13, "", "Soft knob 1 (Shift: Assign Row in Beat Events)"],
     ["abs", 0, "Feedback", "Feedback"],
     ["abs", 1, "Frequency", "Highpass Frequency"],
-    ["abs", 2, "Compress", "Compress"],
+    ["abs", 2, "Compress", "Compress (Shift: opens the compressor envelope page)"],
     ["abs", 3, "Audio Mod", "Audio Mod"],
     ["abs", 4, "Resonance", "Lowpass Resonance"],
     ["abs", 5, "Frequency", "Lowpass Frequency"],
@@ -826,7 +826,7 @@ window.Tempester.panelMachine = (function () {
   }
 
   const NOTE =
-    "The Machine view needs Tempester 1.6.0.0 with the remote panel: Remote Pad IN on this app's channel, Remote Pad OUT not Off. Until the machine answers, the controls are greyed.";
+    "The Machine view needs Tempester 1.6.0.0 or later with the remote panel: Remote Pad IN on this app's channel, Remote Pad OUT not Off. Until the machine answers, the controls are greyed.";
 
   return {
     CONTROLS,

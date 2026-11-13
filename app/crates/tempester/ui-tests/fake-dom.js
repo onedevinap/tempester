@@ -72,6 +72,12 @@ function fakeNode(tag, byId, answers) {
         node.children.push(child);
       }
     },
+    insertBefore(child, reference) {
+      child.parent = node;
+      const at = node.children.indexOf(reference);
+      node.children.splice(at < 0 ? node.children.length : at, 0, child);
+      return child;
+    },
     replaceChildren(...items) {
       node.children = [];
       node.append(...items);
@@ -88,9 +94,16 @@ function fakeNode(tag, byId, answers) {
     getBoundingClientRect: () =>
       node.rect || { left: 0, top: 0, width: 0, height: 0, bottom: 0 },
     querySelector: (selector) => node.querySelectorAll(selector)[0] || null,
+    /* `.class` or a bare tag name. */
     querySelectorAll: (selector) =>
-      all(node).filter((n) => n.attrs && hasClass(n, selector.slice(1))),
+      all(node).filter((n) =>
+        selector.startsWith(".")
+          ? n.attrs && hasClass(n, selector.slice(1))
+          : n.tagName === selector.toUpperCase(),
+      ),
     remove() {},
+    /* The drawn machine is built from HTML strings: no markup is parsed here, so its controls do not exist. */
+    insertAdjacentHTML() {},
     focus() {},
     scrollIntoView() {},
     setPointerCapture() {},

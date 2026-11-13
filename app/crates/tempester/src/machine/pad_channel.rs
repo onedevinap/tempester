@@ -25,12 +25,35 @@ use super::Machine;
 use crate::command::Command;
 use crate::error::AppError;
 use crate::event::Event;
-use crate::storage::installed::lacks_feature;
+use crate::storage::installed::{feature_in_os, has_feature, InstalledOs};
 
 /// How long an answer to a `CC 15` is waited for: far above the machine's delay (a few milliseconds), far below
 /// what a user notices.
 const REPLY_WAIT: Duration = Duration::from_millis(300);
 const NEEDS_1650: &str = "The MIDI channel per pad needs Tempester 1.6.5.0 or later";
+const OS_UNKNOWN: &str = "OS unknown: check the machine identity";
+const NEEDS_TEMPESTER: &str =
+    "The MIDI channel per pad needs a Tempester OS: the machine answered as the DSI OS";
+
+/// Why the pad channels cannot be used on this machine, or `None` when they can: the original DSI OS, an OS the app
+/// cannot name (the identity check tells), or a Tempester older than 1.6.5.0.
+fn pad_channels_refusal(
+    announced: Option<&str>,
+    record: Option<&InstalledOs>,
+    fake: bool,
+    dsi: bool,
+) -> Option<&'static str> {
+    if has_feature(announced, record, "pad_channels", fake, dsi) {
+        return None;
+    }
+    Some(if dsi {
+        NEEDS_TEMPESTER
+    } else if feature_in_os(announced, record, "pad_channels").is_none() {
+        OS_UNKNOWN
+    } else {
+        NEEDS_1650
+    })
+}
 
 #[derive(Debug)]
 struct Waiting {
@@ -100,10 +123,16 @@ impl Machine {
     fn require_pad_channels(&self) -> Result<(), AppError> {
         let announced = self.announced.map(|v| v.to_string());
         let record = self.storage.installed_os();
-        if lacks_feature(announced.as_deref(), record.as_ref(), "pad_channels") {
-            return Err(AppError::Precondition(NEEDS_1650));
+        let fake = self.connector.is_fake();
+        match pad_channels_refusal(
+            announced.as_deref(),
+            record.as_ref(),
+            fake,
+            self.dsi_identity,
+        ) {
+            Some(why) => Err(AppError::Precondition(why)),
+            None => Ok(()),
         }
-        Ok(())
     }
 
     fn set_pad_channel(&mut self, pad: u8, value: u8) -> Result<(), AppError> {
@@ -291,6 +320,49 @@ mod tests {
         rig.machine.announced = Some(TempesterVersion([1, 6, 5, 0]));
         rig.machine.handle(Command::PadChannelSave);
         assert_eq!(rig.transport().sent().len(), 1, "1.6.5.0 is accepted");
+    }
+
+    #[test]
+    fn test_refusal_when_the_os_is_unknown_old_or_dsi_returns_the_matching_text() {
+        assert_eq!(
+            pad_channels_refusal(None, None, false, false),
+            Some(OS_UNKNOWN)
+        );
+        assert_eq!(
+            pad_channels_refusal(Some("9.9.9.9"), None, false, false),
+            Some(OS_UNKNOWN)
+        );
+        assert_eq!(
+            pad_channels_refusal(Some("1.6.4.0"), None, false, false),
+            Some(NEEDS_1650)
+        );
+        assert_eq!(
+            pad_channels_refusal(Some("1.6.5.0"), None, false, true),
+            Some(NEEDS_TEMPESTER)
+        );
+        assert_eq!(
+            pad_channels_refusal(Some("1.6.5.0"), None, false, false),
+            None
+        );
+        assert_eq!(pad_channels_refusal(None, None, true, false), None);
+        assert!(OS_UNKNOWN.contains("check the machine identity"));
+    }
+
+    #[test]
+    fn test_commands_when_the_machine_answered_as_the_dsi_os_returns_a_precondition_even_with_1_6_5_0_announced(
+    ) {
+        let mut rig = TestRig::connected("pad-channel-dsi");
+        rig.machine.announced = Some(TempesterVersion([1, 6, 5, 0]));
+        rig.machine.dsi_identity = true;
+
+        rig.machine.handle(Command::PadChannelSave);
+
+        assert!(rig.transport().sent().is_empty());
+        let message = rig.expect("error").field("message").map(|m| m.render());
+        assert!(
+            message.is_some_and(|m| m.contains("DSI OS")),
+            "the refusal names the DSI OS"
+        );
     }
 
     #[test]

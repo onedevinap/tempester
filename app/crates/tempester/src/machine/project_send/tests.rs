@@ -13,6 +13,7 @@ use crate::machine::fake_machine;
 use crate::machine::project::support::save_project_now;
 use crate::machine::testkit::TestRig;
 use tempest_proto::beat::{synthetic_beat_data, PADS};
+use tempest_proto::identity::TempesterVersion;
 use tempest_proto::project::{beat_message, header_data_message, header_message};
 use tempest_proto::sound::Sound;
 
@@ -353,7 +354,7 @@ fn test_guard_of_when_installed_version_has_the_fix_returns_fixed_and_otherwise_
         (None, Guard::AtRisk),
     ] {
         assert_eq!(
-            guard_of(installed(version).as_ref(), &project),
+            guard_of(None, installed(version).as_ref(), &project),
             want,
             "{version:?}"
         );
@@ -372,17 +373,17 @@ fn test_guard_of_when_installed_build_is_unknown_returns_at_risk() {
     };
 
     assert_eq!(
-        guard_of(Some(&unknown), &library_project(1, 0)),
+        guard_of(None, Some(&unknown), &library_project(1, 0)),
         Guard::AtRisk
     );
 }
 
 #[test]
 fn test_guard_of_when_no_list_can_be_misread_returns_no_risk_even_without_a_record() {
-    assert_eq!(guard_of(None, &library_project(0, 3)), Guard::NoRisk);
-    assert_eq!(guard_of(None, &list_four_only()), Guard::NoRisk);
+    assert_eq!(guard_of(None, None, &library_project(0, 3)), Guard::NoRisk);
+    assert_eq!(guard_of(None, None, &list_four_only()), Guard::NoRisk);
     // Counter-proof: a used list 1, 2 or 3 is at risk.
-    assert_eq!(guard_of(None, &library_project(1, 3)), Guard::AtRisk);
+    assert_eq!(guard_of(None, None, &library_project(1, 3)), Guard::AtRisk);
 }
 
 #[test]
@@ -736,7 +737,7 @@ fn project_with_quantize(word4: u16, word18: u16) -> Project {
 
 #[test]
 fn test_replaced_lines_when_quantize_is_a_fine_value_says_only_tempester_1_6_5_0_keeps_it() {
-    let lines = replaced_lines(&project_with_quantize(7 << 8, 0x5107));
+    let lines = replaced_lines(&project_with_quantize(7 << 8, 0x5107), None);
 
     assert!(
         lines
@@ -749,11 +750,101 @@ fn test_replaced_lines_when_quantize_is_a_fine_value_says_only_tempester_1_6_5_0
 #[test]
 fn test_replaced_lines_when_quantize_is_official_or_fine_word_is_invalid_says_nothing_of_it() {
     for (word4, word18) in [(3 << 8, 0), (3 << 8, 0x5107), (7 << 8, 0x5109), (7 << 8, 0)] {
-        let lines = replaced_lines(&project_with_quantize(word4, word18));
+        let lines = replaced_lines(&project_with_quantize(word4, word18), None);
 
         assert!(
             lines.iter().all(|l| !l.contains("Quantize")),
             "{word4:#x} {word18:#x}: {lines:?}"
         );
     }
+}
+
+// ---- the version the machine reports -------------------------------------------------------------------------
+
+#[test]
+fn test_guard_of_when_the_machine_reports_its_version_returns_the_guard_of_that_release() {
+    let project = library_project(2, 0);
+
+    assert_eq!(guard_of(Some("1.6.5.0"), None, &project), Guard::Fixed);
+    assert_eq!(guard_of(Some("1.6.2.0"), None, &project), Guard::Fixed);
+    assert_eq!(guard_of(Some("1.6.1.0"), None, &project), Guard::AtRisk);
+    // The reported release wins over an older record, and the record answers for a number the app does not know.
+    assert_eq!(
+        guard_of(
+            Some("1.6.5.0"),
+            installed(Some("1.6.1.2")).as_ref(),
+            &project
+        ),
+        Guard::Fixed
+    );
+    assert_eq!(
+        guard_of(
+            Some("9.9.9.9"),
+            installed(Some("1.6.2.0")).as_ref(),
+            &project
+        ),
+        Guard::Fixed
+    );
+    assert_eq!(guard_of(Some("9.9.9.9"), None, &project), Guard::AtRisk);
+}
+
+#[test]
+fn test_project_send_when_the_machine_reports_1_6_5_0_without_a_record_returns_no_warning_and_a_plain_send_works(
+) {
+    let (mut rig, id) = rig_with("psend-reported", &library_project(2, 16));
+    rig.machine.announced = Some(TempesterVersion([1, 6, 5, 0]));
+
+    let plan = check(&mut rig, &id);
+    assert_eq!(text(&plan, "guard"), "\"fixed\"");
+    assert_eq!(text(&plan, "warning"), "[]");
+    send(&mut rig, &id, &token(&plan), ProjectMode::Normal);
+
+    assert_eq!(state(&finish(&mut rig)), "done");
+}
+
+#[test]
+fn test_project_send_when_the_machine_reports_a_release_without_the_fix_returns_a_warning_naming_it(
+) {
+    let (mut rig, id) = rig_with("psend-reported-old", &library_project(2, 16));
+    rig.machine.announced = Some(TempesterVersion([1, 6, 1, 0]));
+
+    let plan = check(&mut rig, &id);
+
+    assert_eq!(text(&plan, "guard"), "\"at_risk\"");
+    assert!(text(&plan, "warning").contains("The machine reports Tempester 1.6.1.0"));
+    send(&mut rig, &id, &token(&plan), ProjectMode::Normal);
+    assert!(text(&rig.expect("error"), "message").contains("Send anyway"));
+}
+
+#[test]
+fn test_warning_lines_when_nothing_is_known_says_the_app_does_not_know_the_os() {
+    let lines = warning_lines(Guard::AtRisk, None, None, &library_project(1, 0)).join(" ");
+
+    assert!(lines.contains("does not know the OS"), "{lines}");
+    assert!(!lines.contains("last installed"), "{lines}");
+}
+
+#[test]
+fn test_replaced_lines_when_the_os_is_known_says_whether_it_keeps_the_fine_quantize() {
+    let project = project_with_quantize(7 << 8, 0x5107);
+    let said = |known: Option<bool>| replaced_lines(&project, known).join(" ");
+
+    assert!(said(Some(true)).contains("this machine's OS keeps it"));
+    assert!(said(Some(false)).contains("does not keep it"));
+    assert!(said(None).contains("1.6.5.0 or later"));
+    assert!(!said(Some(true)).contains("does not keep it"));
+}
+
+#[test]
+fn test_check_when_the_machine_reports_1_6_4_0_returns_the_fine_quantize_lost_text() {
+    let (mut rig, id) = rig_with("psend-quantize-old", &project_with_quantize(7 << 8, 0x5107));
+    rig.machine.announced = Some(TempesterVersion([1, 6, 4, 0]));
+
+    let plan = check(&mut rig, &id);
+
+    assert!(
+        text(&plan, "lines").contains("does not keep it"),
+        "{}",
+        text(&plan, "lines")
+    );
 }

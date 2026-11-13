@@ -98,6 +98,7 @@ impl Machine {
                 )
                 .with("default_port", DEFAULT_PORT_NAME)
                 .with("features", self.features())
+                .with("os_known", self.os_known())
                 .with("announced", self.announced.map(|v| v.to_string()))
                 .with(
                     "running",
@@ -150,6 +151,7 @@ impl Machine {
         self.release_touched_ribbons();
         self.forget_remote();
         self.announced = None;
+        self.dsi_identity = false;
         self.beat_wide_in.forget();
         self.pad_channels.reset();
         self.stop_clock();
@@ -187,7 +189,8 @@ impl Machine {
                 .with("version", found.version)
                 .with("tempester", TEMPESTER_VERSIONS.contains(&found.version)),
         );
-        if !TEMPESTER_VERSIONS.contains(&found.version) {
+        self.dsi_identity = !TEMPESTER_VERSIONS.contains(&found.version);
+        if self.dsi_identity {
             self.forget_announced();
         }
         Ok(())

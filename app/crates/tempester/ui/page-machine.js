@@ -25,11 +25,20 @@
   };
 
   const els = {};
+  /* The last identity answer: the line says the exact release once the machine reports it, which can come after. */
+  let answer = null;
 
   function refresh(session) {
     els.identity.disabled = !session.connected;
     els.channel.value = String(session.channel);
-    if (!session.connected) showLine(S.identityIdle, "");
+    if (!session.connected) {
+      answer = null;
+      showLine(S.identityIdle, "");
+    }
+  }
+
+  function showAnswer(running) {
+    if (answer) showLine(identity.short(answer, running), "good");
   }
 
   function showLine(text, tone) {
@@ -47,6 +56,7 @@
     els.installed.textContent = line.text;
     els.installed.setAttribute("class", "statusline " + line.tone);
     els.installed.setAttribute("title", line.title);
+    showAnswer(view.running);
   }
 
   function buildStrip(padNotes) {
@@ -99,7 +109,10 @@
     );
     kit.onSession(refresh);
     refresh(kit.session);
-    bridge.on("identity", (m) => showLine(identity.short(m), "good"));
+    bridge.on("identity", (m) => {
+      answer = m;
+      showAnswer(window.Tempester.osVerify.state().running);
+    });
     bridge.on("state", (m) => {
       els.folder.textContent = m.data_dir || "";
       els.folder.setAttribute("title", m.data_dir || "");

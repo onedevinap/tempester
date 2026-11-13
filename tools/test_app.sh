@@ -190,6 +190,11 @@ if command -v node > /dev/null; then
   node "$P/app/crates/tempester/ui-tests/pad-channels-counter-proof.js" "$UI" "$T" > "$T/padchan-counter.log" 2>&1 \
     || { cat "$T/padchan-counter.log"; exit 1; }
   ok "pad channels with one behaviour broken refused ($(tail -n 1 "$T/padchan-counter.log"))"
+  # The Panel page and the pad-channel panel follow the feature table and `os_known` Rust sends (reported version,
+  # unknown OS, nothing known yet), then broken copies that must fail.
+  node "$P/app/crates/tempester/ui-tests/feature-gates.test.js" "$UI" "$T" > "$T/gates.log" 2>&1 \
+    || { cat "$T/gates.log"; exit 1; }
+  ok "feature gates ($(cat "$T/gates.log"))"
   # No control of either view may move or change size, whatever the page shows (Chrome and WebKit, the standalone
   # preview, nothing is sent); then the same test on broken copies, which must fail. Needs playwright-core (not a
   # dependency of the project): PLAYWRIGHT_CORE, or the author's npx cache.
@@ -211,6 +216,14 @@ if command -v node > /dev/null; then
     node "$P/app/crates/tempester/ui-tests/layout-overlap.js" "$UI" "$T/overlap" "$P" > "$T/overlap.log" 2>&1 \
       || { cat "$T/overlap.log"; echo "  ✘ text overlaps"; exit 1; }
     ok "no overlapping text, both views, 3 widths, Chrome and WebKit ($(tail -1 "$T/overlap.log"))"
+    # The top bar (connection pill, OS chip) and the Panel status readout must show their whole text at 1100 / 1320 / 1920 px,
+    # connected to the fake machine; then the 0.1.1 defects put back, which must fail.
+    node "$P/app/crates/tempester/ui-tests/layout-header.js" "$UI" "$T/header" "$P" > "$T/header.log" 2>&1 \
+      || { cat "$T/header.log"; echo "  ✘ clipped header"; exit 1; }
+    ok "top bar and status readouts whole, 3 widths, Chrome and WebKit ($(tail -1 "$T/header.log"))"
+    node "$P/app/crates/tempester/ui-tests/layout-header-counter-proof.js" "$UI" "$T/header-broken" "$P" > "$T/header-counter.log" 2>&1 \
+      || { cat "$T/header-counter.log"; echo "  ✘ header counter-proof"; exit 1; }
+    ok "clipped header caught ($(tail -1 "$T/header-counter.log"))"
     if [ "${TEMPESTER_LONG:-0}" = "1" ]; then
       node "$P/app/crates/tempester/ui-tests/layout-overlap-counter-proof.js" "$UI" "$T/overlap-broken" "$P" > "$T/overlap-counter.log" 2>&1 \
         || { cat "$T/overlap-counter.log"; echo "  ✘ overlap counter-proof"; exit 1; }

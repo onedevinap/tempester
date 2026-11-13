@@ -8,6 +8,42 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ### [Unreleased]
 
+### [0.1.1] - 2026-11-13
+
+#### Added
+
+- **Support for Tempester OS 1.6.5.0**: notes up to 768 steps long are read, written and exported; the fine Quantize
+  value (project word 18) is kept, and the project send says whether the machine's OS keeps it; the pad notes panel
+  reads, sets and saves each pad's MIDI channel (a read that times out says « check Remote Pad OUT »). The app edits no
+  System file, so the Swing Source « +Roll » option is set on the machine only.
+- **The app shows and verifies the OS the machine reports**: the exact version a Tempester 1.6.5.0 answers is used
+  everywhere (status line, OS page, read-back of the Main OS compared with that version's image).
+- **Machine identity card**: it shows the exact version the machine reports and says, for each of the 12 Tempester
+  features, whether this version has it (« Available » / « Not in this version »). Without a reported version it keeps
+  the old guesses.
+- **MIDI monitor**: names for the play probability, the pad channel, the ribbons and the mixer reports (CC 14 to 17,
+  107 to 113, NRPN 230 to 239).
+
+#### Changed
+
+- **Play Lists guard**: a project is sent plainly when the version the machine reports has the Play List fix, even
+  without an OS installed from the app; when nothing is known, the app warns.
+- **Controls that need a newer Tempester** say « x.y.z.w or later », or « OS unknown: check the machine identity »
+  when the app cannot tell which OS runs; a machine that answered as the original DSI OS has none of them.
+
+#### Fixed
+
+- The Machine page no longer tells you to read the version on the machine when the machine reports it.
+- Protocol notes: the mixer reports, the exact-version request and the Pad Function report are in release 1.6.4.0.
+- The OS chip of the top bar was cut at both ends at 1320 px; it now reads « OS: 1.6.5.0 » (the whole release is its tooltip).
+- The Panel page said « Not connected » once connected; it says « Not synced » until a sound is synced (« Offline » when the link is down). The Play page
+  no longer asks you to connect when you are connected.
+- The Machine page names the release the machine reports (« Tempester 1.6.5.0 ») instead of the version word.
+- The OS page no longer calls patch n°52 (compressor Amount down to -127) optional in release 1.6.5.0: it is kept.
+- The MIDI channel of each pad was hard to find: on the Machine page, the « Pads » button of the top strip opens the
+  table of notes, and the channels are under it.
+- The MIDI channel section of the Pads panel no longer leaves an empty band between its title and the pad grid.
+
 #### Security
 
 - **Tempester Control no longer contains `atty`** (RUSTSEC-2021-0145, unaligned read on Windows, unmaintained with no
@@ -16,15 +52,6 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 - **`glib` 0.18 (RUSTSEC-2024-0429) stays, not reachable**: the advisory is about `glib::VariantStrIter`, which neither
   the app nor its GTK and WebKit libraries call. The Linux app gets glib through wry's GTK 3 bindings, which stop at
   0.18 even in the latest wry; it goes when wry moves on.
-
-### [Unreleased] additions
-
-#### Added
-
-- **Support for Tempester OS 1.6.5.0**: notes up to 768 steps long are read, written and exported; the fine Quantize
-  value (project word 18) is kept; the pad notes panel reads, sets and saves each pad's MIDI channel (a read that
-  times out says « check Remote Pad OUT »). The app edits no System file, so the Swing Source « +Roll » option is set
-  on the machine only.
 
 ### [0.1.0] - 2026-11-10
 

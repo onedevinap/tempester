@@ -1,6 +1,6 @@
 # Tempester user manual
 
-This manual covers the Tempester app 0.1.0, the Tempester Control plugin, and the way to install a Tempester firmware
+This manual covers the Tempester app 0.1.1, the Tempester Control plugin, and the way to install a Tempester firmware
 version. For what each
 firmware version changes, see [firmware](firmware.md); for the exact MIDI messages, see [MIDI protocol](midi-protocol.md).
 
@@ -135,7 +135,8 @@ The Library page has a strip with three cards on top and the library browser und
 - **Send a project back** with the send button of a project row. The confirmation says that the machine's whole
   project in RAM is replaced (not saved to its flash until you save it there). The official OS and the Tempester versions
   without patch n°28 misread the Play Lists of a received project (see [firmware n°28](firmware.md#n28-project-receive));
-  the app knows which version you installed and then offers « Send anyway » or « Send without Play Lists ».
+  the app knows which version the machine runs (the exact version it reports, else the one you installed from the app)
+  and then offers « Send anyway » or « Send without Play Lists ». With neither known, it warns too.
   Afterwards, **Fetch it back and compare** checks what the machine really holds, difference by difference.
 
 **The browser**:
@@ -171,7 +172,7 @@ pad's note in the pad note table (Machine page), with the velocities and lengths
 ![Play](images/play.png)
 
 - 16 on-screen pads (A1-A16) send, on the app's channel and with the chosen velocity, the note the machine plays each
-  pad with: the **pad note table** of the Machine page (the « Pad notes » button). The Tempest has its own table
+  pad with: the **pad note table** of the Machine page (the « Pads » button). The Tempest has its own table
   (System > MIDI Note : Pad), not 36 + pad; the app starts with one machine's table (A1-A15 white keys from C2, A16 61, B 62-77) and learns
   the real table when you tap the pads on the machine in 16 Sounds (Remote Pad OUT on, Tempester 1.6.0.0 or later; only
   notes on the Remote Pad OUT channel are learned, and a note another pad already has is never taken). You
@@ -190,10 +191,12 @@ pad's note in the pad note table (Machine page), with the velocities and lengths
 
 - **Channel**: the app's MIDI channel (match the Tempest's *Remote Pad IN Channel*).
 - **Check the machine identity**: asks the universal identity request. The *Machine identity* panel shows the answer in
-  full: device id, manufacturer, family, version word, and which features the version word proves. The official OS
-  answers with its own version word; every Tempester version answers `0x7F2`, which says « Tempester » but not which
-  release (System > *Main OS Version* on the machine shows the exact number). Note: the official OS answers the identity
-  request on the DIN port only; Tempester answers on the cable set in System.
+  full: device id, manufacturer, family, version word, the exact Tempester version the machine reports (a Tempester with the
+  exact-version request, n°39, answers it to the same button) and every feature, resolved as *Available* or *Not in this version* from that
+  version. The official OS answers with its own version word; an older Tempester answers `0x7F2`, which says
+  « Tempester » but not which release: its features are then shown as « From x on » (System > *Main OS Version* on the
+  machine shows the exact number). Note: the official OS answers the identity request on the DIN port only; Tempester
+  answers on the cable set in System.
 - **Installed**: the Tempester version last sent from this app and whether a read-back proved it.
 - **Data folder**: where everything is saved; the folder button opens it.
 - **MIDI monitor**: every message sent and received, with the time since connection and a readable description (notes
@@ -210,7 +213,7 @@ These work on the Tempest itself; the app follows them where it edits the data (
   on the four encoders. Any key or another pad leaves the page; leaving saves the note and the channel when the
   transport is stopped.
 - **A MIDI channel per pad** (Off, 1-16 with the pad's played note, 1-16 Fix with its fixed note): used by the
-  sequencer and by the pads you play. The Machine page's pad notes panel reads, sets and saves it over MIDI (CC 15, 16
+  sequencer and by the pads you play. The Machine page's « Pads » panel (notes on top, channels under them) reads, sets and saves it over MIDI (CC 15, 16
   and 17 on Remote Pad IN); if a read times out, check that Remote Pad OUT is not Off.
 - **Notes up to 768 steps long** (a whole 8-bar beat); a beat with long notes played on an older OS plays them short.
 - **Finer Quantize** (Shift + soft knob 3): 8 Dot, 16 Dot, 32 Dot, 64th, 64T, 8 Quint, 16 Quint and 16 Sept join the

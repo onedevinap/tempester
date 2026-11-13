@@ -118,7 +118,7 @@ window.Tempester.padChannelsPanel = (function () {
     });
     const take = (m) => {
       if (!m.features) return;
-      features.set(m.features);
+      features.set(m.features, m.os_known);
       refresh();
     };
     bridge.on("state", take);

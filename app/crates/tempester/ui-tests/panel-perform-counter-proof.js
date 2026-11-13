@@ -20,6 +20,11 @@ const variants = {
     'if (f.on) return { on: true, why: "" };',
     'if (f.since) return { on: true, why: "" };',
   ],
+  "a DSI identity answer ignored on the fake machine": [
+    "panel-perform.js",
+    "if (tempester === false)\n        return",
+    "if (tempester === false && !fake)\n        return",
+  ],
   "the fake machine treated as an old OS": [
     "panel-perform.js",
     'if (fake) return { on: true, why: "" };',
@@ -27,8 +32,28 @@ const variants = {
   ],
   "the tooltip does not say which version brings it": [
     "panel-perform.js",
-    'LABELS[name] + " Tempester " + (since || "1.6.3.0") + " or later"',
+    'LABELS[name] + " Tempester " + since + " or later"',
     'LABELS[name] + " need a newer OS"',
+  ],
+  "a version guessed before the first state": [
+    "panel-perform.js",
+    ': LABELS[name] + " a Tempester OS (version not known yet)"',
+    ': LABELS[name] + " Tempester 1.6.3.0 or later"',
+  ],
+  "an OS the app cannot name not said to be unknown": [
+    "panel-perform.js",
+    '(osKnown === false ? S.unknown : "")',
+    '""',
+  ],
+  "the os_known flag of the events dropped": [
+    "panel-perform.js",
+    "osKnown = known === undefined ? null : !!known;",
+    "osKnown = null;",
+  ],
+  "a named OS called unknown": [
+    "panel-perform.js",
+    "(osKnown === false ? S.unknown : \"\")",
+    "(osKnown !== true ? S.unknown : \"\")",
   ],
   "a ribbon resends the same position on every move": [
     "panel-perform.js",

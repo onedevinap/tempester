@@ -84,6 +84,10 @@ const SCRAMBLED = Array.from({ length: 32 }, (_, k) => (k * 7 + 20) % 128);
 
 const sentSince = (env, from) => Array.from(env.sent).slice(from);
 
+/* What the machine reports of its own release (n°39), as Rust sends it in `state`. */
+const RUNNING = { version: "1.6.5.0", label: "Tempester 1.6.5.0", known: true };
+const stateWith = (running) => ({ event: "state", running });
+
 function topBar(env) {
   return env.byId.connbar;
 }
@@ -117,6 +121,20 @@ function checkTopBar(env) {
   );
   env.receive({ event: "error", during: "identity", code: "timeout" });
   assert.ok(textOf(bar).includes("No answer"), "no answer is shown there too");
+  checkTopBarVersion(env, bar);
+  env.kit.updateSession({ connected: false });
+}
+
+/* The chip is a fixed 124 px slot (app.css): the text must be short enough for it, and the whole release is its tooltip. */
+function checkTopBarVersion(env, bar) {
+  env.receive(stateWith(RUNNING));
+  const chip = all(bar).find((n) => (n.attrs.class || "").startsWith("chip"));
+  assert.strictEqual(chip.textContent, "OS: 1.6.5.0", "the reported release");
+  assert.ok(chip.textContent.length <= 14, "short enough for the 124 px chip");
+  assert.ok(
+    chip.attrs["data-tip"].includes("Tempester 1.6.5.0"),
+    "the whole release is the tooltip",
+  );
 }
 
 function checkMachine(env) {
@@ -151,6 +169,25 @@ function checkMachine(env) {
     tempester: true,
   });
   assert.ok(textOf(root).includes("version word 0x1501"), "identity shown");
+  env.receive(stateWith(RUNNING));
+  assert.ok(
+    textOf(root).includes("Tempester 1.6.5.0") &&
+      !textOf(root).includes("version word"),
+    "the exact release replaces the version word once the machine reports it",
+  );
+  env.kit.updateSession({ connected: false });
+  env.kit.updateSession({ connected: true });
+  env.receive(stateWith(RUNNING));
+  env.receive({ event: "identity", device: 0x7f, version: 0x7f2, tempester: true });
+  assert.ok(
+    textOf(root).includes("Tempester 1.6.5.0") &&
+      !textOf(root).includes("Tempester OS, version word"),
+    "an identity answer after the report says the release too",
+  );
+  env.kit.updateSession({ connected: false });
+  env.kit.updateSession({ connected: true });
+  env.receive({ event: "identity", device: 0x7f, version: 0x7f2, tempester: true });
+  assert.ok(textOf(root).includes("Tempester OS, version word 0x7F2"), "word only, nothing reported yet");
   for (const label of [
     "Pause the list",
     "Clear the list",
@@ -334,7 +371,7 @@ function checkPadNotes(env) {
   const panel = all(root).find((n) => n.attrs.class === "padnotes");
   assert.ok(panel && panel.hidden, "the table is closed at first");
   const before = env.sent.length;
-  press(root, "Pad notes: the MIDI note of each pad");
+  press(root, "Pads: the MIDI note and the MIDI channel of each pad");
   assert.ok(!panel.hidden, "opened");
   env.receive({ event: "pad_notes", notes: SCRAMBLED });
   const input = (name) =>
@@ -372,7 +409,13 @@ function checkPadNotes(env) {
 
 function checkPlay(env) {
   const root = env.roots.play;
+  env.kit.updateSession({ connected: false });
+  assert.ok(textOf(root).includes("Connect to the machine to play."));
   env.kit.updateSession({ connected: true, channel: 3 });
+  assert.ok(
+    !textOf(root).includes("Connect to the machine"),
+    "connected after the page was built: the status no longer says to connect",
+  );
   const before = env.sent.length;
   env.receive({ event: "pad_notes", notes: SCRAMBLED });
   const pad = control(root, "Pad 1, note 20 G#0");

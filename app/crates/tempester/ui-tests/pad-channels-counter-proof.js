@@ -51,7 +51,7 @@ const variants = {
   ],
   "the gate without a version name": [
     "panel-perform.js",
-    'LABELS[name] + " Tempester " + (since || "1.6.3.0") + " or later"',
+    'LABELS[name] + " Tempester " + since + " or later"',
     'LABELS[name] + " a newer OS"',
   ],
 };
