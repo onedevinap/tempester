@@ -39,6 +39,13 @@ const VARIANTS = [
     to: ".padchans .statusline:empty { display: block; min-height: 22px; }",
     expect: ["pad channel section", "empty between its title row and the grid"],
   },
+  {
+    name: "the top bar's narrow-window rules gone (at 900 px the OS chip left the window, 14/11/2026)",
+    file: "app.css",
+    from: "@media (max-width: 1000px) {",
+    to: "@media (max-width: 1px) {",
+    expect: ["button.chip", "leaves the window"],
+  },
 ];
 
 function copyDir(from, to) {

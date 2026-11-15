@@ -8,6 +8,8 @@
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
+use tempest_proto::identity::VOICE_CHIPS;
+use tempest_proto::release_cap::{release_max, ReleaseCap};
 use tempest_proto::sound::{params, PARAM_COUNT};
 
 /// The 127 values of a sound, in parameter order.
@@ -59,6 +61,7 @@ pub struct History {
     values: Values,
     undo: VecDeque<Step>,
     redo: Vec<Step>,
+    limits: Limits,
 }
 
 /// The largest legal value of parameter `index` (the NRPN table: NRPN n = sound parameter n).
@@ -66,22 +69,69 @@ pub fn max_of(index: u8) -> u16 {
     params().get(usize::from(index)).map_or(0, |p| p.max)
 }
 
-/// `value` brought into the legal range of parameter `index`.
-pub fn clamp(index: u8, value: u16) -> u16 {
-    value.min(max_of(index))
+/// The maxima of the machine in front of us: the table's, except the five Releases, which follow
+/// `tempest_proto::release_cap::release_max` (the one place that knows the cap and the lift).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Limits {
+    cap: ReleaseCap,
+    voices: Option<[u16; VOICE_CHIPS]>,
+}
+
+impl Limits {
+    /// The Main OS (as far as the app can name it) and the Voice words its six chips reported (`None`: not reported).
+    pub fn new(cap: ReleaseCap, voices: Option<[u16; VOICE_CHIPS]>) -> Self {
+        Self { cap, voices }
+    }
+
+    /// The table's maxima: an OS without n°63.
+    pub fn stock() -> Self {
+        Self::new(ReleaseCap::Stock, None)
+    }
+
+    /// The largest legal value of parameter `index`; 0 for an index that is no sound parameter.
+    pub fn max_of(&self, index: u8) -> u16 {
+        if usize::from(index) >= PARAM_COUNT {
+            return 0;
+        }
+        release_max(index, self.cap, self.voices.as_ref())
+    }
+
+    /// `value` brought into the legal range of parameter `index`.
+    pub fn clamp(&self, index: u8, value: u16) -> u16 {
+        value.min(self.max_of(index))
+    }
 }
 
 impl History {
-    /// A history starting from `values` (each clamped to its range), with no step.
+    /// A history starting from `values` (each clamped to its range), with no step, on an OS without a cap.
     pub fn new(values: &Values) -> Self {
+        Self::with_limits(values, Limits::stock())
+    }
+
+    /// A history starting from `values` (each clamped to the machine's `limits`), with no step.
+    pub fn with_limits(values: &Values, limits: Limits) -> Self {
         let mut clean = *values;
         for (index, value) in (0u8..).zip(clean.iter_mut()) {
-            *value = clamp(index, *value);
+            *value = limits.clamp(index, *value);
         }
         Self {
             values: clean,
             undo: VecDeque::new(),
             redo: Vec::new(),
+            limits,
+        }
+    }
+
+    /// The machine's maxima changed (its OS or its Voice versions became known): the model keeps what the machine
+    /// would show, each value brought into the new range. The steps keep their recorded values; undo and redo clamp
+    /// them again when they send.
+    pub fn set_limits(&mut self, limits: Limits) {
+        if limits == self.limits {
+            return;
+        }
+        self.limits = limits;
+        for (index, value) in (0u8..).zip(self.values.iter_mut()) {
+            *value = limits.clamp(index, *value);
         }
     }
 
@@ -118,7 +168,7 @@ impl History {
         if usize::from(index) >= PARAM_COUNT {
             return false;
         }
-        let value = clamp(index, value);
+        let value = self.limits.clamp(index, value);
         let before = self.values[usize::from(index)];
         if value == before {
             return false;
@@ -156,7 +206,7 @@ impl History {
     /// gesture of the page on that parameter ends there.
     pub fn observe(&mut self, index: u8, value: u16) {
         if let Some(slot) = self.values.get_mut(usize::from(index)) {
-            *slot = clamp(index, value);
+            *slot = self.limits.clamp(index, value);
             if let Some(step) = self.undo.back_mut() {
                 if step.kind == StepKind::Knob(index) {
                     step.open = false;
@@ -168,9 +218,16 @@ impl History {
     /// Moves the whole sound to `target` (clamped) as one step. Returns the changes to send (only the parameters that
     /// differ); empty, and no step, when the sound is already there.
     pub fn jump(&mut self, target: &Values, kind: StepKind, now: Instant) -> Vec<Change> {
+        let limits = self.limits;
         let changes: Vec<(u8, u16, u16)> = (0u8..)
             .zip(target.iter())
-            .map(|(index, &value)| (index, self.values[usize::from(index)], clamp(index, value)))
+            .map(|(index, &value)| {
+                (
+                    index,
+                    self.values[usize::from(index)],
+                    limits.clamp(index, value),
+                )
+            })
             .filter(|(_, before, after)| before != after)
             .collect();
         if changes.is_empty() {
@@ -199,7 +256,7 @@ impl History {
         let out: Vec<Change> = step
             .changes
             .iter()
-            .map(|&(index, before, _)| (index, before))
+            .map(|&(index, before, _)| (index, self.limits.clamp(index, before)))
             .collect();
         self.apply(&out);
         self.redo.push(step);
@@ -212,7 +269,7 @@ impl History {
         let out: Vec<Change> = step
             .changes
             .iter()
-            .map(|&(index, _, after)| (index, after))
+            .map(|&(index, _, after)| (index, self.limits.clamp(index, after)))
             .collect();
         self.apply(&out);
         // A redone knob step must not swallow the next drag of that knob.
@@ -376,9 +433,9 @@ mod tests {
 
         assert_eq!(sent, vec![(34, 164), (40, 1)]);
         assert_eq!(history.values()[35], 127);
-        assert_eq!(clamp(34, 165), 164);
+        assert_eq!(Limits::stock().clamp(34, 165), 164);
         // counter-proof: a legal value is left as it is
-        assert_eq!(clamp(34, 164), 164);
+        assert_eq!(Limits::stock().clamp(34, 164), 164);
     }
 
     #[test]
@@ -414,5 +471,43 @@ mod tests {
             "the machine's report ends the page's gesture"
         );
         assert_eq!(history.undo(), Some(vec![(LP_FREQ, 60)]));
+    }
+
+    const FILTER_RELEASE: u8 = 70;
+
+    fn capped() -> Limits {
+        Limits::new(ReleaseCap::Always, None)
+    }
+
+    fn lifted() -> Limits {
+        Limits::new(ReleaseCap::WithTempesterVoice, Some([0x16; 6]))
+    }
+
+    #[test]
+    fn test_knob_when_a_release_is_above_the_cap_returns_123_and_when_lifted_returns_127() {
+        let mut under_cap = History::with_limits(&defaults(), capped());
+        let mut lifted_up = History::with_limits(&defaults(), lifted());
+
+        under_cap.knob(FILTER_RELEASE, 127, Instant::now());
+        lifted_up.knob(FILTER_RELEASE, 127, Instant::now());
+
+        assert_eq!(under_cap.values()[usize::from(FILTER_RELEASE)], 123);
+        assert_eq!(lifted_up.values()[usize::from(FILTER_RELEASE)], 127);
+        // counter-proof: the stock limits would let 127 through under the cap
+        let mut stock = History::new(&defaults());
+        stock.knob(FILTER_RELEASE, 127, Instant::now());
+        assert_eq!(stock.values()[usize::from(FILTER_RELEASE)], 127);
+    }
+
+    #[test]
+    fn test_set_limits_when_the_cap_comes_back_returns_the_values_and_the_undo_inside_it() {
+        let mut history = History::with_limits(&defaults(), lifted());
+        history.knob(FILTER_RELEASE, 127, Instant::now());
+
+        history.set_limits(capped());
+
+        assert_eq!(history.values()[usize::from(FILTER_RELEASE)], 123);
+        history.undo();
+        assert_eq!(history.redo(), Some(vec![(FILTER_RELEASE, 123)]));
     }
 }

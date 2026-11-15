@@ -146,7 +146,13 @@ window.Tempester.osVerify = (function () {
   /* What the pages show: the record, the reported OS, the reported version a read-back proved and the feature table
      Rust resolved for them (`features`: id -> {label, on, since}). Kept here so the OS page and the Machine page
      always say the same thing. */
-  const view = { record: null, running: null, verified: null, features: {} };
+  const view = {
+    record: null,
+    running: null,
+    verified: null,
+    features: {},
+    voiceVersions: null,
+  };
   const watchers = [];
   function setView(patch) {
     Object.assign(view, patch);
@@ -162,6 +168,7 @@ window.Tempester.osVerify = (function () {
       record: m.installed || null,
       running,
       features: m.features || view.features,
+      voiceVersions: m.voice_versions || null,
       verified:
         running && running.version === view.verified ? view.verified : null,
     });
@@ -173,7 +180,8 @@ window.Tempester.osVerify = (function () {
       setView({ verified: m.version });
   });
   kit.onSession((session) => {
-    if (!session.connected) setView({ running: null, verified: null });
+    if (!session.connected)
+      setView({ running: null, verified: null, voiceVersions: null });
   });
 
   function stepList() {

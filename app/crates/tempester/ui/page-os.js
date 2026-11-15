@@ -20,6 +20,9 @@
       "Tempester never ships DSI software: it builds a Tempester version from your own Tempest_Main_1.5.0.2.syx (its SHA-256 is checked).",
     dsiPick: "Choose Tempest_Main_1.5.0.2.syx",
     dsiNone: "No file chosen.",
+    dsiVoiceLead:
+      "The Tempester Voice OS is built from your own Tempest_Voice_1.5.syx the same way (its SHA-256 is checked).",
+    dsiVoicePick: "Choose Tempest_Voice_1.5.syx",
     dsiChosen: (name, size) => name + " (" + formatBytes(size) + ")",
     versionsTitle: "A Tempester version",
     versionsLead:
@@ -75,7 +78,24 @@
       "When the FX1 LEDs stop at the top, power the Tempest off and on.",
       "If you cancel half way, the update stays incomplete. The flasher page is never touched, so a new update is always possible.",
     ],
+    voiceConfirmTitle: (m) => "Send " + m.label + " to ALL SIX Voice chips?",
+    /* `main_warning` (Rust, os_ready): this Voice version answers a word the Main in front of us may not take as
+       Tempester Voice. A warning first in the list, not a refusal: the result is not destructive. */
+    voiceConfirmLines: (m) => [
+      ...(m.main_warning ? ["Warning: " + m.main_warning] : []),
+      "This replaces the software of all six Voice chips at once with " +
+        m.label +
+        " (" +
+        formatBytes(m.size) +
+        "). The update is broadcast: there is no trying one chip first, and the app cannot read a chip back from here.",
+      "It takes " +
+        formatDuration(m.seconds) +
+        ". Stop the sequencer, power-cycle the Tempest before, and do not power off or unplug anything while it is sent.",
+      "A power cut, a cable pulled or a crash during the first 29 of the 41 pages (about 70 % of the transfer) can leave a Voice chip dead: only a programmer (PICkit) on its ICSP header brings it back, and the MIDI full backup alone restores it only partly. After those pages the software is complete.",
+      "Make a full machine backup (Backup page, Tempester 1.6.6.0 or later) right before and right after; before Tempester 1.6.8.0, power the machine off and on between the two (one full backup per power-on).",
+    ],
     confirmOk: "Send update",
+    voiceConfirmOk: "Send to all six chips",
     sendingIdle: "Nothing is being sent.",
     sending: (m) =>
       m.label + ": " + formatBytes(m.sent) + " of " + formatBytes(m.total),
@@ -85,10 +105,16 @@
       "The machine received only part of the file: the update will be incomplete.",
       "The flasher page is never touched and a new update is always possible. Send the file again to finish.",
     ],
+    cancelVoiceLines: [
+      "The six Voice chips received only part of the file: their software is incomplete, all six at once.",
+      "If the transfer stopped in the first 29 of the 41 pages, a chip may not start again: only a programmer (PICkit) on its ICSP header repairs it. Send the file again right away to finish, with the machine powered and nothing unplugged.",
+    ],
     cancelOk: "Cancel update",
     keepSending: "Keep sending",
     noResult: "No update sent yet.",
     done: "All bytes were sent. Now power the Tempest off and on (when the FX1 LEDs stop at the top), then check the identity below.",
+    doneVoice:
+      "All bytes were sent to the six Voice chips. Power the Tempest off and on, then make a full machine backup (Backup page): it compares pages 0-40 of every chip with the file just sent and the calibration page with your previous backup, chip by chip.",
     cancelled: (m) =>
       "Cancelled after " +
       formatBytes(m.sent) +
@@ -114,20 +140,23 @@
 
   const els = {};
   let dsi = null,
+    dsiVoice = null,
     readyInfo = null,
     sending = false,
+    sendingVoice = false,
     versionsLoaded = false;
 
   function refresh(session) {
     els.versions.setReady(!!dsi);
+    els.versions.setVoiceReady(!!dsiVoice);
     els.send.disabled = !readyInfo || !session.connected || sending;
     els.cancel.disabled = !sending;
     els.identity.disabled = !session.connected || sending;
   }
 
-  function showVersions(list) {
+  function showVersions(list, voiceList) {
     versionsLoaded = list.length > 0;
-    els.versions.show(list);
+    els.versions.show(list, voiceList || []);
   }
 
   /* What the SHA-256 of the ready file says: a built version equals its reference, a file is a known version or an
@@ -192,10 +221,11 @@
       });
       if (!sure) return;
     }
+    const voice = !!readyInfo.all_chips;
     const ok = await confirmDialog({
-      title: S.confirmTitle(readyInfo),
-      lines: S.confirmLines(readyInfo),
-      okLabel: S.confirmOk,
+      title: voice ? S.voiceConfirmTitle(readyInfo) : S.confirmTitle(readyInfo),
+      lines: voice ? S.voiceConfirmLines(readyInfo) : S.confirmLines(readyInfo),
+      okLabel: voice ? S.voiceConfirmOk : S.confirmOk,
       danger: true,
     });
     if (unknown) {
@@ -208,7 +238,7 @@
   async function confirmCancel() {
     const ok = await confirmDialog({
       title: S.cancelTitle,
-      lines: S.cancelLines,
+      lines: sendingVoice ? S.cancelVoiceLines : S.cancelLines,
       okLabel: S.cancelOk,
       danger: true,
     });
@@ -222,6 +252,7 @@
 
   function onStarted(m) {
     sending = true;
+    sendingVoice = m.chip === "Voice";
     readyInfo = null;
     showResult(S.noResult, "");
     els.bar.style.width = "0%";
@@ -249,7 +280,9 @@
     els.bar.style.width = ((m.sent * 100) / m.total).toFixed(1) + "%";
     showResult(
       m.state === "done"
-        ? S.done
+        ? sendingVoice
+          ? S.doneVoice
+          : S.done
         : m.state === "cancelled"
           ? S.cancelled(m)
           : S.failed(m),
@@ -265,6 +298,13 @@
     refresh(kit.session);
   }
 
+  function pickDsiVoice(file) {
+    dsiVoice = file;
+    els.dsiVoiceName.textContent = S.dsiChosen(file.name, file.hex.length / 2);
+    els.dsiVoiceName.setAttribute("title", file.name);
+    refresh(kit.session);
+  }
+
   function head(number, title, lead) {
     return el(
       "div",
@@ -277,9 +317,12 @@
 
   function buildSourcePanels() {
     els.dsiName = el("span", { class: "statusline" }, S.dsiNone);
+    els.dsiVoiceName = el("span", { class: "statusline" }, S.dsiNone);
     els.versions = window.Tempester.osVersions.create({
       onBuild: (version) => bridge.send("os_build", version, dsi.hex),
       onOriginal: () => bridge.send("os_original", dsi.hex),
+      onBuildVoice: (version) =>
+        bridge.send("os_build_voice", version, dsiVoice.hex),
     });
     return [
       el(
@@ -302,6 +345,13 @@
             "open",
           ),
           info(S.validateLead, S.validatePick),
+        ),
+        el(
+          "div",
+          { class: "toolbar" },
+          kit.filePicker(S.dsiVoicePick, pickDsiVoice, ".syx", "open"),
+          els.dsiVoiceName,
+          info(S.dsiVoiceLead, S.dsiVoicePick),
         ),
       ),
       el(
@@ -383,7 +433,11 @@
     );
     kit.onSession(refresh);
     refresh(kit.session);
-    bridge.on("os_versions", (m) => showVersions(m.versions));
+    bridge.on("os_versions", (m) => showVersions(m.versions, m.voice_versions));
+    /* The Voice group's installed line: how many chips report each Tempester Voice version (Rust counts them). */
+    const voiceInstalled = (m) => els.versions.setVoiceInstalled(m.voice_installed);
+    bridge.on("state", voiceInstalled);
+    bridge.on("installed", voiceInstalled);
     bridge.on("os_ready", showReady);
     bridge.on("os_started", (m) => {
       els.label = m.label;
@@ -398,7 +452,7 @@
     bridge.on("error", (m) => {
       if (m.during === "os_verify") return;
       if (m.during && m.during.startsWith("os_")) toast(errorText(m));
-      if (["os_build", "os_validate", "os_original"].includes(m.during))
+      if (["os_build", "os_build_voice", "os_validate", "os_original"].includes(m.during))
         showRefused(m);
     });
   }

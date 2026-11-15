@@ -49,7 +49,8 @@ decompiler-style code, image metadata), and the pull request template asks for i
 
 A Tempester firmware version is never distributed as a file. The repository holds **recipes**: for each patch, the flash
 addresses and the new words written by the contributors, and the SHA-256 of the official input file and of the
-expected result. Each owner downloads the official Main OS from Sequential and applies the recipe **to their own copy**,
+expected result. Each owner downloads the official Main OS (and, for Tempester Voice, the official Voice OS) from
+Sequential and applies the recipe **to their own copy**,
 on their own computer (the app or `tools/build_version.py`). The input is checked by SHA-256 before anything is
 done, and the result is checked against the recorded SHA-256. See the [recipe format](patch-recipe-format.md).
 
@@ -57,7 +58,8 @@ This keeps the publication to the contributors' own work: the fixes, the added c
 the tools. Short technical references (the role of a routine, a register, a message format) are used where needed to
 explain or apply a fix; DSI's code itself is not reproduced, and neither the addresses of DSI's routines nor a
 decompiler's names are published: the only flash addresses in the repository are the positions a recipe edits, the
-bounds of the update page and the free area where the added code goes.
+bounds of the update page and the free area where the added code goes, and for the Voice chips the update entry a
+Voice recipe must never touch.
 
 ## The rules relied on
 

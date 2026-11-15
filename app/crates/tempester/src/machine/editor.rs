@@ -46,7 +46,7 @@ struct Controller {
 
 /// What the editing tools keep between commands.
 pub(super) struct EditState {
-    history: History,
+    pub(super) history: History,
     /// True once a sound was fetched, until a SysEx send may have replaced it.
     synced: bool,
     slots: [Option<Values>; 2],
@@ -93,7 +93,14 @@ impl Machine {
         None
     }
 
+    /// The history follows the machine's maxima as known now (its Voice versions may have arrived since the last edit).
+    fn refresh_limits(&mut self) {
+        let limits = self.limits();
+        self.edit.history.set_limits(limits);
+    }
+
     fn run_edit(&mut self, command: EditCommand) -> Result<(), AppError> {
+        self.refresh_limits();
         match command {
             EditCommand::State => {
                 self.reopen_saved_port();
@@ -152,6 +159,7 @@ impl Machine {
         let Ok(index) = u8::try_from(number) else {
             return;
         };
+        self.refresh_limits();
         let before = (self.edit.history.depth(), self.edit.history.can_redo());
         self.edit.history.knob(index, value, Instant::now());
         if before != (self.edit.history.depth(), self.edit.history.can_redo()) {
@@ -162,13 +170,14 @@ impl Machine {
     /// Hook of the machine's reports (`on_channel`): the model follows a knob turned on the machine.
     pub(super) fn edit_observe(&mut self, number: u16, value: u16) {
         if let Ok(index) = u8::try_from(number) {
+            self.refresh_limits();
             self.edit.history.observe(index, value);
         }
     }
 
     /// Hook of `fetch_sound`: the machine's sound is the new start of the history.
     pub(super) fn edit_synced(&mut self, sound: &Sound) {
-        self.edit.history = History::new(&sound.values());
+        self.edit.history = History::with_limits(&sound.values(), self.limits());
         self.edit.synced = true;
         self.publish_edit(false);
     }
@@ -176,7 +185,7 @@ impl Machine {
     /// Hook of every SysEx send: the machine's sound may have been replaced, the model is no longer known.
     pub(super) fn edit_forget(&mut self) {
         if self.edit.synced || self.edit.history.can_undo() || self.edit.history.can_redo() {
-            self.edit.history = History::new(self.edit.history.values());
+            self.edit.history = History::with_limits(self.edit.history.values(), self.limits());
             self.edit.synced = false;
             self.publish_edit(false);
         }

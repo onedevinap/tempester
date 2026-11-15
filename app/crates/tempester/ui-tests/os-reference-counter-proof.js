@@ -23,6 +23,7 @@ const FILES = [
   "os-versions.js",
   "os-verify.js",
   "page-machine.js",
+  "full-backup.js",
   "page-backup.js",
   "page-os.js",
   "page-play.js",
@@ -163,8 +164,8 @@ const variants = {
   ],
   "reported: proof kept after a disconnect": [
     "os-verify.js",
-    "setView({ running: null, verified: null })",
-    "setView({ verified: null })",
+    "setView({ running: null, verified: null, voiceVersions: null })",
+    "setView({ verified: null, voiceVersions: null })",
   ],
   "reported: a mismatch counts as a proof": [
     "os-verify.js",

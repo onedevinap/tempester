@@ -23,6 +23,7 @@ const FILES = [
   "os-versions.js",
   "os-verify.js",
   "page-machine.js",
+  "full-backup.js",
   "page-backup.js",
   "page-os.js",
   "page-play.js",
@@ -72,13 +73,13 @@ const variants = {
   ],
   "history: oldest first": [
     "os-versions.js",
-    "? list.map(row)",
-    "? list.slice().reverse().map(row)",
+    "? list.map(historyRow(MAIN))",
+    "? list.slice().reverse().map(historyRow(MAIN))",
   ],
   "history: the corrections version is left out": [
     "os-versions.js",
-    "? list.map(row)",
-    '? list.filter((v) => v.kind !== "corrections").map(row)',
+    "? list.map(historyRow(MAIN))",
+    '? list.filter((v) => v.kind !== "corrections").map(historyRow(MAIN))',
   ],
   "history: the corrections chip is missing": [
     "os-versions.js",
@@ -102,8 +103,8 @@ const variants = {
   ],
   "build: a new list forgets the DSI file": [
     "os-versions.js",
-    "      setReady(ready);\n    }",
-    "    }",
+    "      setReady(ready);\n      setVoiceReady(voiceReady);\n    }",
+    "      setVoiceReady(voiceReady);\n    }",
   ],
   "page: the original card builds a version": [
     "page-os.js",

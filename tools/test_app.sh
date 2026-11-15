@@ -9,6 +9,8 @@
 # from the folder next to the OS folder when it exists), and the exports of 1.6.1.0 / 1.6.1.2 simulated by
 # the firmware simulations (not in the public tree) when TEMPESTER_FIXED_EXPORT and TEMPESTER_STOCK_EXPORT are set
 # (tools/verify.sh --long).
+# TEMPESTER_UI_ONLY=1 (tools/verify_ui_scope.sh, a change of the page files only): the Rust tests of src/ui and the page
+# tests, nothing else.
 # Nothing is ever sent over MIDI by these tests (they use the in-memory fake).
 # CARGO_NET_OFFLINE=true makes cargo use only its local cache.
 # Runs on macOS, Linux and Windows (Git Bash, as on the GitHub runner). Windows has no HOME for the app: it reads
@@ -36,36 +38,82 @@ T=$(mktemp -d)
 trap 'rm -rf "$HOME" "$T"' EXIT
 ok() { printf '  ✔ %s\n' "$1"; }
 cd "$P/app"
+# Every copy of the repository (the main checkout, each agent's `git worktree add`) builds in its own target folders,
+# app/target and app/crates/tempester-plugin/target (about 5 GB each). A target folder shared between copies is wrong
+# even with a lock that serialises the builds: Cargo names the artifacts of a workspace member by its path relative to
+# the workspace (the same in every copy) and judges them fresh by modification times, so a copy whose sources are older
+# than another copy's build took that build as its own (a stale tempest-proto; an `is_offered` that did not exist), and
+# a lock held only during the build does not cover the tests that run the built binaries afterwards. A CARGO_TARGET_DIR
+# exported by the user is kept only inside this copy.
+case "${CARGO_TARGET_DIR:-}" in
+  "" | "$P"/*) ;;
+  *) echo "  - CARGO_TARGET_DIR=$CARGO_TARGET_DIR is outside this copy: ignored, the build goes to $P/app/target"
+     unset CARGO_TARGET_DIR ;;
+esac
+PLUGIN_TARGET="$P/app/crates/tempester-plugin/target"
+# What this script reads to choose its checks, never a test's input: not passed on to the tests (the registry keys a
+# test on the variables it reads, so the page scope and a full run share their results).
+UI_ONLY=${TEMPESTER_UI_ONLY:-0}
+LONG=${TEMPESTER_LONG:-0}
+unset TEMPESTER_UI_ONLY TEMPESTER_LONG
 
-# Not "check && ok": under set -e a failing command on the left of && does not stop the script.
-$PY -I "$P/tools/generate_rust_tables.py" --check || { echo "  ✘ generated tables out of date"; exit 1; }
-ok "generated tables up to date"
-# Counter-proof: a hand-edited generated file must be refused.
-$PY -I "$P/tools/generate_rust_tables.py" --out "$T/gen" > /dev/null
-echo "// hand edit" >> "$T/gen/params.rs"
-if $PY -I "$P/tools/generate_rust_tables.py" --check --out "$T/gen" > /dev/null 2>&1; then
-  echo "  ✘ edited generated table accepted"; exit 1
+# The registry of proven results of the app step (tools/verify_cache_app.py, private like the firmware simulations):
+# under tools/verify.sh (VERIFY_CACHE on or cold) a node test, a browser layout test or a Rust test binary whose every
+# traced input is byte-identical to a green run is not run again, its ✔ line marked "(cached, key …)". Run alone (the
+# CI, by hand) or with VERIFY_CACHE=off, every test runs.
+APP_CACHE=0
+if { [ "${VERIFY_CACHE:-off}" = on ] || [ "${VERIFY_CACHE:-off}" = cold ]; } && [ -f "$P/tools/verify_cache_app.py" ]; then
+  VERIFY_CACHE_REAL=$($PY -I -c 'import os, shutil; print(os.path.realpath(shutil.which("python3")))')
+  export VERIFY_CACHE_REAL VERIFY_CACHE_T="$T" VERIFY_CACHE_P="$P" VERIFY_CACHE_H="$HOME" VERIFY_CACHE_SHELL_PID=$$ \
+    VERIFY_CACHE_DIR="${VERIFY_CACHE_DIR:-$P/work/verify-cache}" VERIFY_CACHE_RUN_ID="app-$(date +%Y%m%d-%H%M%S)-$$"
+  export VERIFY_CACHE_RUN="$VERIFY_CACHE_DIR/runs/$VERIFY_CACHE_RUN_ID"
+  RUNNER=$($PY -I "$P/tools/verify_cache_app.py" begin "$P/app") || { echo "  ✘ verify_cache_app.py begin"; exit 1; }
+  # cargo hands each test binary to the registry (CARGO_TARGET_<host>_RUNNER): none when it cannot trace them.
+  if [ -n "$RUNNER" ]; then export "${RUNNER?}"; fi
+  trap 'rc=$?; $PY -I "$P/tools/verify_cache_app.py" finish; rm -rf "$HOME" "$T"; exit $rc' EXIT
+  node() { $PY -I "$P/tools/verify_cache_app.py" node "$@"; }
+  ok() { printf '  ✔ %s%s\n' "$1" "$($PY -I "$P/tools/verify_cache_app.py" notes)"; }
+  APP_CACHE=1
 fi
-ok "edited generated table refused"
-cargo fmt --check || { echo "  ✘ cargo fmt: the code is not formatted (run cargo fmt)"; exit 1; }
-ok "cargo fmt"
-cargo clippy --all-targets -- -D warnings 2> "$T/clippy.log" || { cat "$T/clippy.log"; exit 1; }
-ok "cargo clippy -D warnings"
-cargo test 2> "$T/test.log" > "$T/test.out" || { cat "$T/test.out" "$T/test.log"; exit 1; }
-ok "cargo test ($(grep -h '^test result' "$T/test.out" | sed 's/test result: ok. //; s/;.*//' | paste -sd+ -) )"
 
-# Tempester Control (CLAP / VST3 plugin): its own workspace (nih-plug git dependency, own lock file and target/), so the
-# same three checks run there. The bundles and the headless CLAP host are built by the `plugin` job of the CI and by
-# hand (app/crates/tempester-plugin/README or Docs/plans/plugin.md): a release build of nih-plug takes minutes.
-(cd "$P/app/crates/tempester-plugin" && cargo fmt --check) || { echo "  ✘ plugin: cargo fmt (run cargo fmt there)"; exit 1; }
-(cd "$P/app/crates/tempester-plugin" && cargo clippy --all-targets -- -D warnings 2> "$T/clippy-plugin.log") \
-  || { cat "$T/clippy-plugin.log"; exit 1; }
-ok "plugin: cargo fmt, clippy -D warnings"
-(cd "$P/app/crates/tempester-plugin" && cargo test 2> "$T/test-plugin.log" > "$T/test-plugin.out") \
-  || { cat "$T/test-plugin.out" "$T/test-plugin.log"; exit 1; }
-ok "plugin: cargo test ($(grep -h '^test result' "$T/test-plugin.out" | sed 's/test result: ok. //; s/;.*//' | paste -sd+ -) )"
+# A change of the page files only (tools/verify_ui_scope.sh, TEMPESTER_UI_ONLY=1) reaches, in Rust, only the module
+# that embeds the page (src/ui: include_str! of each ui/ file, the asset list checked against the folder): its tests
+# run, then the page tests below. The tables, formatting, clippy, the other tests and the plugin cannot change.
+if [ "$UI_ONLY" = 1 ]; then
+  cargo test -p tempester ui:: 2> "$T/test.log" > "$T/test.out" || { cat "$T/test.out" "$T/test.log"; exit 1; }
+  ok "cargo test -p tempester ui:: (the module that embeds the page: $(grep -h '^test result' "$T/test.out" | sed 's/test result: ok. //; s/;.*//' | paste -sd+ -) )"
+else
+  # Not "check && ok": under set -e a failing command on the left of && does not stop the script.
+  $PY -I "$P/tools/generate_rust_tables.py" --check || { echo "  ✘ generated tables out of date"; exit 1; }
+  ok "generated tables up to date"
+  # Counter-proof: a hand-edited generated file must be refused.
+  $PY -I "$P/tools/generate_rust_tables.py" --out "$T/gen" > /dev/null
+  echo "// hand edit" >> "$T/gen/params.rs"
+  if $PY -I "$P/tools/generate_rust_tables.py" --check --out "$T/gen" > /dev/null 2>&1; then
+    echo "  ✘ edited generated table accepted"; exit 1
+  fi
+  ok "edited generated table refused"
+  cargo fmt --check || { echo "  ✘ cargo fmt: the code is not formatted (run cargo fmt)"; exit 1; }
+  ok "cargo fmt"
+  cargo clippy --all-targets -- -D warnings 2> "$T/clippy.log" || { cat "$T/clippy.log"; exit 1; }
+  ok "cargo clippy -D warnings"
+  cargo test 2> "$T/test.log" > "$T/test.out" || { cat "$T/test.out" "$T/test.log"; exit 1; }
+  ok "cargo test ($(grep -h '^test result' "$T/test.out" | sed 's/test result: ok. //; s/;.*//' | paste -sd+ -) )"
 
-if command -v node > /dev/null; then
+  # Tempester Control (CLAP / VST3 plugin): its own workspace (nih-plug git dependency, own lock file and target/), so the
+  # same three checks run there. The bundles and the headless CLAP host are built by the `plugin` job of the CI and by
+  # hand (app/crates/tempester-plugin/README or Docs/plans/plugin.md): a release build of nih-plug takes minutes.
+  (cd "$P/app/crates/tempester-plugin" && CARGO_TARGET_DIR="$PLUGIN_TARGET" cargo fmt --check) || { echo "  ✘ plugin: cargo fmt (run cargo fmt there)"; exit 1; }
+  (cd "$P/app/crates/tempester-plugin" && CARGO_TARGET_DIR="$PLUGIN_TARGET" cargo clippy --all-targets -- -D warnings 2> "$T/clippy-plugin.log") \
+    || { cat "$T/clippy-plugin.log"; exit 1; }
+  ok "plugin: cargo fmt, clippy -D warnings"
+  (cd "$P/app/crates/tempester-plugin" && CARGO_TARGET_DIR="$PLUGIN_TARGET" cargo test 2> "$T/test-plugin.log" > "$T/test-plugin.out") \
+    || { cat "$T/test-plugin.out" "$T/test-plugin.log"; exit 1; }
+  ok "plugin: cargo test ($(grep -h '^test result' "$T/test-plugin.out" | sed 's/test result: ok. //; s/;.*//' | paste -sd+ -) )"
+fi
+
+# The real binary, not the registry's node() function above (which `command -v` would find).
+if type -P node > /dev/null; then
   # The page scripts are plain classic scripts: a syntax error would only show when the window opens.
   node -e '
     const fs = require("fs"), vm = require("vm"), dir = process.argv[1];
@@ -152,6 +200,32 @@ if command -v node > /dev/null; then
   node "$P/app/crates/tempester/ui-tests/os-versions-counter-proof.js" "$UI" "$T" > "$T/osver-counter.log" 2>&1 \
     || { cat "$T/osver-counter.log"; exit 1; }
   ok "OS version chooser with one behaviour broken refused ($(tail -n 1 "$T/osver-counter.log"))"
+  # The chooser grouped by OS (Main, Voice): one group each with its choices and its read-only history (the Voice
+  # releases included), folds of groups, cards and histories kept across new lists, the filter; then 17 broken copies.
+  node "$P/app/crates/tempester/ui-tests/os-groups.test.js" "$UI" > "$T/osgroups.log" 2>&1 \
+    || { cat "$T/osgroups.log"; exit 1; }
+  ok "OS chooser grouped by OS ($(cat "$T/osgroups.log"))"
+  node "$P/app/crates/tempester/ui-tests/os-groups-counter-proof.js" "$UI" "$T" > "$T/osgroups-counter.log" 2>&1 \
+    || { cat "$T/osgroups-counter.log"; exit 1; }
+  ok "OS chooser groups with one behaviour broken refused ($(tail -n 1 "$T/osgroups-counter.log"))"
+  # The cards: Build stays in a folded card's header row (visible, keyboard reachable, working); a Voice card has the
+  # shape of a Main release card (date chip, change lists); the Voice note and what the chips report are said once for
+  # the group, and no card claims a version word two versions share; then 23 broken copies.
+  node "$P/app/crates/tempester/ui-tests/os-cards.test.js" "$UI" > "$T/oscards.log" 2>&1 \
+    || { cat "$T/oscards.log"; exit 1; }
+  ok "OS cards ($(cat "$T/oscards.log"))"
+  node "$P/app/crates/tempester/ui-tests/os-cards-counter-proof.js" "$UI" "$T" > "$T/oscards-counter.log" 2>&1 \
+    || { cat "$T/oscards-counter.log"; exit 1; }
+  ok "OS cards with one behaviour broken refused ($(tail -n 1 "$T/oscards-counter.log"))"
+  # The Tempester Voice OS on the OS page (its card, the Voice file apart from the Main one, the confirmation that says it
+  # goes to all six chips at once and what a power cut means, the end message that asks for a full backup), then 19
+  # broken copies that must fail.
+  node "$P/app/crates/tempester/ui-tests/os-voice.test.js" "$UI" > "$T/osvoice.log" 2>&1 \
+    || { cat "$T/osvoice.log"; exit 1; }
+  ok "Tempester Voice OS on the OS page ($(cat "$T/osvoice.log"))"
+  node "$P/app/crates/tempester/ui-tests/os-voice-counter-proof.js" "$UI" "$T" > "$T/osvoice-counter.log" 2>&1 \
+    || { cat "$T/osvoice-counter.log"; exit 1; }
+  ok "Tempester Voice OS page with one behaviour broken refused ($(tail -n 1 "$T/osvoice-counter.log"))"
   # The Panel page's logic (Pad Function mode from the LEDs, Machine-view controls, view and zoom), then its counter-proof.
   node "$P/app/crates/tempester/ui-tests/panel-machine.test.js" "$UI" "$P/refs/panel_controls.tsv" \
     || { echo "  ✘ panel page logic"; exit 1; }
@@ -190,6 +264,15 @@ if command -v node > /dev/null; then
   node "$P/app/crates/tempester/ui-tests/pad-channels-counter-proof.js" "$UI" "$T" > "$T/padchan-counter.log" 2>&1 \
     || { cat "$T/padchan-counter.log"; exit 1; }
   ok "pad channels with one behaviour broken refused ($(tail -n 1 "$T/padchan-counter.log"))"
+  # The full machine backup of the Backup page (Tempester 1.6.6.0): the gate, the request, the eight rows with the
+  # reason of a refused or missing chip, Save only when all eight passed, the notice and no control that sends a
+  # backup back; then 17 broken copies that must fail.
+  node "$P/app/crates/tempester/ui-tests/full-backup.test.js" "$UI" > "$T/fullbackup.log" 2>&1 \
+    || { cat "$T/fullbackup.log"; exit 1; }
+  ok "full machine backup ($(cat "$T/fullbackup.log"))"
+  node "$P/app/crates/tempester/ui-tests/full-backup-counter-proof.js" "$UI" "$T" > "$T/fullbackup-counter.log" 2>&1 \
+    || { cat "$T/fullbackup-counter.log"; exit 1; }
+  ok "full machine backup with one behaviour broken refused ($(tail -n 1 "$T/fullbackup-counter.log"))"
   # The Panel page and the pad-channel panel follow the feature table and `os_known` Rust sends (reported version,
   # unknown OS, nothing known yet), then broken copies that must fail.
   node "$P/app/crates/tempester/ui-tests/feature-gates.test.js" "$UI" "$T" > "$T/gates.log" 2>&1 \
@@ -206,7 +289,7 @@ if command -v node > /dev/null; then
     ok "layout stability, Full and Machine views, Chrome and WebKit ($(tail -1 "$T/layout.log"))"
     # The browser counter-proofs re-render many broken copies (about 15 min): run by `verify.sh --long`
     # (TEMPESTER_LONG=1), and by hand before changing the Panel files.
-    if [ "${TEMPESTER_LONG:-0}" = "1" ]; then
+    if [ "$LONG" = 1 ]; then
       node "$P/app/crates/tempester/ui-tests/layout-counter-proof.js" "$UI" "$T/layout-broken" "$P" > "$T/layout-counter.log" 2>&1 \
         || { cat "$T/layout-counter.log"; echo "  ✘ layout counter-proof"; exit 1; }
       ok "layout shifts caught ($(tail -1 "$T/layout-counter.log"))"
@@ -220,16 +303,26 @@ if command -v node > /dev/null; then
     # connected to the fake machine; then the 0.1.1 defects put back, which must fail.
     node "$P/app/crates/tempester/ui-tests/layout-header.js" "$UI" "$T/header" "$P" > "$T/header.log" 2>&1 \
       || { cat "$T/header.log"; echo "  ✘ clipped header"; exit 1; }
-    ok "top bar and status readouts whole, 3 widths, Chrome and WebKit ($(tail -1 "$T/header.log"))"
+    ok "top bar and status readouts whole, 900 to 1920 px, Chrome and WebKit ($(tail -1 "$T/header.log"))"
     node "$P/app/crates/tempester/ui-tests/layout-header-counter-proof.js" "$UI" "$T/header-broken" "$P" > "$T/header-counter.log" 2>&1 \
       || { cat "$T/header-counter.log"; echo "  ✘ header counter-proof"; exit 1; }
     ok "clipped header caught ($(tail -1 "$T/header-counter.log"))"
-    if [ "${TEMPESTER_LONG:-0}" = "1" ]; then
+    # The OS page's version cards with the real manifests (Main and Voice) at 900 / 1100 / 1320 / 1920 px: each header
+    # holds its title, chips and buttons, the title is whole, the body starts below (a long title once ran over it).
+    node "$P/app/crates/tempester/ui-tests/layout-os.js" "$UI" "$T/oscards-layout" "$P" > "$T/oscards-layout.log" 2>&1 \
+      || { cat "$T/oscards-layout.log"; echo "  ✘ OS card layout"; exit 1; }
+    ok "OS cards laid out, 4 widths, Chrome and WebKit ($(tail -1 "$T/oscards-layout.log"))"
+    if [ "$LONG" = 1 ]; then
+      node "$P/app/crates/tempester/ui-tests/layout-os-counter-proof.js" "$UI" "$T/oscards-broken" "$P" > "$T/oscards-layout-counter.log" 2>&1 \
+        || { cat "$T/oscards-layout-counter.log"; echo "  ✘ OS card layout counter-proof"; exit 1; }
+      ok "OS card layout defects caught ($(tail -1 "$T/oscards-layout-counter.log"))"
+    fi
+    if [ "$LONG" = 1 ]; then
       node "$P/app/crates/tempester/ui-tests/layout-overlap-counter-proof.js" "$UI" "$T/overlap-broken" "$P" > "$T/overlap-counter.log" 2>&1 \
         || { cat "$T/overlap-counter.log"; echo "  ✘ overlap counter-proof"; exit 1; }
       ok "text overlaps caught ($(tail -1 "$T/overlap-counter.log"))"
     else
-      echo "  - layout and overlap counter-proofs: run by verify.sh --long (TEMPESTER_LONG=1)"
+      echo "  - layout, overlap and OS card layout counter-proofs: run by verify.sh --long (TEMPESTER_LONG=1)"
     fi
   else
     echo "  - playwright-core not found (set PLAYWRIGHT_CORE): the layout stability test is skipped"
@@ -272,3 +365,4 @@ if [ -n "${1:-}" ]; then
   # Name each real-data test that passed: a skipped one must not pass for a run one.
   grep -h '^test .* ok$' "$T/real.out" | sed 's/^test /      /; s/ \.\.\. ok$//'
 fi
+if [ "$APP_CACHE" = 1 ]; then $PY -I "$P/tools/verify_cache_app.py" summary; fi

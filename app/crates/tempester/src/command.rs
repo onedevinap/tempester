@@ -144,8 +144,21 @@ pub enum Command {
     BackupStart,
     BackupStop,
     BackupSave,
+    /// Asks a Tempester 1.6.6.0 or later for its full backup (`F0 01 28 44 F7`, n°62): the answer is checked as it
+    /// arrives.
+    FullBackupStart,
+    FullBackupCancel,
+    /// Writes the checked full backup into a dated folder of `backups/`.
+    FullBackupSave,
+    /// The user says the machine was powered off and on: on a Main before 1.6.8.0 the next full backup is allowed again.
+    FullBackupPowerCycled,
     OsVersions,
     OsBuild {
+        version: String,
+        data: Vec<u8>,
+    },
+    /// Builds a Tempester Voice version from the user's DSI Voice 1.5 file; it goes to the six chips at once.
+    OsBuildVoice {
         version: String,
         data: Vec<u8>,
     },
@@ -282,6 +295,10 @@ impl Args<'_> {
             | "backup_start"
             | "backup_stop"
             | "backup_save"
+            | "full_backup_start"
+            | "full_backup_cancel"
+            | "full_backup_save"
+            | "full_backup_power_cycled"
             | "os_versions"
             | "os_send"
             | "os_send_unknown"
@@ -347,6 +364,10 @@ impl Args<'_> {
             "backup_start" => Command::BackupStart,
             "backup_stop" => Command::BackupStop,
             "backup_save" => Command::BackupSave,
+            "full_backup_start" => Command::FullBackupStart,
+            "full_backup_cancel" => Command::FullBackupCancel,
+            "full_backup_save" => Command::FullBackupSave,
+            "full_backup_power_cycled" => Command::FullBackupPowerCycled,
             "os_versions" => Command::OsVersions,
             "os_send" => Command::OsSend,
             "os_send_unknown" => Command::OsSendUnknown,
@@ -667,6 +688,9 @@ impl Args<'_> {
             "os_build" => self
                 .named_data()
                 .map(|(version, data)| Command::OsBuild { version, data }),
+            "os_build_voice" => self
+                .named_data()
+                .map(|(version, data)| Command::OsBuildVoice { version, data }),
             "os_original" => self.data_only().map(|data| Command::OsOriginal { data }),
             _ => Err(self.unknown()),
         }

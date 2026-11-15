@@ -63,6 +63,71 @@ fn test_os_versions_when_asked_returns_newest_first_with_descriptions() {
 }
 
 #[test]
+fn test_newest_first_when_numbers_are_mixed_returns_numeric_descending_order() {
+    let numbers = ["1.5.1.0", "1.10.0.0", "1.5.1.1", "1.9.0.0"];
+    let items: Vec<&&str> = numbers.iter().collect();
+
+    let sorted: Vec<&str> = newest_first(items, |v| *v).into_iter().copied().collect();
+
+    assert_eq!(sorted, ["1.10.0.0", "1.9.0.0", "1.5.1.1", "1.5.1.0"]);
+    // counter-proof: the text order (or the table's own order) is not this one
+    let mut as_text = numbers.to_vec();
+    as_text.sort_by(|a, b| b.cmp(a));
+    assert_ne!(as_text, sorted);
+    assert_ne!(numbers.to_vec(), sorted);
+}
+
+#[test]
+fn test_os_versions_when_asked_returns_the_voice_releases_newest_first_with_what_the_history_shows()
+{
+    let mut rig = TestRig::new("os-versions-voice");
+
+    rig.machine.handle(Command::OsVersions);
+
+    let event = rig.expect("os_versions");
+    let Some(Json::Arr(list)) = event.field("voice_versions") else {
+        panic!("no Voice list")
+    };
+    let shown: Vec<String> = list.iter().map(Json::render).collect();
+    let mut expected: Vec<&str> = voice_versions::voice_versions()
+        .iter()
+        .map(|v| v.version)
+        .collect();
+    expected.sort_by_key(|v| std::cmp::Reverse(version_key(v)));
+    assert_eq!(shown.len(), expected.len());
+    for (row, number) in shown.iter().zip(expected) {
+        assert!(row.contains(&format!(r#""version":"{number}""#)), "{row}");
+        for field in [
+            "name",
+            "kind",
+            "date",
+            "summary",
+            "changes",
+            "fixes",
+            "description",
+        ] {
+            assert!(row.contains(&format!(r#""{field}":"#)), "{field}: {row}");
+        }
+        // The lists the cards and history rows show, as for a Main version: never all empty.
+        assert!(
+            !row.contains(r#""fixes":[],"additions":[],"changes":[]"#),
+            "{row}"
+        );
+    }
+    // 1.5.1.0 stays in the list for its history row, marked so that the page offers no card for it.
+    let old = shown
+        .iter()
+        .find(|row| row.contains(r#""version":"1.5.1.0""#))
+        .expect("1.5.1.0 in the history");
+    assert!(old.contains(r#""kind":"superseded""#), "{old}");
+    assert!(
+        shown[0].contains(r#""kind":"release""#),
+        "the newest is offered: {}",
+        shown[0]
+    );
+}
+
+#[test]
 fn test_version_key_when_two_digit_part_returns_numeric_order() {
     assert!(version_key("1.10.0.0") > version_key("1.9.0.0"));
     assert!(version_key("1.5.4.1") > version_key("1.5.4.0"));
@@ -413,4 +478,97 @@ fn test_os_build_when_real_dsi_main_returns_the_built_bytes_over_the_wire_and_or
         rig.expect("os_ready").field("label"),
         Some(&"DSI 1.5.0.2 (original)".into())
     );
+}
+
+#[test]
+#[ignore = "needs the real DSI files (TEMPESTER_DSI_SYX)"]
+fn test_os_validate_when_the_real_voice_1_5_1_0_file_is_opened_returns_superseded_and_1_5_1_2_known(
+) {
+    use tempest_proto::voice_versions;
+    let dir = dsi_dir().expect("set TEMPESTER_DSI_SYX");
+    let dsi = std::fs::read(dir.join("Tempest_Voice_1.5.syx")).expect("DSI Voice file");
+    let built = |number: &str| {
+        let version = voice_versions::find_voice_version(number).expect("version");
+        voice_versions::build_voice(version, &dsi)
+            .expect("builds")
+            .syx
+    };
+    let mut rig = TestRig::connected("os-real-voice");
+
+    rig.machine.handle(Command::OsValidate {
+        name: "Voice_1.5.1.0.syx".into(),
+        data: built("1.5.1.0"),
+    });
+    let refused = rig.events();
+    rig.machine.handle(Command::OsValidate {
+        name: "Voice_1.5.1.2.syx".into(),
+        data: built("1.5.1.2"),
+    });
+    let ready = rig.expect("os_ready");
+
+    assert!(refused.iter().all(|e| e.name != "os_ready"));
+    let refusal = refused.iter().find(|e| e.name == "error").expect("refusal");
+    assert!(
+        refusal
+            .render()
+            .contains("Tempester Voice 1.5.1.0 is superseded"),
+        "{}",
+        refusal.render()
+    );
+    assert_eq!(ready.field("known"), Some(&true.into()));
+    assert_eq!(
+        ready.field("label"),
+        Some(&"Tempester Voice 1.5.1.2".into())
+    );
+}
+
+/// The send-time warning of a Voice version that needs Main 1.6.9.0 (n°65), for every Main the app can or cannot name.
+fn warning_with(announced: Option<[u16; 4]>, voice: Option<&str>) -> Option<String> {
+    let mut rig = TestRig::new("voice-main-warning");
+    rig.machine.announced = announced.map(tempest_proto::identity::TempesterVersion);
+    rig.machine.voice_main_warning(voice)
+}
+
+#[test]
+fn test_voice_main_warning_when_voice_1_5_1_2_and_main_1_6_8_0_or_unknown_returns_the_warning() {
+    let older = warning_with(Some([1, 6, 8, 0]), Some("1.5.1.2")).expect("a warning");
+    assert!(
+        older.contains("Main Tempester 1.6.9.0 or later first"),
+        "{older}"
+    );
+    assert!(older.contains("announced Tempester 1.6.8.0"), "{older}");
+    assert!(older.contains("Tempester Voice 1.5.1.2"), "{older}");
+    let unknown = warning_with(None, Some("1.5.1.2")).expect("a warning when the Main is unknown");
+    assert!(unknown.contains("has not announced"), "{unknown}");
+    assert!(warning_with(Some([1, 6, 7, 0]), Some("1.5.1.2")).is_some());
+}
+
+#[test]
+fn test_voice_main_warning_when_main_1_6_9_0_or_a_0x16_voice_or_a_main_file_returns_none() {
+    assert_eq!(warning_with(Some([1, 6, 9, 0]), Some("1.5.1.2")), None);
+    for voice in ["1.5.1.0", "1.5.1.1"] {
+        assert_eq!(
+            warning_with(Some([1, 6, 8, 0]), Some(voice)),
+            None,
+            "{voice}"
+        );
+        assert_eq!(warning_with(None, Some(voice)), None, "{voice}");
+    }
+    assert_eq!(warning_with(Some([1, 6, 8, 0]), Some("9.9.9.9")), None);
+    assert_eq!(
+        warning_with(Some([1, 6, 8, 0]), None),
+        None,
+        "not a Voice version"
+    );
+}
+
+#[test]
+fn test_os_ready_when_a_file_that_is_not_a_voice_version_carries_no_main_warning() {
+    let mut rig = TestRig::new("os-ready-no-warning");
+    rig.machine.handle(Command::OsValidate {
+        name: "sam.syx".into(),
+        data: sam_file(),
+    });
+    let event = rig.expect("os_ready");
+    assert_eq!(event.field("main_warning"), Some(&Json::Null));
 }

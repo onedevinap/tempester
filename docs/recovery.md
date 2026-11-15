@@ -2,6 +2,7 @@
 
 - [Going back and re-sending: no programmer needed](#going-back-and-re-sending-no-programmer-needed)
 - [Why this is safe in practice](#why-this-is-safe-in-practice)
+- [Tempester Voice: going back, and its one risk](#tempester-voice-going-back-and-its-one-risk)
 - [Optional: full chip backup and recovery with a PICkit](#optional-full-chip-backup-and-recovery-with-a-pickit)
 
 ## Going back and re-sending: no programmer needed
@@ -15,11 +16,10 @@ DIN), without any programmer**:
 - **An update that was interrupted or failed** (cable pulled, computer asleep, checksum error): power the Tempest off
   and on and send the file again.
 
-On the project's test machine, Tempester 1.5.1.0, 1.5.2.0, 1.5.3.0, 1.5.4.0, 1.5.5.0, 1.5.6.0, 1.6.0.0, 1.6.1.0,
-1.6.2.0 and 1.6.3.0 were installed this way over USB, one after the other, each replacing the previous one, with no
-programmer. Each time the machine started and showed the new version under System > *Main OS Version*; for 1.5.5.0,
-1.6.2.0 and 1.6.3.0 the Main OS read back through the Debug menu was compared with the built image and matched over the
-whole range an update writes (the last flash page aside, see below). Going back to the official 1.5.0.2 has not been
+On the project's test machine, every Tempester release from 1.5.1.0 to 1.6.9.0 was installed this way over USB, one
+after the other, each replacing the previous one, with no programmer. Each time the machine started and showed the new
+version under System > *Main OS Version*; for 1.5.5.0, 1.6.2.0, 1.6.3.0, 1.6.4.0 and 1.6.5.0 the Main OS read back
+through the Debug menu was compared with the built image and matched over the whole range an update writes (the last flash page aside, see below). Going back to the official 1.5.0.2 has not been
 done on that machine yet; it uses exactly the same update path. Details:
 [testing](testing.md#verified-on-a-real-machine).
 
@@ -36,6 +36,24 @@ done on that machine yet; it uses exactly the same update path. Details:
 - The one case MIDI cannot fix: a Main OS that no longer starts at all (for example a write interrupted at the worst
   moment). That has never happened with Tempester, but it is possible in principle with any firmware update, official or
   not. Then the last resort is a programmer on the Main board, below.
+
+## Tempester Voice: going back, and its one risk
+
+[Tempester Voice](firmware.md#tempester-voice) replaces the program of the six voice chips, with one Voice update
+that goes to all six at once.
+
+- **Going back**: send the official `Tempest_Voice_1.5.syx` like any Voice update (Sequential's method, or the app's
+  OS update page: « Choose an OS .syx file to check », then send). *Back to DSI 1.5.0.2* changes the Main only: the
+  voice chips keep the Voice OS they run. Main and Voice can go back in either order: the official Main only checks
+  that a chip answers with a version in range, and every Tempester OS works with the official Voice OS (from 1.6.6.0
+  with the Release capped at 123).
+- **Never written**: each chip's boot page, which holds the routine that writes the chip, and its own calibration page.
+- **The risk**: a Voice update interrupted while the first 29 of its 41 pages are written (about two thirds of the
+  transfer) can leave chips that no longer start, so no longer accept an update over MIDI; then only a programmer on
+  that chip's own ICSP header brings it back, and a full backup over MIDI does not hold everything such a restore
+  needs. This is the risk of an official Voice update too. Make a full backup (Backup page) right before and right
+  after, stop the sequencer, and unplug nothing during the update. It has not happened on the project's machine
+  (three Voice installs, 14 and 15 November 2026).
 
 Note: the copy of the update routine in a machine comes from the factory and may differ slightly from the one in DSI's
 file (97 bytes differ on the test machine: an older build of the same routine, same control flow). Tempester never

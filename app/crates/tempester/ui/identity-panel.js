@@ -1,7 +1,8 @@
 /* The answer to an identity check, shown in full on the Machine page (not behind an info badge): device id,
    manufacturer and family, version word and what it means (Tempester OS or DSI OS), the exact version the machine
    reports when it does (n°39, from the shared state of os-verify.js), which features that version has, the cable or
-   port the answer came from, and when it was checked. The fact rows are always the same, so a new answer never moves
+   port the answer came from, and when it was checked, and the Voice OS of each of the six chips when the machine
+   reports them (n°64, Tempester 1.6.7.0). The fact rows are always the same, so a new answer never moves
    the page. The top bar only keeps a one-word summary (conn-bar.js). */
 "use strict";
 (function () {
@@ -24,6 +25,12 @@
     dsiNote:
       "The version word is the Voice OS version, as the original DSI OS announces it. The features below need a Tempester OS.",
     none: "-",
+    voicesTitle: "Voice chips",
+    voiceWaiting: "Waiting for the machine...",
+    voiceNotReported: "Not reported",
+    voiceRow: (k) => "Voice " + k,
+    voiceNote:
+      "The Voice OS of each chip as the Main read it at start-up (Tempester 1.6.7.0 reports it). 1.5.1.0 and 1.5.1.1 answer the same version word; 1.5.1.2 has its own. Tempester Voice on all six chips lets the Release knobs reach 127 (Voice 1.5.1.2 needs Main 1.6.9.0 or later).",
     featuresNo: "Not in the DSI OS",
     featuresNotHere: "Not in this version",
     featuresMaybe: (since) => "From " + since + " on",
@@ -67,8 +74,14 @@
      identity word gives only a "from" guess. */
   function featureValue(feature, m, running) {
     if (m && !m.tempester) return [S.featuresNo, "off"];
-    if (running && running.known)
-      return feature.on ? [S.featuresYes, "good"] : [S.featuresNotHere, "off"];
+    if (running && running.known) {
+      if (!feature.on) return [S.featuresNotHere, "off"];
+      /* Rust's `note` replaces "Available" when the feature is on in the OS but not in force on this machine
+         (the Release cap lifted, or the Voice lift inactive): the decision is `release_max`'s. */
+      return feature.note
+        ? [feature.note.text, feature.note.tone]
+        : [S.featuresYes, "good"];
+    }
     if (!m || !feature.since) return [S.none, "off"];
     const proven = PROVEN_FROM[m.version];
     if (proven && compare(proven, feature.since) >= 0)
@@ -96,6 +109,11 @@
 
   const cells = {};
   const featureCells = {};
+  const voiceCells = [];
+  /* How long a machine that has n°64 may take to send the Voice versions after its version reply. */
+  const voiceWait = { ms: 3000 };
+  let voiceWaitOver = false,
+    voiceTimer = null;
   let featureList = null;
   let note = null;
   /* The last identity answer (or its absence), kept so a change of the shared state re-renders the same card. */
@@ -103,6 +121,8 @@
 
   function set(cell, text, tone) {
     cell.value.textContent = text;
+    /* The columns are narrow and cut long text: the full text stays one hover away. */
+    cell.value.setAttribute("title", text);
     cell.value.setAttribute("class", tone || "off");
   }
 
@@ -121,6 +141,44 @@
       );
     }
   }
+
+  /* The six rows of the Voice chips: what the machine reported, or why nothing is shown. A machine whose Main has the
+     feature but has not sent the message yet is waited for a short time, then called « not reported ». */
+  function voiceRows(view) {
+    const voices = view.voiceVersions;
+    const feature = view.features.voice_versions;
+    const expected = !!(view.running && view.running.known && feature && feature.on);
+    if (voices || !expected) {
+      clearTimeout(voiceTimer);
+      voiceTimer = null;
+    }
+    if (voices) {
+      voiceWaitOver = false;
+      return voiceCells.map((_, k) => {
+        const v = voices[k] || {};
+        const label = v.label || S.none;
+        const tone = /^Tempester/.test(label)
+          ? "good"
+          : /^unknown/.test(label)
+            ? "warn"
+            : "";
+        return [label, tone];
+      });
+    }
+    if (expected && !voiceWaitOver) {
+      if (!voiceTimer)
+        voiceTimer = setTimeout(() => {
+          voiceTimer = null;
+          voiceWaitOver = true;
+          render(osVerify().state());
+        }, voiceWait.ms);
+      return voiceCells.map(() => [S.voiceWaiting, "off"]);
+    }
+    if (!expected) voiceWaitOver = false;
+    return voiceCells.map(() => [view.running ? S.voiceNotReported : S.none, "off"]);
+  }
+
+  const osVerify = () => window.Tempester.osVerify;
 
   function noteText(m, running, status) {
     if (m && !m.tempester) return S.dsiNote;
@@ -168,6 +226,9 @@
       const [text, featureTone] = featureValue(feature, m, running);
       set(featureCells[id], text, featureTone);
     }
+    voiceRows(view).forEach(([text, voiceTone], k) =>
+      set(voiceCells[k], text, voiceTone),
+    );
     note.textContent = noteText(m, running, status);
     note.setAttribute("class", "idnote" + (status === "none" ? " warn" : ""));
   }
@@ -179,6 +240,12 @@
     const { osVerify } = window.Tempester;
     for (const [key, label] of Object.entries(S.rows)) cells[key] = row(label);
     featureList = el("dl", { class: "idfeatures" });
+    for (let k = 0; k < 6; k++) voiceCells.push(row(S.voiceRow(k)));
+    const voiceList = el(
+      "dl",
+      { class: "idfeatures idvoices", "aria-label": S.voicesTitle, title: S.voiceNote },
+      voiceCells.map((c) => el("div", { class: "idrow" }, c.label, c.value)),
+    );
     note = el("p", { class: "idnote", role: "status" });
     const answer = (next) => {
       current = next;
@@ -214,9 +281,10 @@
         ),
       ),
       featureList,
+      voiceList,
       note,
     );
   }
 
-  window.Tempester.identityPanel = { build };
+  window.Tempester.identityPanel = { build, voiceWait };
 })();

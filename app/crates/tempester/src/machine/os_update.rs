@@ -13,9 +13,12 @@ use std::thread;
 
 use tempest_midi::paced::DEFAULT_RATE;
 use tempest_midi::{send_paced, CancelToken, MidiError, Transport};
+use tempest_proto::identity::{voice_word_of, VOICE_WORD_TEMPESTER_1510};
 use tempest_proto::os_image::{self, OsId, OsImage};
+use tempest_proto::release_cap::ReleaseCap;
 use tempest_proto::sha256::sha256_hex;
-use tempest_proto::versions::{self, Version, MAIN_ORIGIN_SHA256};
+use tempest_proto::versions::{self, Changes, Version, MAIN_ORIGIN_SHA256};
+use tempest_proto::voice_versions::{self, VoiceVersion};
 
 use super::backup::chip_name;
 use super::Machine;
@@ -23,8 +26,9 @@ use crate::command::Command;
 use crate::error::AppError;
 use crate::event::{Emitter, Event};
 use crate::json::{obj, Json};
-use crate::storage::installed::{features_json, os_known, InstalledOs};
+use crate::storage::installed::{cap_for, features_json, os_known, release_max_json, InstalledOs};
 use crate::storage::stamp::now_stamp;
+use crate::storage::voice_state::VoiceInstalled;
 use crate::storage::Storage;
 
 const DSI_ORIGINAL_LABEL: &str = "DSI 1.5.0.2 (original)";
@@ -34,6 +38,9 @@ const DSI_ORIGINAL_LABEL: &str = "DSI 1.5.0.2 (original)";
 pub(super) enum Origin {
     /// The `.syx` of this Tempester version (built here, or a file whose SHA-256 is the recorded one).
     Reference(&'static str),
+    /// The `.syx` of this Tempester Voice version (built here, or a file whose SHA-256 is the recorded one). It goes to
+    /// the six Voice chips at once.
+    VoiceReference(&'static str),
     /// The DSI Main 1.5.0.2 image every patch is built on.
     DsiOriginal,
     /// Matches nothing we know: sending it needs an explicit extra confirmation.
@@ -45,9 +52,17 @@ impl Origin {
         self != Self::Unknown
     }
 
+    /// The Tempester Main version (a Voice version has its own record).
     pub(super) fn version(self) -> Option<&'static str> {
         match self {
             Self::Reference(version) => Some(version),
+            _ => None,
+        }
+    }
+
+    fn voice_version(self) -> Option<&'static str> {
+        match self {
+            Self::VoiceReference(version) => Some(version),
             _ => None,
         }
     }
@@ -56,6 +71,7 @@ impl Origin {
     fn label(self, file_name: &str) -> String {
         match self {
             Self::Reference(version) => format!("Tempester {version}"),
+            Self::VoiceReference(version) => format!("Tempester Voice {version}"),
             Self::DsiOriginal => DSI_ORIGINAL_LABEL.to_string(),
             Self::Unknown => file_name.to_string(),
         }
@@ -63,8 +79,13 @@ impl Origin {
 }
 
 /// Recognises a Main file by the SHA-256 of its `.syx` (a Tempester version of `table`) or of its image (the DSI
-/// original); anything else, and every file for another chip, is unknown.
+/// original), and a Voice file by the SHA-256 of its `.syx` (a Tempester Voice version); anything else, and every file
+/// for another chip, is unknown.
 fn identify(os: &OsImage, syx_sha256: &str, table: &[Version]) -> Origin {
+    if os.id == OsId::Voice {
+        return voice_versions::find_voice_by_syx_sha256(syx_sha256)
+            .map_or(Origin::Unknown, |v| Origin::VoiceReference(v.version));
+    }
     if os.id != OsId::Main {
         return Origin::Unknown;
     }
@@ -75,6 +96,20 @@ fn identify(os: &OsImage, syx_sha256: &str, table: &[Version]) -> Origin {
         return Origin::DsiOriginal;
     }
     Origin::Unknown
+}
+
+/// A superseded Tempester Voice version (`VoiceKind::Superseded`) still names what a chip holds and keeps its history
+/// row, but it is never made ready again, built here or opened as a file: its successor holds the same fixes and more
+/// (the author's decision of 15/11/2026 for Tempester Voice 1.5.1.0).
+fn refuse_superseded(version: &VoiceVersion) -> Result<(), AppError> {
+    if version.kind.is_offered() {
+        return Ok(());
+    }
+    Err(AppError::Invalid(format!(
+        "Tempester Voice {} is superseded by a newer Tempester Voice version with the same fixes: it is no longer \
+         offered, build the latest one instead",
+        version.version
+    )))
 }
 
 /// A file that passed every check and waits for the user's go.
@@ -95,13 +130,28 @@ fn version_key(version: &str) -> Vec<u32> {
         .collect()
 }
 
+/// The versions of one OS (Main or Voice) newest first, by number, as the page lists them: the page keeps the order it
+/// receives and holds no version number itself, so a new manifest shows up in the right place by regeneration alone.
+fn newest_first<T>(mut items: Vec<&T>, version: impl Fn(&T) -> &str) -> Vec<&T> {
+    items.sort_by_key(|item| std::cmp::Reverse(version_key(version(item))));
+    items
+}
+
 fn sentences(list: &[&str]) -> Json {
     Json::Arr(list.iter().map(|s| (*s).into()).collect())
 }
 
+/// The changelog lists of a version, Main or Voice alike: the page draws both OSes' cards and history rows the same way.
+fn changes_json(changes: &Changes) -> Json {
+    obj([
+        ("fixes", sentences(changes.fixes)),
+        ("additions", sentences(changes.additions)),
+        ("changes", sentences(changes.changes)),
+    ])
+}
+
 fn versions_event() -> Event {
-    let mut all: Vec<_> = versions::versions().iter().collect();
-    all.sort_by_key(|v| std::cmp::Reverse(version_key(v.version)));
+    let all = newest_first(versions::versions().iter().collect(), |v| v.version);
     let list: Vec<Json> = all
         .iter()
         .map(|v| {
@@ -111,14 +161,7 @@ fn versions_event() -> Event {
                 ("kind", v.kind.as_str().into()),
                 ("date", v.date.into()),
                 ("summary", v.summary.into()),
-                (
-                    "changes",
-                    obj([
-                        ("fixes", sentences(v.changes.fixes)),
-                        ("additions", sentences(v.changes.additions)),
-                        ("changes", sentences(v.changes.changes)),
-                    ]),
-                ),
+                ("changes", changes_json(&v.changes)),
                 ("description", v.description.into()),
                 ("sha256_image", v.sha256_image.into()),
                 ("sha256_image_written", v.sha256_image_written.into()),
@@ -126,7 +169,29 @@ fn versions_event() -> Event {
             ])
         })
         .collect();
-    Event::new("os_versions").with("versions", list)
+    let voices = newest_first(voice_versions::voice_versions().iter().collect(), |v| {
+        v.version
+    });
+    let voice: Vec<Json> = voices
+        .iter()
+        .map(|v| {
+            obj([
+                ("version", v.version.into()),
+                ("name", v.name.into()),
+                ("kind", v.kind.as_str().into()),
+                ("date", v.date.into()),
+                ("summary", v.summary.into()),
+                ("changes", changes_json(&v.changes)),
+                ("description", v.description.into()),
+                ("sha256_image", v.sha256_image.into()),
+                ("sha256_image_written", v.sha256_image_written.into()),
+                ("sha256_syx", v.sha256_syx.into()),
+            ])
+        })
+        .collect();
+    Event::new("os_versions")
+        .with("versions", list)
+        .with("voice_versions", voice)
 }
 
 fn seconds_for(bytes: usize, rate: u32) -> usize {
@@ -139,6 +204,9 @@ impl Machine {
             Command::OsVersions => self.emit(versions_event()),
             Command::OsBuild { version, data } => {
                 self.guard_ready("os_build", |m| m.os_build(&version, &data));
+            }
+            Command::OsBuildVoice { version, data } => {
+                self.guard_ready("os_build_voice", |m| m.os_build_voice(&version, &data));
             }
             Command::OsValidate { name, data } => {
                 self.guard_ready("os_validate", |m| m.os_validate(&name, &data));
@@ -190,9 +258,70 @@ impl Machine {
         )
     }
 
+    fn os_build_voice(&mut self, version: &str, dsi_file: &[u8]) -> Result<(), AppError> {
+        let wanted = voice_versions::find_voice_version(version).ok_or_else(|| {
+            AppError::Invalid(format!("unknown Tempester Voice version \"{version}\""))
+        })?;
+        self.build_voice_ready(wanted, dsi_file)
+    }
+
+    /// Builds the Voice version and keeps it ready only when image, sent pages and `.syx` equal its recorded hashes.
+    /// The user's own DSI file is hashed on the way (pages 0-40) so that a chip still on DSI's OS is named later.
+    /// A superseded version is refused before anything is read.
+    fn build_voice_ready(
+        &mut self,
+        wanted: &VoiceVersion,
+        dsi_file: &[u8],
+    ) -> Result<(), AppError> {
+        refuse_superseded(wanted)?;
+        let built = voice_versions::build_voice(wanted, dsi_file)
+            .map_err(|e| AppError::Invalid(e.to_string()))?;
+        if let Ok(os) = os_image::decode(dsi_file) {
+            self.storage
+                .set_voice_dsi_pages(&sha256_hex(voice_versions::sent_range(&os.image)))?;
+        }
+        self.make_ready(
+            built.syx,
+            Origin::VoiceReference(wanted.version),
+            "built",
+            String::new(),
+        )
+    }
+
+    /// The warning of the send confirmation for a Voice version that answers a word other than `0x16` (1.5.1.2 on)
+    /// while the Main the app can name does not take every Tempester Voice word (n°65, 1.6.9.0), or cannot be named
+    /// at all: with such a Main the chips keep the Release cap and a second full backup skips them. A warning, not a
+    /// refusal: nothing is destroyed, the Main can be updated afterwards.
+    pub(super) fn voice_main_warning(&self, voice: Option<&str>) -> Option<String> {
+        let version = voice?;
+        if voice_word_of(version)? == VOICE_WORD_TEMPESTER_1510 {
+            return None;
+        }
+        let announced = self.announced_text();
+        let record = self.storage.installed_os();
+        if cap_for(announced.as_deref(), record.as_ref()) == ReleaseCap::WithAnyTempesterVoice {
+            return None;
+        }
+        let main = announced.map_or_else(
+            || "the machine has not announced its Main version".to_string(),
+            |v| format!("the machine announced Tempester {v}"),
+        );
+        Some(format!(
+            "install Main Tempester 1.6.9.0 or later first ({main}). With an older Main, Tempester Voice {version} \
+             chips keep the Release knobs at 123 and a second full backup in the same power-on skips them; nothing \
+             is damaged, and installing the Main afterwards (then a power cycle) fixes both."
+        ))
+    }
+
     fn os_validate(&mut self, name: &str, file: &[u8]) -> Result<(), AppError> {
         let os = os_image::decode(file).map_err(|e| AppError::Invalid(e.to_string()))?;
         let origin = identify(&os, &sha256_hex(file), versions::versions());
+        if let Some(version) = origin
+            .voice_version()
+            .and_then(voice_versions::find_voice_version)
+        {
+            refuse_superseded(version)?;
+        }
         self.make_ready(file.to_vec(), origin, "file", name.to_string())
     }
 
@@ -224,19 +353,28 @@ impl Machine {
         let image = os_image::decode(&syx).map_err(|e| AppError::Invalid(e.to_string()))?;
         let label = origin.label(&file_name);
         let sha256_image = sha256_hex(&image.image);
-        let sha256_image_written = sha256_hex(versions::written_range(&image.image));
+        let written = match image.id {
+            OsId::Voice => voice_versions::sent_range(&image.image),
+            _ => versions::written_range(&image.image),
+        };
+        let sha256_image_written = sha256_hex(written);
         self.emit(
             Event::new("os_ready")
                 .with("label", label.clone())
                 .with("source", source)
                 .with("chip", chip_name(image.id))
                 .with("id", image.id as u8)
+                .with("all_chips", image.id == OsId::Voice)
                 .with("blocks", image.id.blocks())
                 .with("checksum", image.checksum)
                 .with("size", syx.len())
                 .with("seconds", seconds_for(syx.len(), DEFAULT_RATE))
                 .with("known", origin.is_known())
-                .with("version", origin.version())
+                .with(
+                    "main_warning",
+                    self.voice_main_warning(origin.voice_version()),
+                )
+                .with("version", origin.version().or(origin.voice_version()))
                 .with("sha256_image", sha256_image.clone())
                 .with("sha256_syx", sha256_hex(&syx)),
         );
@@ -280,6 +418,7 @@ impl Machine {
         self.release_touched_ribbons();
         self.verify = None;
         self.announced = None;
+        self.voice_words = None;
         self.os_active.store(true, Ordering::SeqCst);
         let Some(pending) = self.pending_os.take() else {
             return Ok(());
@@ -359,9 +498,33 @@ impl OsJob {
     /// cancelled before the first byte, and "unknown" (no record) after a send that stopped half way. A send for
     /// another chip leaves the record alone.
     fn remember(&self, result: &Result<(), MidiError>) -> Option<Event> {
-        if self.pending.id != OsId::Main {
-            return None;
+        match self.pending.id {
+            OsId::Main => self.remember_main(result),
+            OsId::Voice => self.remember_voice(result),
+            _ => None,
         }
+    }
+
+    /// A Tempester Voice OS sent to the end is kept to compare the next full backup with; one that stopped half way
+    /// leaves the chips in a state nothing names, so the record goes; a send cancelled before the first byte changes
+    /// nothing. Any other Voice file is not remembered: the app cannot say what the chips hold afterwards.
+    fn remember_voice(&self, result: &Result<(), MidiError>) -> Option<Event> {
+        let record = match (result, self.pending.origin.voice_version()) {
+            (Err(MidiError::Cancelled { sent: 0 }), _) => return None,
+            (Ok(()), Some(version)) => Some(VoiceInstalled {
+                version: version.to_string(),
+                at: now_stamp(),
+                pages_sha256: self.pending.sha256_image_written.clone(),
+            }),
+            _ => None,
+        };
+        if let Err(error) = self.storage.set_voice_installed(record.as_ref()) {
+            (self.emit)(Event::error("os_installed", &error));
+        }
+        None
+    }
+
+    fn remember_main(&self, result: &Result<(), MidiError>) -> Option<Event> {
         let record = match result {
             Ok(()) => Some(InstalledOs {
                 label: self.pending.label.clone(),
@@ -380,10 +543,14 @@ impl OsJob {
         }
         let features = features_json(record.as_ref());
         let known = os_known(None, record.as_ref());
+        let release_max = release_max_json(None, record.as_ref(), None);
         Some(
             Event::new("installed")
                 .with("installed", record.map(|r| r.to_json()))
                 .with("features", features)
+                .with("release_max", release_max)
+                .with("voice_versions", Json::Null)
+                .with("voice_installed", Json::Null)
                 .with("os_known", known),
         )
     }

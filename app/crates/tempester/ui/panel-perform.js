@@ -10,7 +10,7 @@
 
    A control the installed OS cannot use is greyed and says which version brings it: the features come from Rust
    (`features` of the `state` and `installed` events: on, since), from the identity answer (a DSI OS has none) and from
-   the fake machine (it plays Tempester 1.6.5.0, the newest release).
+   the fake machine (it plays a recent Tempester release, `fake_machine.rs`).
 
    Tempester.panelPerform.createFeatures() -> {set(features, osKnown), setFake(on), setIdentity(tempester), status(name)}
         status(name) = {on, why}: name is a key of Rust's table (beat_wide, ribbons, probability, pad_channels...)
@@ -39,6 +39,8 @@ window.Tempester.panelPerform = (function () {
     ribbons: "FX ribbons over MIDI need",
     probability: "Play probability needs",
     pad_channels: "MIDI channel per pad needs",
+    full_backup: "The full machine backup needs",
+    release_cap: "Release capped at 123 needs",
   };
   const S = {
     needs: (name, since) =>

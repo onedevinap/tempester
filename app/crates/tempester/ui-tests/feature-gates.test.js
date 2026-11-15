@@ -4,7 +4,10 @@
    - before the first state, no control names a version it has been told nothing about;
    - an OS the app cannot name is called unknown; a named OS that lacks a feature is not;
    - a machine that reports 1.6.5.0 (shared state) opens every control, the same page on 1.6.2.0 greys the later ones
-     and names the version that brings each.
+     and names the version that brings each;
+   - the Release maxima (n°63, n°64) are the ones Rust computes and sends (`release_max` of the `state` and `installed`
+     events: 123 under a cap, 127 when the six Voice chips run Tempester Voice 1.5.1.0, the table's maximum on an OS
+     without a cap), on both events, for every parameter of `TEMPEST_RELEASE_CAP.params` and no other.
    The Panel page is built for real around stubs of the drawn machine (panel.js, panel-machine.js, edit-tools.js,
    panel-perform's drawings), which need a real DOM; the rule under test lives in page-panel.js and panel-perform.js.
    Then the same checks on copies with one behaviour broken, each of which must fail. */
@@ -18,6 +21,11 @@ const { load, textOf } = require("./fake-dom.js");
 const [uiDir, scratchArg] = process.argv.slice(2);
 const scratch = scratchArg || os.tmpdir();
 
+/* What Rust sends as `release_max`: [[index, max]] for the five Releases; this page's stub holds 65 and 75. */
+const STOCK = [[65, 127], [75, 123]];
+const CAPPED = [[65, 123], [75, 123]];
+const LIFTED = [[65, 127], [75, 127]];
+
 const TABLE = [
   ["beat_wide", "1.6.2.0"],
   ["ribbons", "1.6.3.0"],
@@ -27,6 +35,10 @@ const TABLE = [
   ["long_notes", "1.6.5.0"],
   ["quantize_fine", "1.6.5.0"],
   ["pad_channels", "1.6.5.0"],
+  ["full_backup", "1.6.6.0"],
+  ["release_cap", "1.6.6.0"],
+  ["release_cap_voice", "1.6.7.0"],
+  ["voice_versions", "1.6.7.0"],
 ];
 const features = (count) =>
   Object.fromEntries(
@@ -37,11 +49,12 @@ const reported = (version) => ({
   label: "Tempester " + version,
   known: true,
 });
-const event = (name, count, running, known) => ({
+const event = (name, count, running, known, releaseMax) => ({
   event: name,
   features: features(count),
   running,
   os_known: known,
+  ...(releaseMax ? { release_max: releaseMax } : {}),
 });
 
 /* ---------- The Panel page, around stubs of the drawn machine ---------- */
@@ -69,7 +82,8 @@ const auto = (own = {}) =>
     apply: () => auto(),
   });
 const T = window.Tempester;
-T.panel = auto({ parts: {} });
+const maxima = (window.maxima = []);
+T.panel = auto({ parts: {}, setMax: (index, max) => maxima.push([index, max]) });
 T.panelMachine = auto();
 T.editTools = {
   create: () => ({
@@ -80,7 +94,8 @@ T.editTools = {
   }),
 };
 T.editLearn = auto();
-window.TEMPEST_PARAMS = [];
+window.TEMPEST_PARAMS = [[65, 127, 0], [75, 123, 80]];
+window.TEMPEST_RELEASE_CAP = { params: [65, 75] };
 const calls = (window.gates = { ribbons: [], pads: [] });
 T.panelPerform.attach = () =>
   auto({
@@ -143,6 +158,33 @@ function runPanel(dir) {
   env.receive(event("installed", 0, null, false));
   assert.strictEqual(last().on, false, "forgetting the version closes it");
   assert.ok(last().why.includes("unknown to the app"), last().why);
+
+  /* Arrays of the page's realm: compared as plain data. */
+  const maxima = () => JSON.parse(JSON.stringify(env.window.maxima));
+  assert.deepStrictEqual(maxima(), [], "no release_max yet: the table's maxima");
+  env.receive(event("installed", 10, reported("1.6.5.0"), true));
+  assert.deepStrictEqual(maxima(), [], "an event without release_max changes nothing");
+  env.receive(event("installed", 10, reported("1.6.6.0"), true, CAPPED));
+  assert.deepStrictEqual(maxima(), [[65, 123]], "1.6.6.0 caps the Release (Amp Release already is)");
+  env.receive(event("installed", 12, reported("1.6.7.0"), true, LIFTED));
+  assert.deepStrictEqual(
+    maxima().slice(1),
+    [[65, 127], [75, 127]],
+    "1.6.7.0 with six Tempester Voice chips: 127, Amp Release included",
+  );
+  env.receive(event("installed", 12, reported("1.6.7.0"), true, CAPPED));
+  assert.deepStrictEqual(
+    maxima().slice(3),
+    [[65, 123], [75, 123]],
+    "one chip on another Voice OS: back to 123",
+  );
+  env.receive(event("state", 12, reported("1.6.7.0"), true, LIFTED));
+  assert.deepStrictEqual(maxima().slice(5), [[65, 127], [75, 127]], "the state event carries it too");
+  env.receive(event("installed", 8, reported("1.6.5.0"), true, STOCK));
+  assert.deepStrictEqual(maxima().slice(7), [[75, 123]], "1.6.5.0: DSI maxima (65 was already at 127)");
+  const count = maxima().length;
+  env.receive(event("installed", 8, reported("1.6.5.0"), true, [[66, 5]]));
+  assert.strictEqual(maxima().length, count, "a parameter that is not a Release is left alone");
 }
 
 /* ---------- The pad-channel panel of the Machine page ---------- */
@@ -226,6 +268,37 @@ const broken = [
     "panel-perform.js",
     '(osKnown === false ? S.unknown : "")',
     '""',
+  ],
+  [
+    "page-panel.js",
+    "        maxOf[index] = max;\n        panel.setMax(index, max);",
+    "        maxOf[index] = baseMax[index];\n        panel.setMax(index, baseMax[index]);",
+  ],
+  ["page-panel.js", "        panel.setMax(index, max);\n", ""],
+  [
+    "page-panel.js",
+    "if (!releases.has(index) || maxOf[index] === max) continue;",
+    "if (maxOf[index] === max) continue;",
+  ],
+  [
+    "page-panel.js",
+    "if (!releases.has(index) || maxOf[index] === max) continue;",
+    "if (!releases.has(index)) continue;",
+  ],
+  [
+    "page-panel.js",
+    '    bridge.on("installed", (m) => {\n      applyReleaseMax(m.release_max);',
+    '    bridge.on("installed", (m) => {',
+  ],
+  [
+    "page-panel.js",
+    "      applyReleaseMax(m.release_max);\n      if (m.features) {",
+    "      if (m.features) {",
+  ],
+  [
+    "page-panel.js",
+    "      for (const [index, max] of list) {",
+    "      for (const [index, max] of list.slice(0, 1)) {",
   ],
 ];
 let refused = 0;

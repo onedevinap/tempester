@@ -13,13 +13,17 @@ of what owners ask for below is a reading of the forum, kept as a guide for the 
 
 ## Where things stand
 
-- **Tempester OS 1.6.5.0** is the latest release (installed on the project's Tempest on 12 November 2026): a MIDI
-  channel and a settings page for each pad, notes as long as a whole 8-bar beat, finer Quantize values, Copy Sound
-  with its sequence, a beat roll that can follow the swing, six bug fixes, on top of 1.6.4.0 (room for new functions,
-  the machine reporting its mixer, tempo, mode and exact version to an editor) and 1.6.3.0 (bug fixes, requests for
-  sounds, beats and projects, NRPN in both directions, the front panel over MIDI, FX ribbons over MIDI, play
-  probability per pad). The hand tests of the new functions are still to do.
-  See [firmware](firmware.md).
+- **Tempester OS 1.6.9.0** is the latest release (installed on the project's Tempest on 15 November 2026): a full
+  backup of the machine over MIDI, Release values capped at 123 where the official voices never end a release and
+  back up to 127 with Tempester Voice, the Voice OS of each chip reported, on top of 1.6.5.0 (a MIDI channel and a
+  settings page for each pad, notes as long as a whole 8-bar beat, finer Quantize values, Copy Sound with its
+  sequence, a beat roll that can follow the swing, six bug fixes), 1.6.4.0 (room for new functions, the machine
+  reporting its mixer, tempo, mode and exact version to an editor) and 1.6.3.0 (bug fixes, requests for sounds, beats
+  and projects, NRPN in both directions, the front panel over MIDI, FX ribbons over MIDI, play probability per pad).
+  The hand tests of the 1.6.5.0 functions are still to do. See [firmware](firmware.md).
+- **Tempester Voice 1.5.1.2**, the first Tempester build of the voice chips' own OS, runs on the project's six voice
+  chips (15 November 2026): no more voices muted for good, Release times that always end, its own version reported.
+  See [firmware](firmware.md#tempester-voice).
 - **The Tempester app** is used daily on macOS; the Windows build is checked to compile, and neither Windows nor
   Linux has been tried by a user yet.
 - **Tempester Control** (CLAP and VST3) has its 146 parameters and MIDI learn, but no window of its own yet: the
@@ -76,8 +80,9 @@ From a reading of the Tempest section of the Sequential forum in November 2026. 
 reading, so part of the threads could not be read: the counts are **minimums** (distinct people per request). The
 rows follow the number of people asking.
 
-**Feasibility** says what the change touches. *Main* means the Main OS that Tempester patches; the Voice chips and the
-sample chip run their own code, which Tempester does not change; a change to the sound, beat or project format must
+**Feasibility** says what the change touches. *Main* means the Main OS that Tempester patches; the Voice chips run
+their own code, which only the optional Tempester Voice changes ([firmware](firmware.md#tempester-voice)), and the
+sample chip's code is not changed; a change to the sound, beat or project format must
 keep every existing file and every other Tempest working.
 
 | Request | People | Status | Feasibility |
@@ -90,7 +95,7 @@ keep every existing file and every other Tempest working.
 | **Digital effects** (reverb, delay) | 8+ | not possible | The audio path is analogue; there is no effects processor to program. |
 | **Copy a sound's sequence to another beat** | 6+ | **done** | Tempester OS 1.6.5.0: Edit > Copy Sound obeys the Seq / NoteFX / Mixer switches of the Copy screen. |
 | **Real-time automation** of knobs and sliders | 6+ | later | A new or denser kind of event in the beat: format change. |
-| **Legato and glide modes** | 6+ | not planned | The envelopes run in the Voice chips. |
+| **Legato and glide modes** | 6+ | not planned | Both chips at once: the Main decides which voice a note takes and whether it restarts, the Voice OS runs the envelopes (Tempester Voice makes that half possible), and the 128-byte sound has no room left for the mode. |
 | **Load Sound knob** that stays where it was | 5+ | **done** | Tempester OS 1.6.3.0. |
 | **Song mode**: mutes in the Play List, change project while playing | 5+ | later | Play List format; loading a project during playback is heavy for the processor. |
 | **More modulation routes** and destinations | 5+ | not planned | Applied in the Voice chips, and the 128-byte sound is full. |

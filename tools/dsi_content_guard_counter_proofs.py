@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Counter-proofs of tools/dsi_content_guard.py: a planted DSI fragment, in every form the guard claims to see, must
-turn it red, and the same file with the fragment broken must leave it green; the two words of a pair on either side
+turn it red, and the same file with the fragment broken must leave it green (also a pair of Voice instructions written
+as two words of a Voice recipe and as two values in prose); the two words of a pair on either side
 of a blank line (two recipes of a generated table) must leave it green, the same two lines without the blank line red;
 the patches written back in the former {adresse, origine, nouveau} format (DSI's original words) and a Rust table
 holding them must be red, the recipes green.
@@ -51,6 +52,25 @@ def planted(first: int, second: int) -> dict[str, bytes]:
     }
 
 
+def voice_pair(dsi: 'guard_tool.Dsi') -> tuple[int, bytes]:
+    """The first distinctive pair of consecutive Voice instructions in the code (from PC 0x15F0): (PC, 6 bytes)."""
+    image = next(data for name, data in dsi.images.items() if name.startswith('Tempest_Voice_'))
+    for offset in range(0x15F0 // 2 * 3, len(image) - 5, 3):
+        if image[offset:offset + 6] in dsi.voice_keys:
+            return offset // 3 * 2, image[offset:offset + 6]
+    raise SystemExit('no distinctive pair in the Voice image')
+
+
+def voice_planted(pair: bytes) -> dict[str, bytes]:
+    """The Voice pair as two literal words of a Voice recipe, and as two values in prose."""
+    first, second = pair[:3], pair[3:]
+    return {
+        'voice_recipe.json': (f'{{"cpu": "dspic33f", "edits": [\n  {{"at": "0x007000", "word": "{first.hex()}"}},\n'
+                              f'  {{"at": "0x007002", "word": "{second.hex()}"}}\n]}}\n').encode(),
+        'voice_prose.md': f'The routine starts with 0x{first[::-1].hex()} then 0x{second[::-1].hex()}.\n'.encode(),
+    }
+
+
 def guard(dsi: 'guard_tool.Dsi', *paths: Path) -> bool:
     """True when the guard accepts the paths (the guard's own scan, run in this process on the decoded images)."""
     return not guard_tool.scan(dsi, list(paths))[1]
@@ -85,6 +105,13 @@ def main() -> None:
         broken = planted(first, second ^ 0x5A5A5A5A)[name]
         green.write_bytes(broken)
         check(f'{name}: DSI words at {offset:#x} refused', not guard(dsi, red))
+        check(f'{name}: same file with the second word broken accepted', guard(dsi, green))
+    pc, pair = voice_pair(dsi)
+    for name, data in voice_planted(pair).items():
+        red, green = scratch / 'red' / name, scratch / 'green' / name
+        red.write_bytes(data)
+        green.write_bytes(voice_planted(pair[:3] + bytes(b ^ 0x5A for b in pair[3:]))[name])
+        check(f'{name}: DSI Voice instructions at PC {pc:#06x} refused', not guard(dsi, red))
         check(f'{name}: same file with the second word broken accepted', guard(dsi, green))
     # A blank line ends a run: the pair split over two paragraphs (the tail of one recipe, the head of the next in
     # app/.../generated/versions.rs) is not a quoted run of DSI words; the same two lines joined are.

@@ -1,0 +1,19 @@
+{
+ "format": "tempester-recipe/1",
+ "cpu": "dspic33f",
+ "name": "dump_wrap",
+ "image": "Voice 1.5",
+ "input_sha256": "a0ac129b327aa0d58ae5d009541baabc49c565d8623a2fae73583ddf118a49b6",
+ "explanation": "Tempester Voice 1.5.1.1: the dump stream wraps to PC 0 at the end of the implemented flash. [routine] ([address], the 0xF800 reply) reads the instruction at the 16-bit pointer [address] and adds 2: DSI's pointer runs on past PC [address], the last implemented instruction of the dsPIC33FJ64MC804 (stream byte 66,047), and a read there stopped the chip on the machine (14/11/2026: a second full backup of Main 1.6.6.0 / 1.6.7.0; on DSI 1.5 every byte then reads 0xFF and the voice is silent until power-off, on Tempester Voice 1.5.1.0 the trap resets the chip). Now the pointer goes back to 0 when it reaches 0xAC00, so no Main, however it reads (Tempester 1.6.6.0 / 1.6.7.0, the stock Debug menu « Send Voice OS » twice), can make this chip read unimplemented flash: the stream is the flash itself, period 66,048 bytes. The high word [address] is no longer carried into (it stays 0 from reset; the 0xF5nn handler of parser_guard.s still clears it). Cost: the 0xF800 reply is written a few cycles later than in 1.5.1.0, still before DSI's and before the Main's 0xFF00 read (the Voice simulator timing).",
+ "edits": [
+  {"at": "0x006e4c", "goto": "0x007310", "why": "goto [address] ; was \"mov #[address],W6 ; mov [W6],W7\" (the 32-bit increment, [address], now unreached)"},
+  {"at": "0x007310", "word": "b78380", "why": "mov [address],W7 ; the instruction just read"},
+  {"at": "0x007312", "word": "2700b0", "why": "add #0x2,W7 ; the next one"},
+  {"at": "0x007314", "word": "06c02a", "why": "mov #0xac00,W6 ; past the last implemented instruction (PC [address])"},
+  {"at": "0x007316", "word": "0638e1", "why": "cp W7,W6"},
+  {"at": "0x007318", "word": "010039", "why": "bra nc,[address] ; below 0xAC00: kept"},
+  {"at": "0x00731a", "word": "8003eb", "why": "clr W7 ; 0xAC00: back to PC 0"},
+  {"at": "0x00731c", "word": "b78388", "why": "mov W7,[address]"},
+  {"at": "0x00731e", "copy": "0x006e56", "count": 2, "why": "the low byte of the instruction, as [address]"}
+ ]
+}

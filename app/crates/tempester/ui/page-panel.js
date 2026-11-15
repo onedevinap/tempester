@@ -26,6 +26,8 @@
       "Tempester 1.6.2.0: in 16 Beats and 16 Mutes the Machine view's beat-wide knobs show and set the beat-wide positions (127 = neutral). Tempester 1.6.3.0: the FX ribbons of both views touch the machine's ribbons and show its own; the dice button shows each pad's play probability (read by Sync) and lets you change it in 16 Sounds. A control the installed OS lacks is greyed and its tooltip names the version that brings it.",
       "Tempester 1.6.4.0: the machine reports what its own knobs and encoders change (Level, Pan, Delay Repeats, Volume, Distort, Compress, and Delay Send, Delay Time, BPM, Swing) and sends them all again when the app asks for its state (Sync). The Machine view moves the matching knobs, and shows an encoder's number in its bubble for a moment; the Full view follows Volume, Distort and Compress. A knob you are turning is not moved by the machine.",
       "Tempester 1.6.5.0: Shift + a pad selects that pad silently in every Pad Function (no sound, no MIDI, nothing recorded), so a pad can be chosen without playing it. The compressor envelope's Amount reaches -127 (the Compress screen and saved beats). The MIDI channel of each pad is set on the Machine page: its \"Pads\" button opens the table, the channels are under the notes.",
+      "Tempester 1.6.6.0: Pitch, Filter, Aux 1 and Aux 2 Release stop at 123 like Amp Release (at 124-127 the voices never ended the release), and their knobs here too. A sound saved with 124-127 still loads: the machine plays and shows it as 123, and so does this page.",
+      "Tempester 1.6.7.0: when the machine reports that all six Voice chips run Tempester Voice 1.5.1.0 or later (whose release times end up to 127), the five Release knobs go up to 127 again, Amp Release included. If any chip runs another Voice OS, or the machine does not report them, they stay at 123. Tempester Voice 1.5.1.2 counts from Tempester 1.6.9.0 on (1.6.7.0 and 1.6.8.0 know only 1.5.1.0 / 1.5.1.1).",
       "Zoom: the - and + buttons, or Cmd/Ctrl with - and +; Cmd/Ctrl 0 fits the width of the window. A zoomed panel scrolls inside its frame.",
     ],
     remoteLooking: "Remote panel: looking...",
@@ -59,7 +61,8 @@
       max,
       default: def,
     }));
-    const maxOf = Object.fromEntries(params.map((p) => [p.index, p.max]));
+    const baseMax = Object.fromEntries(params.map((p) => [p.index, p.max]));
+    const maxOf = { ...baseMax };
     const link = panelLink.create({
       bridge,
       connected: () => kit.session.connected,
@@ -207,6 +210,19 @@
       probButton.setAttribute("aria-pressed", String(on));
       icons.relabel(probButton, on ? S.probabilityOff : S.probability);
     }
+    /* n°63 / n°64: the maximum of the five Releases depends on the machine (Main OS, and from 1.6.7.0 the Voice chips'
+       OS). Rust computes it (`release_max`: [[index, max], ...], one function in tempest-proto) and sends it with
+       the `state` and `installed` events; the table (`TEMPEST_PARAMS`, from DSI's 1.5.0.2) holds the stock maxima
+       until the first event. Both views follow. `TEMPEST_RELEASE_CAP.params` lists the parameters concerned. */
+    const releases = new Set((window.TEMPEST_RELEASE_CAP || { params: [] }).params);
+    function applyReleaseMax(list) {
+      if (!Array.isArray(list)) return;
+      for (const [index, max] of list) {
+        if (!releases.has(index) || maxOf[index] === max) continue;
+        maxOf[index] = max;
+        panel.setMax(index, max);
+      }
+    }
     /* What the installed OS and the connection allow, after any change of either. */
     function refreshFeatures() {
       const connected = kit.session.connected;
@@ -312,6 +328,7 @@
     });
     syncButton.disabled = !kit.session.connected;
     bridge.on("state", (m) => {
+      applyReleaseMax(m.release_max);
       if (m.features) {
         features.set(m.features, m.os_known);
         refreshFeatures();
@@ -325,6 +342,7 @@
       machine.setParam(m.number, m.value);
     });
     bridge.on("installed", (m) => {
+      applyReleaseMax(m.release_max);
       if (!m.features) return;
       features.set(m.features, m.os_known);
       refreshFeatures();

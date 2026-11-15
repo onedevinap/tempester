@@ -41,6 +41,9 @@ pub struct Facets {
     pub sound_type: String,
     /// One text per oscillator, `Shape 57` (Osc 1 and 2) or `Sample/Noise 13` (Osc 3 and 4); empty for a beat.
     pub osc: Vec<String>,
+    /// For a project: the Quantize its parameter words record (`1/16`, or a Tempester 1.6.5.0 value such as `64th`);
+    /// `None` for anything else, and for an index written before the field existed.
+    pub quantize: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -193,6 +196,7 @@ fn item_json(item: &Item) -> Json {
         ("beats", item.beats.into()),
         ("sound_type", item.facets.sound_type.clone().into()),
         ("osc", strings(&item.facets.osc)),
+        ("quantize", item.facets.quantize.clone().into()),
         ("slot", item.slot.into()),
     ])
 }
@@ -284,6 +288,7 @@ fn item_from(value: &Value) -> Result<Item, String> {
         facets: Facets {
             sound_type: text(value, "sound_type")?,
             osc: string_list(value, "osc")?,
+            quantize: optional_text(value, "quantize"),
         },
         slot: flag(value, "slot")?,
     })
@@ -343,6 +348,7 @@ mod tests {
         item.facets = Facets {
             sound_type: "Kicks".into(),
             osc: vec!["Shape 1".into()],
+            quantize: None,
         };
         let mut project = sample_item("p1", Kind::Projects, "P.syx", "ef");
         project.capture = Some("P (as received).syx".into());

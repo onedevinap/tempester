@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prove that a combined release is exactly the union of its test builds, word for word.
 
-usage: version_union.py <base.bin> <combined.bin> <version_patch.json> <test.bin…>
+usage: version_union.py [--stacked] <base.bin> <combined.bin> <version_patch.json> <test.bin…>
 
 base       the previous release the test builds were made on (e.g. 1.6.2.0);
 combined   the new release (e.g. 1.6.3.0 = base + the patches of every test build + its own version patch);
@@ -9,6 +9,9 @@ version_patch.json   the combined release's version-digit recipe: its words are 
            the base outside the test builds;
 test.bin   each test build (base + some patches; its own version digits, if any, are left out: those words belong
            to the version patch).
+--stacked  each test build was made on the previous one (the first on the base, e.g. 1.6.6.0-b = 1.6.6.0-a + n°63):
+           a test build owns the words it changes from the previous test build, and must keep every word of the
+           previous one (a word changed again is owned twice, refused by check 1).
 Checks, exit 1 on the first failure:
   1. no word changed from the base by two test builds (each test build owns its words);
   2. every word a test build changed holds, in the combined image, that test build's value;
@@ -41,16 +44,21 @@ def version_words(path: Path) -> set[int]:
 
 
 def main() -> int:
-    if len(sys.argv) < 5:
+    args = sys.argv[1:]
+    stacked = '--stacked' in args
+    if stacked:
+        args.remove('--stacked')
+    if len(args) < 4:
         sys.exit(__doc__)
-    base, combined = (words(Path(p).read_bytes()) for p in sys.argv[1:3])
-    version = version_words(Path(sys.argv[3]))
-    tests = [(Path(p).name, words(Path(p).read_bytes())) for p in sys.argv[4:]]
+    base, combined = (words(Path(p).read_bytes()) for p in args[0:2])
+    version = version_words(Path(args[2]))
+    tests = [(Path(p).name, words(Path(p).read_bytes())) for p in args[3:]]
     if len({len(base), len(combined), *(len(t) for _, t in tests)}) != 1:
         sys.exit('refused: images of different sizes')
     owner: dict[int, str] = {}
+    previous = base
     for name, test in tests:
-        for i in changed(base, test) - version:
+        for i in changed(previous, test) - version:
             if i in owner:
                 print(f'FAIL {BASE + 4 * i:#x} changed by {owner[i]} and {name}')
                 return 1
@@ -59,6 +67,8 @@ def main() -> int:
                 print(f'FAIL {BASE + 4 * i:#x}: combined {combined[i]:08x} != {name} {test[i]:08x}')
                 return 1
         print(f'{name}: {sum(1 for o in owner.values() if o == name)} words, all in the combined image')
+        if stacked:
+            previous = test
     rest = changed(base, combined) - set(owner)
     if not rest <= version:
         print('FAIL words changed outside the test builds and the version patch:',

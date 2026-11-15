@@ -145,6 +145,39 @@ sentence, raw bytes at an odd offset in a binary) is refused, and the same file 
 accepted; a `.syx` is refused; the recipes of `patch/` are accepted; the same patches written back in the former format
 (origin words) and a Rust table holding the origin bytes are refused.
 
+## Voice recipes (dsPIC33F)
+
+A recipe for the Voice OS has `"cpu": "dspic33f"` after `format` (a recipe without `cpu` is a Main one, `pic32mx`), and
+`input_sha256` pins DSI Voice 1.5 (`a0ac129b…49b6`). Same semantics as above, on the Voice's 24-bit instruction words:
+
+| Key / operation | Voice form |
+|---|---|
+| `at`, copy source, targets | a program counter (PC), `"0x"` + 6 lowercase hex digits, even; a word takes 2 PC (3 bytes in the DSI file at `PC / 2 × 3`) |
+| `"word": "462321"` | our literal word, 6 hex digits **in byte order** (the 3 bytes as stored in the file); `count` repeats it |
+| `"copy": A` (+ `count`, or + `set`) | the original words from PC `A` on; `set` fields: `s` bits 0-3, `d` 7-10, `wb` 15-18, `cond` 16-19, `k5` 0-4, `k10` 4-13, `f13` 0-12, `k14` 0-13, `f15` 4-18, `k16` 4-19 (bit ranges of the dsPIC33F encodings; the writer picks the narrowest that holds the change, opcode bits 20-23 kept) |
+| `"goto": T` / `"call": T` | two words: `0x04` / `0x02` `<< 16 \| T & 0xFFFE`, then `T >> 16`; the second word is written only when it differs from the original, but it belongs to the edit either way: no other edit or recipe may write it |
+| `"bra": T` / `"rcall": T` | one word: `0x37` / `0x07` `<< 16 \| n` with `T = at + 2 + 2n`, `n` signed 16 bits |
+
+Rules of a Voice image, refused by `recipe.py` for every edit and checked again by `build_version.py` on the built
+image, as the Main's flasher page: no write at PC 0-2 (the reset `goto 0x15F0`), in PC `0x650E`-`0x651C` (the update
+entry: `0xF700` after `0xF6A5` calls the boot page; without it no Voice could be updated by MIDI again), nor at or above
+PC `0xA400` (boot page 41 and calibration page 42, which an update never writes). A build mixing Main and Voice recipes
+is refused. A Voice version is a manifest with `"os": "voice"` in `versions/voice/` (the app reads it: `generated/voice.rs`, kept out of its Main version list); it builds
+`Tempest_Voice_<v>_Tempester.syx` (`dsi_pack.py` id 72, round trip checked) and records `sha256_image_written` over the
+first `0xF600` bytes, the 41 pages an update sends. These rules are necessary, not sufficient: the code that leads to
+the update entry (the SPI interrupt, its vector, the SPI set-up at start-up) is not protected by them, so every Voice
+version must also pass a simulated update of its built image (private verifier) before it can be sent.
+
+The writer's classes are the Main's, word for word: rule 3 is `nop`, erased flash `0xFFFFFF` and `return`; the trivial
+words (`recipe.pic24_is_trivial`) are any `0x00xxxx` (`nop`, which is also every program address of the 64 KB chip),
+`nopr`, `return`, `mov #lit16,Wn`, `clr` / `setm Wn`, register moves, push / pop and their `mov.d` forms, `lnk`,
+`ulnk`; a conditional branch is `bra cc`. The guard treats two consecutive Voice instructions (6 bytes) as the Main
+treats two words: a pair is commonplace (`recipe.pic24_commonplace`) when it occurs 16 times or more, both words are
+trivial, it repeats one word, or its 6 bytes hold at most 3 non-zero / 3 distinct values; any other pair of the Voice
+image quoted as two 6-digit words (a Voice recipe's literals, or prose, both byte orders) is refused. Counter-proofs:
+`tools/dsi_content_guard_counter_proofs.py` (a planted Voice pair) and `tools/voice_recipe_counter_proofs.py` (each
+forbidden write).
+
 ## Making a recipe
 
 - From assembly: `asm_resolve.py` → `Assembler.java` → `asm_generate_json.py <Main.bin> <assembler.out>
@@ -154,3 +187,9 @@ accepted; a `.syx` is refused; the recipes of `patch/` are accepted; the same pa
   patch/<name>.json` converts it in place (its origin words are checked against the image first).
 - Then: `build_version.py versions/<v>.json <Main.bin> <folder> --record` for a new version,
   `generate_rust_tables.py`, `verify.sh`.
+- Voice, as done for Tempester Voice 1.5.1.0: the source `patch/voice/<name>.s` and `voice_recipe_build.py
+  work/Voice_1.5.bin <scratch>` (`asm_resolve.py --voice` → the hand encoder `pic24_asm.py`, each word decoded back →
+  `asm_generate_json.py --voice`); `verify.sh` rebuilds every recipe from its source (`--check`). Or with Ghidra:
+  `asm_resolve.py --voice` → `Assembler.java` (`IMG=Voice_1.5.pic24.bin`) → `asm_generate_json.py --voice
+  work/Voice_1.5.bin …` → `patch/voice/<name>.json`; `build_version.py versions/voice/<v>.json work/Voice_1.5.bin
+  <folder> --record`; the simulation proof on `tools/pic24_sim.py` before any go.

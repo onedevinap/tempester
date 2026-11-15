@@ -12,6 +12,8 @@ Prints the counts per patch.
 --check   exit 1 when a recipe file is not exactly what the writer gives for its words (a hand-made literal that
           should be a copy, a stale classification), or when a file is still in the former format.
 --report  writes the provenance report (counts per patch, every (b) and (a=) edit, no DSI byte) to <out.md>.
+--voice   the image is the DSI Voice 1.5 file and the recipes are Voice ones (patch/voice/*.json, "cpu": "dspic33f");
+          --check and --write as above, no --report.
 The image must be DSI Main 1.5.0.2 (SHA-256 checked against each patch). Writes nothing else; sends nothing."""
 import importlib.util
 import json
@@ -45,8 +47,9 @@ def former_words(spec: dict, image: 'writer.Image', name: str) -> tuple[list, di
 
 def recipe_words(spec: dict, image: 'writer.Image', name: str) -> tuple[list, dict]:
     whys = {}
+    edit_words = recipe.pic24_edit_words if recipe.cpu_of(spec) == 'dspic33f' else recipe.edit_words
     for edit in spec['edits']:
-        for address, _ in recipe.edit_words(edit, image.data, name):
+        for address, _ in edit_words(edit, image.data, name):
             whys[address] = edit.get('why', '')
     words = [writer.Word(a, v, whys[a]) for a, v in recipe.resolve(spec, image.data, name)]
     head = {k: v for k, v in spec.items() if k not in ('format', 'input_sha256', 'edits')}
@@ -114,10 +117,12 @@ def report(rows: list[tuple[str, Counter, list[dict], dict]]) -> str:
 
 def main() -> None:
     args = sys.argv[1:]
-    flags = {a for a in args if a in ('--write', '--check')}
+    flags = {a for a in args if a in ('--write', '--check', '--voice')}
     out_md = args[args.index('--report') + 1] if '--report' in args else None
+    if out_md and '--voice' in flags:
+        sys.exit('refused: --report is for the Main recipes')
     files = [Path(a) for a in args if a not in flags and a != '--report' and a != out_md]
-    image = writer.Image(files.pop(0).read_bytes())
+    image = writer.Image(files.pop(0).read_bytes(), 'dspic33f' if '--voice' in flags else 'pic32mx')
     rows, bad = [], []
     for path in sorted(files, key=lambda p: p.name):
         out, items, former, canonical = classify_file(path, image)

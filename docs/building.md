@@ -141,6 +141,9 @@ The app does this for you (OS update page). To do it by hand, or to check the ap
    It applies the version's patches (each is a recipe: see the [recipe format](patch-recipe-format.md)), refuses
    overlaps and any change to the update page, re-encodes the `.syx`, decodes it back, and compares the image and the
    `.syx` with the SHA-256 recorded in the manifest. It prints both hashes; a difference is an error.
+   A Tempester Voice version builds the same way from the official Voice file: decode `Tempest_Voice_1.5.syx` to
+   `work/Voice_1.5.bin`, then `python3 -I tools/build_version.py versions/voice/1.5.1.2.json work/Voice_1.5.bin build/`
+   (it also refuses any change to the chip's boot and calibration pages and to its update entry).
 4. Send the resulting `.syx` with the app (*Or any OS file*: it recognises a Tempester version by its hash) or with
    Sequential's method. Read [Before you install](user-manual.md#before-you-install-a-tempester-version) first.
 

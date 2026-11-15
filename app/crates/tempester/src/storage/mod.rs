@@ -7,6 +7,7 @@ pub mod installed;
 pub mod names;
 pub mod settings;
 pub mod stamp;
+pub mod voice_state;
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;

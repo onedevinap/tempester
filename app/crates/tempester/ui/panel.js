@@ -15,6 +15,7 @@
    Tempester.panel.setLocal(name, val)   the BPM knob moved elsewhere (the Play page)
    Tempester.panel.setValues(values)     the 127 values of a sound (sync)
    Tempester.panel.setValue(index, val)  one value (a knob turned on the machine)
+   Tempester.panel.setMax(index, max)    the maximum of one parameter for the OS of the machine (n°63)
    Tempester.panel.setSoundName(name)    name shown on the LCD
    Tempester.panel.setRemote(on)         the remote panel answered (or not): enables the keys and Volume
    Tempester.panel.setLeds(changes)      [[index, 0|1], ...] LED changes of the machine, mirrored on keys and pads; the
@@ -1222,6 +1223,14 @@ window.Tempester.panel = (function () {
     });
     maj();
   }
+  /* The maximum of parameter `index` for the OS of the machine (n°63 caps the Releases at 123): the knob's range
+     follows, and a value above it is shown as the maximum, as the machine shows it. */
+  function setMax(index, max) {
+    if (!T[index] || T[index][1] === max) return;
+    T[index][1] = max;
+    v[index] = Math.min(v[index], max);
+    maj();
+  }
   function setSoundName(name) {
     etat.son = name;
     dessinerEcran();
@@ -1230,6 +1239,7 @@ window.Tempester.panel = (function () {
     mount,
     setValues,
     setValue,
+    setMax,
     setLocal,
     setSoundName,
     setRemote,

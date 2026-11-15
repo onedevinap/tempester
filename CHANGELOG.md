@@ -8,6 +8,52 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ### [Unreleased]
 
+### [0.1.2] - 2026-11-15
+
+#### Added
+
+- **Support for Tempester OS 1.6.6.0 to 1.6.9.0** (1.6.9.0 is the release the app offers).
+- **Full machine backup** (Backup page, Tempester 1.6.6.0 or later): the app asks the machine for its full backup (the
+  six voice chips with their calibration, the Main boot flash and its configuration words, the System settings with
+  the MIDI channel of each pad), checks every message and its order, and saves a dated folder with the messages as
+  received, the System settings file rebuilt from them, the pad channels, a manifest and a report. Each Voice row
+  names the chip's Voice OS (Tempester Voice when its program pages equal the built image, the official Voice 1.5, or
+  an unknown build), says whether those pages equal the Voice update last sent, and whether the calibration page is
+  unchanged since the previous full backup. The files are for a programmer restore and are never sent back. Before
+  Tempester 1.6.8.0 the page allows one full backup per power-on (a second one stops the voice chips) until you
+  confirm the machine was powered off and on; a Voice message the machine could not read (1.6.8.0's empty message)
+  is refused with the same advice.
+- **Tempester Voice on the OS update page**: a Voice card builds Tempester Voice 1.5.1.2 from your own
+  `Tempest_Voice_1.5.syx` (its SHA-256 checked, the result checked against the version's three hashes) and sends it to
+  the six voice chips at once, with the Main update's confirmations and progress, a warning that one update goes to
+  all six chips and what a power cut means, a full backup asked before and after, and a warning when the machine
+  reported a Main older than 1.6.9.0 (or none). Tempester Voice 1.5.1.0 and 1.5.1.1 are in the Voice history,
+  marked *Superseded*, and are no longer built or sent.
+- **Machine identity**: the Voice OS of each of the six chips (Tempester 1.6.7.0 and later report it); the rows
+  « Full machine backup », « Release up to 127 with Tempester Voice », « Voice versions reported » and « Repeated full
+  backups »; the Release rows say whether the lift to 127 is active, and why not.
+- **Release maxima follow the machine**: the Panel page, the NRPN commands and the edit history stop Pitch, Filter,
+  Aux 1 and Aux 2 Release at 123 on 1.6.6.0, and let the five Releases reach 127 when the machine reports six
+  Tempester Voice chips (1.6.7.0 and 1.6.8.0: Voice 1.5.1.0 / 1.5.1.1; 1.6.9.0: any Tempester Voice).
+- **Library**: a project's card shows the Quantize it records, fine values included (Tempester 1.6.5.0).
+
+#### Changed
+
+- **OS update page**: the choices are grouped by OS (Main OS, Voice OS), each with its recommended cards and its
+  read-only History; a filter shows every OS or one; every group, card and history folds; a card's Build button sits
+  in its header, so a folded card still builds; the Voice group says on how many chips the machine reports Tempester
+  Voice.
+- **Back to DSI 1.5.0.2** says that it changes the Main only: voice chips on Tempester Voice keep it until the
+  official Voice file is sent.
+
+#### Fixed
+
+- The Machine identity card showed « Release capped at 123 » and « Release up to 127 with Tempester Voice » both as
+  available.
+- At the window's minimum width (900 px) the top bar ran past the window and every page scrolled sideways.
+- The Machine, Backup and OS update pages use 17 px text (15 px before).
+- A long OS card title ran over the card's summary; card headers now wrap.
+
 ### [0.1.1] - 2026-11-13
 
 #### Added
@@ -115,7 +161,46 @@ First public version.
 
 ## Firmware
 
-Each version is built from the official Main OS 1.5.0.2 by the user; Voice, Panel and SAM are unchanged.
+Each version is built from the official Main OS 1.5.0.2 by the user; Panel and SAM are unchanged, and the Voice chips
+keep the official Voice 1.5 unless Tempester Voice (below) is installed.
+
+### [1.6.9.0] - 2026-11-15, installed
+
+- n°65: every Tempester Voice counts as Tempester Voice (a version word `0016`-`0079`; 1.6.7.0 and 1.6.8.0 took
+  exactly `0016`): Tempester Voice 1.5.1.2 keeps the Release knobs up to 127 and its place in a second full backup.
+  Nothing else changes. **Install it before Tempester Voice 1.5.1.2.**
+- Test version 1.6.9.0-a holds n°65 alone.
+- Installed with the author's go on 15 November 2026: it answers 1.6.9.0 to the exact-version request; two full backups
+  in a row identical; then Tempester Voice 1.5.1.2, reported as six `0017`, two full backups in a row identical again.
+
+### [1.6.8.0] - 2026-11-14, installed
+
+- n°62 (1.6.8.0 form): a second full backup, or Debug-menu Voice dump, in the same power-on no longer reads a voice
+  chip past the end of its flash, which stopped the voices until power-off: a Tempester Voice chip is brought back to
+  its beginning, a chip on the official Voice OS is read once per power-on (a second request gets an empty message for
+  it: power the machine off and on).
+- Test version 1.6.8.0-a holds it alone.
+- Installed on 14 November 2026 with Tempester Voice 1.5.1.1: two full backups in a row, identical, the voices still
+  playing.
+
+### [1.6.7.0] - 2026-11-13, installed
+
+- n°63 (1.6.7.0 form): the five Release parameters go up to 127 again when the six voice chips answered at power-on as
+  Tempester Voice, whose releases always end (up to 60 s); otherwise they stay at 123.
+- n°64: the exact-version request is followed by `F0 01 28 45` with the Voice OS version of each of the six chips.
+- Test version 1.6.7.0-a holds both.
+- Installed on 14 November 2026 with Tempester Voice 1.5.1.0: six chips reported, the Release knobs reach 127 (heard).
+  Its full backup stops the voices on a second request in the same power-on: one per power-on, fixed in 1.6.8.0.
+
+### [1.6.6.0] - 2026-11-13, installed
+
+- n°62: full backup over MIDI, request `F0 01 28 44 F7`: the six voice chips with their calibration, the Main boot
+  flash and its configuration words, the System settings with the pad channels, as eight messages on the SysEx cable;
+  every Debug-menu Voice dump starts at the beginning of the chip. One per power-on (see 1.6.8.0).
+- n°63: Pitch, Filter, Aux 1 and Aux 2 Release stop at 123 like Amp Release, on the knob, over NRPN, on the screen and
+  when a sound is loaded: at 124-127 the official voices never end the release.
+- Test versions 1.6.6.0-a (n°62) and -b (n°62 + n°63).
+- Installed on 13 November 2026: the first full backup of the machine.
 
 ### [1.6.5.0] - 2026-11-12, installed and verified
 
@@ -167,7 +252,8 @@ For a player:
 - Test versions 1.6.4.0-a, -b, -c and -d hold n°37, n°38, n°39-n°40 and n°41-n°46, to prove each group alone.
 - Not made: n°42 (slave Start: the suspected cause was disproved) and n°47 (Copy Beat onto the playing beat).
 - Installed over USB on 10 November 2026 (the machine had to be power-cycled by hand after the send): the exact version
-  is answered and the Main OS dump equals the built image; hand tests of the new behaviours are still to do.
+  is answered and the Main OS dump equals the built image; n°38, n°40, n°41 and n°43-n°46 tried by hand the same day,
+  as simulated.
 
 ### [1.6.3.0] - 2026-11-09, installed and verified
 
@@ -244,3 +330,40 @@ The fixes of 1.5.1.0 to 1.5.5.0 with the sound and beat requests and NRPN, plus 
 - n°6: USB SysEx import no longer cut by DIN traffic.
 - n°7a, n°7b, n°7c: Play List freezes (empty step, RT REC) and RT REC past 100 steps.
 - n°8: Loop Screen freeze outside 4/4.
+
+## Tempester Voice
+
+Each version is built from the official Voice OS 1.5 by the user and sent to the six voice chips at once. The boot page
+and each chip's calibration page are never written. Details: [docs/firmware.md](docs/firmware.md#tempester-voice).
+
+### [1.5.1.2] - 2026-11-15, installed
+
+- n°66: a version word of its own, `0017` (« 1.7 » on the System screen), so the machine and the app can tell it from
+  1.5.1.0 / 1.5.1.1 (`0016`). Nothing else changes.
+- **Needs Main Tempester 1.6.9.0 first**: on 1.6.7.0 or 1.6.8.0 a 1.5.1.2 chip keeps the Release knobs at 123 and is
+  read once per power-on by the full backup.
+- Installed on the six chips on 15 November 2026 after Main 1.6.9.0: six `0017` reported, each chip's program pages
+  equal to the built image, its calibration unchanged, two full backups in a row identical.
+
+### [1.5.1.1] - 2026-11-14, installed, superseded
+
+- The dump stream goes back to the beginning at the end of the flash: no read, whatever the Main (a second full
+  backup on 1.6.6.0 or 1.6.7.0, the Debug-menu Voice dump twice), can stop the chip. Version word `0016`, like 1.5.1.0.
+- Installed on the six chips on 14 November 2026 with Main 1.6.8.0. Superseded by 1.5.1.2 on 15 November 2026: no
+  longer built or sent by the app.
+
+### [1.5.1.0] - 2026-11-13, installed, superseded
+
+The first Tempester Voice:
+
+- a cut sound message no longer silences a voice for good: the chip finds its place again within a few milliseconds;
+- a stray calibration command can no longer mute a voice: the chip calibrates only when the Main asks for it;
+- a full message queue no longer looks empty and throws away a whole sound;
+- a chip that hits an internal error restarts with its voice number instead of staying stuck;
+- a half-written calibration page is not used (the default tuning instead, as when no page was saved);
+- a note after a cut-off Note FX note no longer plays with the previous sound's settings;
+- the dump stream starts again at the Main's start, so a full backup stays in step;
+- Release 101-127 rise smoothly up to 60 s at 127 (0-100 as before; 124-127 no longer hold forever);
+- version word `0016` (« 1.6 » on the System screen), so Tempester 1.6.7.0 and later can lift the Release limit.
+- Installed on the six chips on 14 November 2026 (with Main 1.6.6.0, then 1.6.7.0), a full backup before and after.
+  Superseded by 1.5.1.1 on 15 November 2026.

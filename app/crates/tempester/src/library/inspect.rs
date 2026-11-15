@@ -120,6 +120,7 @@ fn inspect_sound(bytes: &[u8], fallback_name: &str) -> Result<Facts, AppError> {
         facets: Facets {
             sound_type: sound_type_of(&file_name),
             osc: oscillators_of(&sound),
+            quantize: None,
         },
         beats: None,
         signature: String::new(),
@@ -180,6 +181,10 @@ fn inspect_project(bytes: &[u8]) -> Result<Facts, AppError> {
         .filter(|m| detect_kind(m) == Some(Kind::Projects))
         .ok_or_else(|| invalid("project", "no project header (5E)"))?;
     let header = header_data(first)?;
+    let quantize = project::read_header(&header)
+        .ok()
+        .and_then(|(read, _)| read.quantize)
+        .map(|q| q.label().to_string());
     let mut canonical = standard_message(project::CMD_PROJECT_HEADER, &[], &header);
     let mut decoded = header;
     let mut signature = Vec::new();
@@ -203,7 +208,10 @@ fn inspect_project(bytes: &[u8]) -> Result<Facts, AppError> {
         name: String::new(),
         hash: sha256_hex(&decoded),
         canonical,
-        facets: Facets::default(),
+        facets: Facets {
+            quantize,
+            ..Facets::default()
+        },
         beats: Some(signature.len()),
         signature: format!("{BEATS}|{}", signature.join("|")),
     })
@@ -360,5 +368,35 @@ mod tests {
         assert_eq!(osc.len(), 4);
         assert_eq!(osc[0], "Shape 57");
         assert_eq!(osc[2], "Sample/Noise 20 bank 2");
+    }
+
+    #[test]
+    fn test_inspect_when_project_records_fine_quantize_returns_its_label_and_the_same_words_back() {
+        let mut words: Vec<u16> = (0..44).map(|w| 0xA000 + w).collect();
+        words[0] = 5;
+        words[4] = 7 << 8;
+        words[18] = 0x5107;
+        words.extend([2, 0xFEFE, 0xFEFE, 0xFEFE, 0xFEFE]);
+        let header: Vec<u8> = words.iter().flat_map(|w| w.to_be_bytes()).collect();
+        let mut messages = crate::machine::fake_machine::project_messages();
+        messages[0] = project::header_data_message(&header);
+
+        let facts = inspect(Kind::Projects, &messages.concat(), "").unwrap();
+
+        assert_eq!(facts.facets.quantize.as_deref(), Some("16 Quint"));
+        let kept = header_data(messages_of(&facts.canonical)[0]).unwrap();
+        assert_eq!(kept, header, "the library file keeps every parameter word");
+    }
+
+    #[test]
+    fn test_inspect_when_project_has_an_official_quantize_returns_its_label() {
+        let messages = crate::machine::fake_machine::project_messages();
+
+        let facts = inspect(Kind::Projects, &messages.concat(), "").unwrap();
+
+        assert_eq!(facts.facets.quantize.as_deref(), Some("1/4"));
+        let file = sound_message::encode_file("/S/Kicks/Kick", &sound("Kick", 40)).unwrap();
+        let sound = inspect(Kind::Sounds, &file, "x").unwrap();
+        assert_eq!(sound.facets.quantize, None, "only a project has one");
     }
 }

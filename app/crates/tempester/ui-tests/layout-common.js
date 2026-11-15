@@ -1,6 +1,6 @@
 /* What the browser tests of the Panel page share (layout-stability.js, layout-overlap.js): the standalone preview
    built from a UI folder (tools/preview_ui.py, a stub bridge, nothing is sent), served on 127.0.0.1 by
-   `python3 -m http.server`, and the browsers (Chrome, WebKit through playwright-core).
+   `python3 -I -m http.server`, and the browsers (Chrome, WebKit through playwright-core).
    env: PLAYWRIGHT_CORE (path of the playwright-core package; default: the npx cache), CHROME (Chrome binary),
         PLAYWRIGHT_BROWSERS_PATH (where WebKit is installed, when HOME is not the real one). */
 "use strict";
@@ -42,6 +42,7 @@ function serve(workDir, port) {
   return spawn(
     "python3",
     [
+      "-I",
       "-m",
       "http.server",
       String(port),

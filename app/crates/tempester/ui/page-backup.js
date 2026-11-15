@@ -150,6 +150,10 @@
         "div",
         { class: "split fill" },
         el(
+          "div",
+          { class: "stack" },
+          window.Tempester.fullBackup.build().section,
+        el(
           "section",
           { class: "panel", "aria-label": S.receivedTitle },
           el("div", { class: "panel-head" }, el("h3", {}, S.receivedTitle)),
@@ -171,6 +175,7 @@
               els.table,
             ),
           ),
+        ),
         ),
         el(
           "section",

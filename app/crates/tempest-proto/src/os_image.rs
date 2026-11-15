@@ -112,12 +112,17 @@ pub fn checksum(image: &[u8]) -> u16 {
 
 /// Builds the SysEx file of `image` for chip `id`.
 pub fn encode(id: OsId, image: &[u8]) -> Result<Vec<u8>, OsImageError> {
+    encode_with_id(id as u8, image)
+}
+
+/// The same layout under any command byte: the full backup's messages (`full_backup`) are laid out like OS files.
+pub(crate) fn encode_with_id(id: u8, image: &[u8]) -> Result<Vec<u8>, OsImageError> {
     if image.is_empty() || !image.len().is_multiple_of(BLOCK_SIZE) {
         return Err(OsImageError::BadImageSize(image.len()));
     }
     let ck = checksum(image);
     let mut out = DSI_PREFIX.to_vec();
-    out.push(id as u8);
+    out.push(id);
     for block in image.chunks(BLOCK_SIZE) {
         out.extend(pack(block));
     }
@@ -128,32 +133,49 @@ pub fn encode(id: OsId, image: &[u8]) -> Result<Vec<u8>, OsImageError> {
 /// Decodes and fully checks an OS file: header, id, end marker, block framing and count, checksum.
 pub fn decode(syx: &[u8]) -> Result<OsImage, OsImageError> {
     let id = check_frame(syx)?;
+    let (image, checksum) = decode_body(syx, |found| {
+        if found == id.blocks() {
+            Ok(())
+        } else {
+            Err(OsImageError::BlockCount {
+                id,
+                expected: id.blocks(),
+                found,
+            })
+        }
+    })?;
+    Ok(OsImage {
+        id,
+        image,
+        checksum,
+    })
+}
+
+/// The image and checksum of a message laid out like an OS file, whatever its command byte. `blocks_ok` judges the
+/// block count before anything else is read; the frame (header, id, end marker) is the caller's to check.
+pub(crate) fn decode_body<E: From<OsImageError>>(
+    syx: &[u8],
+    blocks_ok: impl FnOnce(usize) -> Result<(), E>,
+) -> Result<(Vec<u8>, u16), E> {
+    if syx.len() < FRAME_OVERHEAD {
+        return Err(OsImageError::TooShort(syx.len()).into());
+    }
     let body = &syx[4..syx.len() - 3];
     let blocks = body.len() / PACKED_BLOCK_SIZE;
     if !body.len().is_multiple_of(PACKED_BLOCK_SIZE) || blocks == 0 {
-        return Err(OsImageError::BadLength(body.len()));
+        return Err(OsImageError::BadLength(body.len()).into());
     }
-    if blocks != id.blocks() {
-        return Err(OsImageError::BlockCount {
-            id,
-            expected: id.blocks(),
-            found: blocks,
-        });
-    }
+    blocks_ok(blocks)?;
     if let Some(at) = syx[4..syx.len() - 1].iter().position(|b| *b >= 0x80) {
-        return Err(OsImageError::NotSevenBit(at + 4));
+        return Err(OsImageError::NotSevenBit(at + 4).into());
     }
     let image: Vec<u8> = body.chunks(PACKED_BLOCK_SIZE).flat_map(unpack).collect();
     let stored = u16::from(syx[syx.len() - 3]) | u16::from(syx[syx.len() - 2]) << 7;
     let computed = checksum(&image);
     if stored != computed {
-        return Err(OsImageError::Checksum { stored, computed });
+        return Err(OsImageError::Checksum { stored, computed }.into());
     }
-    Ok(OsImage {
-        id,
-        image,
-        checksum: computed,
-    })
+    Ok((image, computed))
 }
 
 fn check_frame(syx: &[u8]) -> Result<OsId, OsImageError> {

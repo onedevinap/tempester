@@ -599,7 +599,7 @@ dependencies = [
 
 [[package]]
 name = "tempest-proto"
-version = "0.1.1"
+version = "0.1.2"
 
 [[package]]
 name = "tempester-plugin"

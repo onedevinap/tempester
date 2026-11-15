@@ -299,3 +299,277 @@ fn test_os_send_when_main_send_fails_returns_no_installed_record() {
     assert_eq!(finished.field("state"), Some(&"failed".into()));
     assert_eq!(rig.machine.storage.installed_os(), None);
 }
+// ---- Tempester Voice OS (an update `72` goes to the six chips at once) ----
+
+use tempest_proto::voice_recipe::{put_word, VoiceEdit, VoiceOp};
+use tempest_proto::voice_versions::{self, VoiceKind, VoicePatch, VoiceVersion};
+
+fn voice_original() -> Vec<u8> {
+    let mut image: Vec<u8> = (0..OsId::Voice.blocks() * 1024)
+        .map(|i| (i.wrapping_mul(97) ^ (i >> 4)) as u8)
+        .collect();
+    put_word(&mut image, 0, 0x04_15F0);
+    put_word(&mut image, 2, 0);
+    image
+}
+
+/// A synthetic Voice version over a synthetic original, and the DSI-style file of that original. `image_hash` and
+/// `syx_hash` replace the honest reference hashes (a stale or tampered manifest).
+fn synthetic_voice(image_hash: Option<&str>, syx_hash: Option<&str>) -> (VoiceVersion, Vec<u8>) {
+    let original = voice_original();
+    let patch: &'static VoicePatch = leak(VoicePatch {
+        name: "pv",
+        file: "patch/voice/pv.json",
+        input_sha256: Box::leak(sha256_hex(&original).into_boxed_str()),
+        edits: Box::leak(
+            vec![VoiceEdit {
+                address: 0x1000,
+                count: 1,
+                op: VoiceOp::Word(0x12_3456),
+            }]
+            .into_boxed_slice(),
+        ),
+    });
+    let honest = voice_versions::build_voice_from_image(&[patch], &original).expect("build");
+    let text = |given: Option<&str>, honest: &[u8]| -> &'static str {
+        Box::leak(
+            given
+                .map_or_else(|| sha256_hex(honest), str::to_string)
+                .into_boxed_str(),
+        )
+    };
+    let version = VoiceVersion {
+        version: "0.0.0.2",
+        name: "synthetic voice",
+        kind: VoiceKind::Test,
+        date: "2026-01-01",
+        summary: "",
+        changes: Changes::default(),
+        description: "",
+        sha256_image: text(image_hash, &honest.image),
+        sha256_image_written: text(None, voice_versions::sent_range(&honest.image)),
+        sha256_syx: text(syx_hash, &honest.syx),
+        patches: Box::leak(vec![patch].into_boxed_slice()),
+    };
+    let dsi = os_image::encode(OsId::Voice, &original).expect("synthetic DSI Voice file");
+    (version, dsi)
+}
+
+#[test]
+fn test_build_voice_ready_when_hashes_match_returns_a_voice_file_for_all_chips_the_fake_accepts() {
+    let mut rig = TestRig::connected("voice-match");
+    fast(&mut rig);
+    let (version, dsi) = synthetic_voice(None, None);
+
+    rig.machine
+        .guard_ready("os_build_voice", |m| m.build_voice_ready(&version, &dsi));
+    let ready = rig.expect("os_ready");
+    rig.machine.handle(Command::OsSend);
+    let finished = rig.wait_for("os_finished");
+
+    assert_eq!(ready.field("chip"), Some(&"Voice".into()));
+    assert_eq!(ready.field("id"), Some(&0x72u8.into()));
+    assert_eq!(ready.field("all_chips"), Some(&true.into()));
+    assert_eq!(ready.field("known"), Some(&true.into()));
+    assert_eq!(
+        ready.field("label"),
+        Some(&"Tempester Voice 0.0.0.2".into())
+    );
+    assert_eq!(finished.field("state"), Some(&"done".into()));
+    assert_eq!(
+        sha256_hex(&rig.transport().sent_bytes()),
+        version.sha256_syx,
+        "the fake machine took the whole Voice update, nothing else"
+    );
+    assert_eq!(
+        rig.machine.storage.installed_os(),
+        None,
+        "a Voice update leaves the Main record alone"
+    );
+}
+
+#[test]
+fn test_build_voice_ready_when_sent_to_the_end_returns_the_voice_record_and_the_dsi_pages_hash() {
+    let mut rig = TestRig::connected("voice-record");
+    fast(&mut rig);
+    let (version, dsi) = synthetic_voice(None, None);
+    rig.machine
+        .guard_ready("os_build_voice", |m| m.build_voice_ready(&version, &dsi));
+    rig.events();
+
+    rig.machine.handle(Command::OsSend);
+    rig.wait_for("os_finished");
+
+    let record = rig.machine.storage.voice_installed().expect("record");
+    assert_eq!(record.version, "0.0.0.2");
+    assert_eq!(record.pages_sha256, version.sha256_image_written);
+    let origin = os_image::decode(&dsi).expect("decodes").image;
+    assert_eq!(
+        rig.machine.storage.voice_dsi_pages(),
+        Some(sha256_hex(voice_versions::sent_range(&origin)))
+    );
+}
+
+#[test]
+fn test_build_voice_ready_when_any_hash_is_altered_returns_error_and_nothing_ready() {
+    for (label, image, syx) in [
+        ("voice-image", Some("0".repeat(64)), None),
+        ("voice-syx", None, Some("f".repeat(64))),
+    ] {
+        let mut rig = TestRig::connected(label);
+        let (version, dsi) = synthetic_voice(image.as_deref(), syx.as_deref());
+
+        rig.machine
+            .guard_ready("os_build_voice", |m| m.build_voice_ready(&version, &dsi));
+
+        let events = rig.events();
+        assert!(events.iter().all(|e| e.name != "os_ready"), "{label}");
+        let refusal = events.iter().find(|e| e.name == "error").expect("refusal");
+        assert!(
+            refusal
+                .render()
+                .contains("does not match the reference of Tempester Voice 0.0.0.2"),
+            "{}",
+            refusal.render()
+        );
+        assert!(rig.machine.pending_os.is_none(), "{label}");
+        assert!(rig.transport().sent().is_empty(), "{label}");
+        assert_eq!(rig.machine.storage.voice_dsi_pages(), None, "{label}");
+    }
+}
+
+#[test]
+fn test_os_build_voice_when_the_file_is_the_main_or_the_version_is_unknown_returns_error() {
+    let mut rig = TestRig::new("voice-wrong-file");
+    let (_, main) = synthetic(None, None);
+
+    rig.machine.handle(Command::OsBuildVoice {
+        version: "1.5.1.2".into(),
+        data: main,
+    });
+    rig.machine.handle(Command::OsBuildVoice {
+        version: "9.9.9.9".into(),
+        data: Vec::new(),
+    });
+
+    assert_eq!(
+        error_codes(&mut rig),
+        vec![Some("invalid".into()), Some("invalid".into())]
+    );
+    assert!(rig.machine.pending_os.is_none());
+}
+
+/// The refusal event of a superseded Voice version, after which nothing is ready, sent or recorded.
+fn assert_superseded_refusal(rig: &mut TestRig, version: &str) {
+    let events = rig.events();
+    assert!(events.iter().all(|e| e.name != "os_ready"), "{version}");
+    let refusal = events.iter().find(|e| e.name == "error").expect("refusal");
+    assert!(
+        refusal
+            .render()
+            .contains(&format!("Tempester Voice {version} is superseded")),
+        "{}",
+        refusal.render()
+    );
+    assert!(rig.machine.pending_os.is_none(), "{version}");
+    assert!(rig.transport().sent().is_empty(), "{version}");
+    assert_eq!(rig.machine.storage.voice_dsi_pages(), None, "{version}");
+}
+
+#[test]
+fn test_build_voice_ready_when_the_version_is_superseded_returns_error_before_building() {
+    let mut rig = TestRig::connected("voice-superseded");
+    let (mut version, dsi) = synthetic_voice(None, None);
+    version.kind = VoiceKind::Superseded;
+
+    rig.machine
+        .guard_ready("os_build_voice", |m| m.build_voice_ready(&version, &dsi));
+
+    assert_superseded_refusal(&mut rig, "0.0.0.2");
+}
+
+#[test]
+fn test_os_build_voice_when_the_version_is_1_5_1_0_returns_superseded_and_nothing_ready() {
+    // Tempester Voice 1.5.1.0 is no longer offered (author, 15/11/2026): the refusal comes from the table's kind,
+    // before the DSI file is read, so no file is needed here.
+    let mut rig = TestRig::connected("voice-1510");
+
+    rig.machine.handle(Command::OsBuildVoice {
+        version: "1.5.1.0".into(),
+        data: Vec::new(),
+    });
+
+    assert_superseded_refusal(&mut rig, "1.5.1.0");
+}
+
+#[test]
+fn test_os_send_when_a_voice_send_is_cancelled_half_way_returns_no_voice_record() {
+    let mut rig = TestRig::connected("voice-cancel");
+    rig.machine.rate = 400_000;
+    let (version, dsi) = synthetic_voice(None, None);
+    rig.machine
+        .storage
+        .set_voice_installed(Some(&VoiceInstalled {
+            version: "0.0.0.1".into(),
+            at: "2026-11-13_100000Z".into(),
+            pages_sha256: "a".repeat(64),
+        }))
+        .expect("stored");
+    rig.machine
+        .guard_ready("os_build_voice", |m| m.build_voice_ready(&version, &dsi));
+    rig.events();
+
+    rig.machine.handle(Command::OsSend);
+    rig.wait_for("os_progress");
+    rig.machine.handle(Command::OsCancel);
+    let finished = rig.wait_for("os_finished");
+
+    assert_eq!(finished.field("state"), Some(&"cancelled".into()));
+    assert_eq!(
+        rig.machine.storage.voice_installed(),
+        None,
+        "the chips hold a half-written OS: no version may be claimed"
+    );
+}
+
+#[test]
+fn test_identify_when_a_voice_file_is_not_in_the_generated_table_returns_unknown() {
+    let (version, dsi) = synthetic_voice(None, None);
+    let built =
+        voice_versions::build_voice_from_image(version.patches, &voice_original()).expect("build");
+    let os = os_image::decode(&built.syx).expect("decodes");
+
+    assert_eq!(identify(&os, &sha256_hex(&built.syx), &[]), Origin::Unknown);
+    assert_eq!(
+        identify(
+            &os_image::decode(&dsi).expect("decodes"),
+            &sha256_hex(&dsi),
+            &[]
+        ),
+        Origin::Unknown
+    );
+}
+
+#[test]
+fn test_os_validate_when_a_voice_file_is_sent_unknown_the_fake_accepts_it_without_a_record() {
+    let mut rig = TestRig::connected("voice-unknown");
+    fast(&mut rig);
+    let (_, dsi) = synthetic_voice(None, None);
+    rig.machine.handle(Command::OsValidate {
+        name: "my voice.syx".into(),
+        data: dsi.clone(),
+    });
+    let ready = rig.expect("os_ready");
+
+    rig.machine.handle(Command::OsSendUnknown);
+    rig.wait_for("os_finished");
+
+    assert_eq!(ready.field("known"), Some(&false.into()));
+    assert_eq!(ready.field("all_chips"), Some(&true.into()));
+    assert_eq!(rig.transport().sent_bytes(), dsi);
+    assert_eq!(
+        rig.machine.storage.voice_installed(),
+        None,
+        "the app cannot say what the chips hold after a file it does not know"
+    );
+}

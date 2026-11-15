@@ -1,0 +1,13 @@
+{
+ "format": "tempester-recipe/1",
+ "cpu": "dspic33f",
+ "name": "notefx_burst",
+ "image": "Voice 1.5",
+ "input_sha256": "a0ac129b327aa0d58ae5d009541baabc49c565d8623a2fae73583ddf118a49b6",
+ "explanation": "Tempester Voice, item 7: a new patch burst ends the « Note FX received, note pending » state (the Voice OS study §4.4). After a Note FX block the voice drops sound parameters ([address] = 1) until the note word 0xB4 clears it. The Main sends 0xB4 about 17 Timer 2 passes after the burst and the Note FX block; a voice reset or a new note-on in that window (choke, voice stealing: +0x10 / +0x12 of the Main's voice table rewritten) never sends that 0xB4, the state stays 1, and the next note's burst words dispatched before its own Note FX block are dropped: that note plays with the previous sound's parameters. 0xF000 now clears the state. The drop between a Note FX block and its own note is kept (DSI's design: the 0x21 exception and the Main's [address] after the block).",
+ "edits": [
+  {"at": "0x006692", "bra": "0x007300", "why": "bra [address] ; end of the 0xF000 handler"},
+  {"at": "0x007300", "word": "be2fef", "why": "clr [address]"},
+  {"at": "0x007302", "bra": "0x006576", "why": "bra [address]"}
+ ]
+}

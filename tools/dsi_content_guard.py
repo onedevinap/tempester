@@ -21,7 +21,10 @@ Fails (exit 1) and names file, line and DSI location on:
      in file order, and per line, then checked as in 2. So two DSI words kept as two consecutive JSON fields, or
      written one after the other in a sentence, are caught. A blank line ends a run: values on either side of an
      empty line are never joined (two recipes of a generated table, two paragraphs of a document), each side being
-     checked on its own.
+     checked on its own;
+  4. two Voice words quoted one after the other (6 hex digits, the literal word of a Voice recipe, both byte orders,
+     per label and per line as in 3) equal to a distinctive pair of consecutive 24-bit instructions of the Voice image
+     (recipe.pic24_commonplace: the same rule on 6 bytes).
 The threshold and its justification: Docs/patch-recipe-format.md ("What the guard refuses")."""
 import importlib.util
 import re
@@ -47,6 +50,7 @@ HEX_RUN = re.compile(r'(?<![0-9A-Za-z_])(0x)?([0-9a-fA-F]{8,})(?![0-9A-Za-z_])')
 SPACED_BYTES = re.compile(r'(?<![0-9A-Za-z_])((?:[0-9a-fA-F]{2}[ ,]){7,}[0-9a-fA-F]{2})(?![0-9A-Za-z_])')
 IDENTIFIER = re.compile(r'(?<![A-Za-z_0-9])[A-Za-z_][A-Za-z_0-9]*')
 HEX_WORD = re.compile(r'[0-9a-fA-F]{8,}')
+VOICE_WORD = re.compile(r'(?<![0-9A-Za-z_])(0x)?([0-9a-fA-F]{6})(?![0-9A-Za-z_])')
 PRINTABLE = set(range(0x20, 0x7F)) | {0x09, 0x0A, 0x0D}
 TEXT_QUOTE = 24  # characters: a note for a quote of a DSI string at least this long
 
@@ -87,6 +91,23 @@ class Dsi:
             if not recipe.commonplace(first, second, count):
                 key = int.from_bytes(struct.pack('<II', first, second), sys.byteorder)
                 self.keys[key] = firsts[(first, second)]
+        self.voice_keys = self.voice_pairs()
+
+    def voice_pairs(self) -> dict[bytes, tuple[str, int]]:
+        """The distinctive pairs of consecutive 24-bit instructions of the Voice images (6 bytes, file order) with
+        their place (file, PC), by recipe.pic24_commonplace."""
+        counts: Counter = Counter()
+        firsts: dict[bytes, tuple[str, int]] = {}
+        for name, image in self.images.items():
+            if not name.startswith('Tempest_Voice_'):
+                continue
+            for offset in range(0, len(image) - 5, 3):
+                pair = image[offset:offset + 6]
+                counts[pair] += 1
+                firsts.setdefault(pair, (name, offset // 3 * 2))
+        return {pair: firsts[pair] for pair, count in counts.items()
+                if not recipe.pic24_commonplace(int.from_bytes(pair[:3], 'little'), int.from_bytes(pair[3:], 'little'),
+                                                count)}
 
     def quote_length(self, data: bytes, offset: int, where: tuple[str, int]) -> int:
         """How many bytes of data, from offset, equal the DSI image from the matched location on."""
@@ -172,6 +193,38 @@ def check_text(path: Path, text: str, dsi: Dsi) -> list[str]:
     return problems
 
 
+def voice_streams(text: str) -> dict[str, list[tuple[bytes, int, int]]]:
+    """Per label and per line, the Voice words quoted (6 hex digits, a Voice recipe's "word") as (3 bytes, line,
+    paragraph), both as written (byte order) and as values (little-endian), as text_streams does for 8 digits."""
+    streams: dict[str, list[tuple[bytes, int, int]]] = defaultdict(list)
+    paragraph = 0
+    for number, line in enumerate(text.splitlines(), 1):
+        if not line.strip():
+            paragraph += 1
+            continue
+        for column, match in enumerate(VOICE_WORD.finditer(line)):
+            data = bytes.fromhex(match.group(2))
+            name = label(line[:match.start()], column)
+            for stream in (name, f'line {number}'):
+                streams[stream + ' (as written)'].append((data, number, paragraph))
+                streams[stream + ' (as values)'].append((data[::-1], number, paragraph))
+    return streams
+
+
+def check_voice_text(path: Path, text: str, dsi: Dsi) -> list[str]:
+    """Two consecutive quoted Voice words equal to a distinctive pair of consecutive Voice instructions."""
+    problems = []
+    for name, chunks in voice_streams(text).items():
+        for previous, current in zip(chunks, chunks[1:]):
+            if previous[2] != current[2]:
+                continue
+            where = dsi.voice_keys.get(previous[0] + current[0])
+            if where:
+                problems.append(f'{path}:{current[1]}: quoted DSI Voice words ({name}) {(previous[0] + current[0]).hex()} '
+                                f'= {where[0]} PC {where[1]:#06x}')
+    return problems
+
+
 def check_file(path: Path, dsi: Dsi, strict_text: bool) -> tuple[list[str], list[str]]:
     if path.suffix.lower() in FIRMWARE_SUFFIXES:
         return [f'{path}: firmware file ({path.suffix})'], []
@@ -197,7 +250,7 @@ def check_file(path: Path, dsi: Dsi, strict_text: bool) -> tuple[list[str], list
                          f'{data[offset:offset + length].decode(errors="replace")!r}')
             quoted_until = offset + length
     if text is not None:
-        problems += check_text(path, text, dsi)
+        problems += check_text(path, text, dsi) + check_voice_text(path, text, dsi)
     return problems, notes
 
 

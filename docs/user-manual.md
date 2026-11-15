@@ -1,6 +1,6 @@
 # Tempester user manual
 
-This manual covers the Tempester app 0.1.1, the Tempester Control plugin, and the way to install a Tempester firmware
+This manual covers the Tempester app 0.1.2, the Tempester Control plugin, and the way to install a Tempester firmware
 version. For what each
 firmware version changes, see [firmware](firmware.md); for the exact MIDI messages, see [MIDI protocol](midi-protocol.md).
 
@@ -193,7 +193,11 @@ pad's note in the pad note table (Machine page), with the velocities and lengths
 - **Check the machine identity**: asks the universal identity request. The *Machine identity* panel shows the answer in
   full: device id, manufacturer, family, version word, the exact Tempester version the machine reports (a Tempester with the
   exact-version request, n°39, answers it to the same button) and every feature, resolved as *Available* or *Not in this version* from that
-  version. The official OS answers with its own version word; an older Tempester answers `0x7F2`, which says
+  version, and, from Tempester 1.6.7.0, the Voice OS of each of the six Voice chips as the Main read it at start-up
+  (*DSI 1.5*, *Tempester 1.5.1.0 or 1.5.1.1*, which answer the same word, *Tempester 1.5.1.2*, or *unknown* with the
+  raw word). With the six chips on Tempester Voice, the *Release capped at 123* row says *Lifted*; when the Main does
+  not take the chips as Tempester Voice (Voice 1.5.1.2 on Main 1.6.7.0 or 1.6.8.0), the *Release up to 127* row says
+  why it is inactive. The official OS answers with its own version word; an older Tempester answers `0x7F2`, which says
   « Tempester » but not which release: its features are then shown as « From x on » (System > *Main OS Version* on the
   machine shows the exact number). Note: the official OS answers the identity request on the DIN port only; Tempester
   answers on the cable set in System.
@@ -228,9 +232,35 @@ These work on the Tempest itself; the app follows them where it edits the data (
 - **Small fixes**: the Reverse LED follows the beat after a beat change; Pads + Sounds (« Mixer ») opens the Mixer
   after the compressor pages; in 16 Time Steps a pad lights for every note of its step.
 
+### New on the machine from Tempester 1.6.6.0
+
+- **Release values** (1.6.6.0): Pitch, Filter, Aux 1 and Aux 2 Release stop at 123 like Amp Release, because the
+  official voice chips never end a release at 124-127; a sound saved with 124-127 plays and shows as 123. With the six
+  chips on Tempester Voice the five Releases go up to 127 again (1.6.7.0; Voice 1.5.1.2 needs 1.6.9.0), and their
+  releases always end (up to 60 s at 127). The Panel page follows the machine.
+- **Full backup over MIDI** (1.6.6.0; repeatable in one power-on from 1.6.8.0): see [Backup](#backup).
+- **The Voice OS of each chip** is reported to the app (1.6.7.0): Machine page, identity panel.
+
 ## Backup
 
 ![Backup](images/backup.png)
+
+### Full machine backup (Tempester 1.6.6.0 or later)
+
+**Request full backup** asks the machine for eight messages: the whole flash of each of the six Voice chips (with
+their own calibration), the Main boot flash with its configuration words, and the System settings with the MIDI
+channel of each pad. Stop the sequencer first: while it answers, the machine shows nothing and reads no MIDI (a few
+seconds on USB, about 2 min 35 s on DIN). Each message is checked as it arrives (order, alignment, pages present,
+calibration page); **Save full backup** writes a dated folder (every message as received, the System settings file,
+the pad channels, a manifest and a report), and only when all eight passed. The Debug-menu dumps sent right after
+join the same folder.
+
+- **Before Tempester 1.6.8.0, one full backup per power-on**: a second one stops the voice chips until the machine is
+  switched off. The app refuses it until you press « I powered it off and on ». From 1.6.8.0 there is no limit.
+- A Voice message refused as misaligned or not read: power the machine off and on, then request again.
+- These files are for a programmer (PICkit) restore: the app never sends them back to the machine.
+
+### OS dumps from the Debug menu
 
 The Tempest can send its own operating systems from its hidden **Debug menu**. Capture them before any firmware change:
 
@@ -254,10 +284,24 @@ Keep these backups private: they are copies of DSI's software (see [legal notes]
 
 The page has four numbered panels:
 
-1. **Your DSI file**: choose `Tempest_Main_1.5.0.2.syx` from the official package. The app checks its SHA-256 and
-   refuses any other file.
-2. **A Tempester version**: the list, newest first, with the description of the selected one. **Build this version**
-   applies the version's patches to your file. **Back to DSI 1.5.0.2** prepares your official file unchanged.
+1. **Your DSI files**: choose `Tempest_Main_1.5.0.2.syx` from the official package. The app checks its SHA-256 and
+   refuses any other file. To build the Tempester Voice OS, also choose `Tempest_Voice_1.5.syx` (another picker, same
+   check).
+2. **A Tempester version**: the choices grouped by OS (Main OS, Voice OS), each group with its recommended cards and
+   its History (every release, newest first, to read only); a filter shows every OS or one, and every group, card and
+   history folds. **Build** on a card applies the version's patches to your file. **Back to DSI 1.5.0.2** prepares
+   your official Main file unchanged. The Voice card, **Tempester Voice 1.5.1.2**, builds the Voice OS of the six
+   sound chips from your Voice file, and the group says on how many chips the machine reports it: it goes to all six
+   chips at once (one update, no trying one chip first), the confirmation says what a power cut during the first 29 of
+   the 41 pages can do (a chip that only a programmer on its ICSP header can bring back), and it asks for a full backup
+   (Tempester 1.6.6.0 or later) right before and right after: the next full backup compares, chip by chip, pages 0-40
+   with the file just sent and the calibration page with your previous backup. Release knobs (Panel) reach 127 only
+   when the machine reports all six chips on Tempester Voice (Tempester 1.6.7.0 and 1.6.8.0: 1.5.1.0 or 1.5.1.1, which
+   answer the same version word; Tempester 1.6.9.0: any Tempester Voice, 1.5.1.2 included). **Install Main Tempester
+   1.6.9.0 before Tempester Voice 1.5.1.2**: on an older Main a 1.5.1.2 chip keeps the Release knobs at 123 and a second
+   full backup in the same power-on skips it; the confirmation warns when the Main announced an older version or none.
+   Tempester Voice 1.5.1.0 and 1.5.1.1 stay in the Voice history, marked *Superseded*: 1.5.1.2 holds the same fixes
+   with its own version word, so the app no longer builds or sends them.
    **Or any OS file** checks any `.syx` OS file (Main, Voice, Panel or SAM: id, block count, checksum) and prepares it.
 3. **Ready to send**: the file's chip, size, checksum and sending time. For a built version, *Built image matches the
    reference ✓* means the image and the `.syx` have exactly the SHA-256 values recorded for that version (shown in full
@@ -274,14 +318,16 @@ Read this section completely before the first installation.
 
 ### 1. Start from the complete official OS 1.5.0.2
 
-Tempester replaces **only the Main OS**. It is built for, and was tested with, the Voice, Panel and SAM operating
-systems of the same official package as Main 1.5.0.2. Several patches talk to the other chips and rely on what those
-versions do:
+A Tempester OS replaces **only the Main OS** (the optional Tempester Voice, a separate update, replaces the Voice OS:
+see [OS update](#os-update)). It is built for, and was tested with, the Voice, Panel and SAM operating systems of the
+same official package as Main 1.5.0.2 (and with Tempester Voice). Several patches talk to the other chips and rely on
+what those versions do:
 
 - the remote panel (n°21, n°22, n°25) uses the Panel chip's key codes and LED commands;
 - the compressor envelope fix (n°4b) and the muted-voices fix (n°17) send words to the Voice chips;
 - the Debug-menu OS senders (n°15) read the Voice and Panel chips;
-- the identity answer carries a version number read from the Voice chip.
+- the identity answer carries a version number read from the Voice chip;
+- the full backup (n°62), the Release cap (n°63) and the Voice versions (n°64) read the six Voice chips.
 
 So, first:
 
@@ -291,7 +337,7 @@ So, first:
    (`Tempest_Main_1.5.0.2.syx`, `Tempest_Voice_1.5.syx`, `Tempest_Panel_1.3.syx`, `Tempest_Sam_1.1.syx`).
 2. On the Tempest, press **System** and choose **Show System Information**. It lists *Main OS Version*, *Voice OS
    Version*, *Panel OS Version* and *Sam OS Version*. The Main must read **1.5.0.2** (or a Tempester version) and the
-   other three must be the versions of that same package. (The exact way the screen prints the Voice, Panel and SAM
+   other three must be the versions of that same package (or Tempester Voice for the Voice chips). (The exact way the screen prints the Voice, Panel and SAM
    numbers has not been recorded here: compare it with the file names of the package.)
 3. If one of them is older, install it from the official files with Sequential's update guide:
    <https://sequential.com/updating-tempest-os/>. You can also send an official file with this app's OS update page
@@ -308,7 +354,8 @@ before building, and checks the result against the values recorded for the versi
 
 - Save what matters on the machine: send the project to the app (Library, *Fetch* or *Wait*), and save sounds and
   beats you care about. Saving them on the machine's own storage as usual is fine too.
-- Capture the OS dumps with the [Backup](#backup) page (Main, Voice, Panel).
+- Capture the OS dumps with the [Backup](#backup) page (Main, Voice, Panel) and, from Tempester 1.6.6.0, make a full
+  backup.
 - **Never power off or unplug during an update.** The Tempest's own screen says « Writing... DO NOT POWER OFF » from
   Tempester 1.5.4.1 on.
 - **If an update is interrupted or fails**, send it again. The routine that writes the Main flash lives in the last
@@ -351,8 +398,11 @@ cancelled or failed half way is forgotten.
 ## Going back to the official OS
 
 On the OS update page, choose your official `Tempest_Main_1.5.0.2.syx` and press **Back to DSI 1.5.0.2**, then send it
-like a Tempester version. The Voice, Panel and SAM chips were never changed by Tempester, so nothing else needs to be
-sent. Any official file can also be sent with Sequential's own method (SysEx Librarian, MIDI-OX).
+like a Tempester version. Panel and SAM were never changed by Tempester. If you installed Tempester Voice, the Voice
+chips keep it: to put the official Voice 1.5 back, choose `Tempest_Voice_1.5.syx` with « Choose an OS .syx file to
+check » and send it (the app calls it an unknown build and asks for one more confirmation); see
+[recovery](recovery.md#tempester-voice-going-back-and-its-one-risk). Any official file can also be sent with
+Sequential's own method (SysEx Librarian, MIDI-OX).
 
 ## Where the app keeps its files
 

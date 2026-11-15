@@ -1,0 +1,11 @@
+{
+ "format": "tempester-recipe/1",
+ "cpu": "dspic33f",
+ "name": "version_reply_1512",
+ "image": "Voice 1.5",
+ "input_sha256": "a0ac129b327aa0d58ae5d009541baabc49c565d8623a2fae73583ddf118a49b6",
+ "explanation": "Tempester Voice 1.5.1.2 (n°66): the reply to 0xFE00 becomes 0x17, so each Tempester Voice OS has a word of its own (DSI 1.5: 0x15; Tempester Voice 1.5.1.0 and 1.5.1.1: 0x16, patch/voice/version_reply.json, which those two keep). The same instruction as version_reply.s, the literal only: the handler keeps its length and timing. The System and Debug screens show (v & 0x7F) >> 4 « . » v & 0xF: 0x17 reads « 1.7 ». Main 1.6.7.0 / 1.6.8.0 test the exact word 0x16 (n°63 Release lift, n°62 backup re-alignment): on them a 0x17 chip keeps the Release cap at 123 and is read once per power-on. Main 1.6.9.0 (n°65) accepts every word 0x16-0x79 as Tempester Voice, so the Main goes first, then this Voice OS.",
+ "edits": [
+  {"at": "0x00669c", "copy": "0x00669c", "set": {"k10": 23}, "why": "mov #0x17,W6 ; version reply: Tempester Voice 1.5.1.2 (1.5.1.0 / 1.5.1.1: 0x16; DSI 1.5: 0x15)"}
+ ]
+}

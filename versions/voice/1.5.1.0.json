@@ -1,0 +1,36 @@
+{
+  "version": "1.5.1.0",
+  "os": "voice",
+  "name": "Tempester Voice 1.5.1.0 — the first Tempester Voice OS",
+  "kind": "superseded",
+  "date": "2026-11-13",
+  "summary": "DSI Voice 1.5 with a hardened parser (no more permanent mute), a full command queue test, traps that reset, a checked calibration page, release times up to 60 s, the Note FX state reset by a new burst and its own version reply (0xFE00: 0x16).",
+  "changes": {
+    "fixes": [
+      "A voice no longer goes silent for good when a sound message is cut short: the chip finds its place again within a few milliseconds.",
+      "A stray calibration command can no longer mute a voice: the chip calibrates only when the Main really asks for it.",
+      "A full message queue no longer looks empty and throws away a whole sound: only a message that arrives when it is full is dropped.",
+      "A voice that hits an internal error restarts by itself and keeps its voice number, instead of staying stuck.",
+      "A half-written tuning page is no longer used: the voice falls back to its default tuning, as when no page was ever saved.",
+      "A note that follows a cut-off Note FX note no longer plays with the previous sound's settings.",
+      "A full backup stays in step with the voice chips when the Main restarts on its own."
+    ],
+    "additions": [
+      "Release times above 100 rise smoothly up to 60 seconds at 127; 0 to 100 sound exactly as before, and 124 to 127 no longer hold forever.",
+      "Each chip reports its own version (Voice 1.6 on the System screen), so Tempester 1.6.7.0 and later can lift the Release limit to 127."
+    ]
+  },
+  "description": "Installed on the six chips on 14/11/2026 and verified by a full backup (pages 0-40 of each chip equal to this image); proved on the simulator before. Superseded by 1.5.1.1 (the same fixes, and its dump stream wraps at the end of the flash): no longer offered for building or sending (author, 15/11/2026); kept for its history row and to name what a chip holds. Recipes patch/voice/*.json, each assembled from its own source, proved on the Voice simulator. Installed on the six chips at once over MIDI (update 72 broadcasts), with a full backup 44 (Main 1.6.6.0) right before and right after; no PICkit prerequisite (author, 13/11/2026).",
+  "sha256_image": "7c88290ec9f0eea2887cd039adf7b14dd722b5b4e8da1986d3905debe611abe9",
+  "sha256_image_written": "2907bf3e5725d7d46da9682872fc0a38276c080676f0c00297a7218660f492d6",
+  "sha256_syx": "5efbfe91c5ed17d917eb50bd57068a9226a0af280988d0855fecbe7cba22e678",
+  "patches": [
+    "patch/voice/queue_full.json",
+    "patch/voice/parser_guard.json",
+    "patch/voice/trap_reset.json",
+    "patch/voice/cal_check.json",
+    "patch/voice/release_curve.json",
+    "patch/voice/notefx_burst.json",
+    "patch/voice/version_reply.json"
+  ]
+}

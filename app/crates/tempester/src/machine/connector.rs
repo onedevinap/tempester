@@ -8,7 +8,7 @@ use tempest_midi::{port_names, FakeTransport, InputPort, MidirInput, MidirTransp
 use tempest_proto::pad_notes::PadNotes;
 
 use crate::error::AppError;
-use crate::machine::fake_machine;
+use crate::machine::fake_machine::{self, FakeOs};
 
 /// Name of the one port of the fake machine: the same as the real one, so "connect" works unchanged.
 pub const FAKE_PORT: &str = "Tempest";
@@ -88,6 +88,8 @@ pub struct FakeConnector {
     project_defect: Arc<AtomicBool>,
     /// The scripted machine's own note of each pad (System > MIDI Note : Pad), the author's by default.
     pad_notes: PadNotes,
+    /// The OS the scripted machine plays (the newest release, six Tempester Voice chips, by default).
+    os: FakeOs,
 }
 
 impl FakeConnector {
@@ -113,6 +115,15 @@ impl FakeConnector {
         }
     }
 
+    /// A scripted machine that plays `os` (tests: another release, other Voice words, no `45`).
+    #[cfg(test)]
+    pub fn with_os(os: FakeOs) -> Self {
+        Self {
+            os,
+            ..Self::default()
+        }
+    }
+
     fn slot(&self) -> MutexGuard<'_, Option<Arc<FakeTransport>>> {
         self.machine.lock().unwrap_or_else(PoisonError::into_inner)
     }
@@ -134,6 +145,7 @@ impl Connector for FakeConnector {
             !self.without_remote_panel,
             Arc::clone(&self.project_defect),
             self.pad_notes,
+            self.os,
         );
         *self.slot() = Some(Arc::clone(&transport));
         Ok(transport)

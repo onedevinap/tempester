@@ -43,15 +43,15 @@ pub(super) struct Piece {
 }
 
 impl Piece {
-    fn chip(&self) -> &'static str {
+    pub(super) fn chip(&self) -> &'static str {
         chip_name(self.id)
     }
 
-    fn saveable(&self) -> bool {
+    pub(super) fn saveable(&self) -> bool {
         !matches!(self.verdict, Verdict::Invalid(_))
     }
 
-    fn detail(&self) -> String {
+    pub(super) fn detail(&self) -> String {
         match &self.verdict {
             Verdict::Valid { checksum, .. } => {
                 format!("{} blocks, checksum {checksum:#06x} OK", self.id.blocks())
@@ -63,7 +63,7 @@ impl Piece {
         }
     }
 
-    fn verdict_name(&self) -> &'static str {
+    pub(super) fn verdict_name(&self) -> &'static str {
         match self.verdict {
             Verdict::Valid { .. } => "ok",
             Verdict::Constant { .. } => "constant",
@@ -175,7 +175,7 @@ fn report(stamp: &str, pieces: &[Piece]) -> String {
     out
 }
 
-fn piece_json(piece: &Piece) -> Json {
+pub(super) fn piece_json(piece: &Piece) -> Json {
     obj([
         ("id", (piece.id as u8).into()),
         ("chip", piece.chip().into()),
@@ -191,7 +191,7 @@ impl Machine {
             Command::BackupStart => self.guard("backup_start", Machine::backup_start),
             Command::BackupStop => self.stop_backup(),
             Command::BackupSave => self.guard("backup_save", |m| m.backup_save(&now_stamp())),
-            other => return Some(other),
+            other => return self.handle_full_backup(other),
         }
         None
     }

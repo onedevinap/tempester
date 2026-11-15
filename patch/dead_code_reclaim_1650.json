@@ -35,7 +35,7 @@
   {"at": "0x9d060b40", "word": "ffffffff", "count": 67, "why": "freed (n°37): old DIN NRPN/RPN parser, unreachable since n°9a"},
   {"at": "0x9d062874", "word": "ffffffff", "count": 42, "why": "freed (n°37): delay loop with interrupts off, no caller"},
   {"at": "0x9d063b74", "word": "ffffffff", "count": 26, "why": "freed (n°37): two small routines without caller"},
-  {"at": "0x9d068340", "word": "ffffffff", "count": 17, "why": "freed (n°37): C library text formatter, only caller dead; [address]-[address] taken by n°58 (patch/multichannel_out.json), [address]-[address] by n°59 (patch/pad_settings.json)"},
+  {"at": "0x9d068340", "word": "ffffffff", "count": 17, "why": "freed (n°37): C library text formatter, only caller dead; [address] taken by n°58 (patch/multichannel_out.json), [address] by n°59 (patch/pad_settings.json)"},
   {"at": "0x9d0689f4", "word": "ffffffff", "count": 81, "why": "freed (n°37): soft-float helper of the compiler library, no caller"},
   {"at": "0x9d068bbc", "word": "ffffffff", "count": 133, "why": "freed (n°37): soft-float helper of the compiler library, no caller"},
   {"at": "0x9d0699d8", "word": "ffffffff", "count": 49, "why": "freed (n°37): 64-bit / float helper of the compiler library, no caller"},

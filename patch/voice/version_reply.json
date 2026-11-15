@@ -1,0 +1,11 @@
+{
+ "format": "tempester-recipe/1",
+ "cpu": "dspic33f",
+ "name": "version_reply",
+ "image": "Voice 1.5",
+ "input_sha256": "a0ac129b327aa0d58ae5d009541baabc49c565d8623a2fae73583ddf118a49b6",
+ "explanation": "Tempester Voice 1.5.1.0: the reply to 0xFE00 becomes 0x16 instead of DSI's 0x15, so the Main and the app can tell this Voice OS from DSI's (author's go, 13/11/2026). What the Main does with the value (read in its code): - start-up ([address] / [address]): voice 0 is read until the reply is 1-0x79 (up to 10 tries), voices 1-5 once; the six words are kept at [address]; - [routine] and [routine] show each chip as (v & 0x7F) >> 4 « . » v & 0xF: 0x16 reads « 1.6 »; - the identity reply (case 0x5B of [routine], [address]) sends v & 0xF and (v & [address]) >> 4 on a DSI Main only: Tempester's n°1 replaces both bytes by the constant 0x7F2 (patch/dump_request.json). Nothing compares the value or indexes a table with it. The handler keeps its length and timing.",
+ "edits": [
+  {"at": "0x00669c", "copy": "0x00669c", "set": {"k10": 22}, "why": "mov #0x16,W6 ; version reply: Tempester Voice 1.5.1.0 (DSI 1.5: 0x15)"}
+ ]
+}

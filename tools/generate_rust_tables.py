@@ -12,7 +12,13 @@ Inputs : profile/dsi-tempest/sound_params.json (the 127 sound parameters),
          summary and changelog (`changes`: `fixes`, `additions`, `changes`, short sentences for musicians). The test
          builds (kind `test`: single-patch proofs and superseded intermediates) live in versions/archive/, are
          built by tools/verify.sh and never reach the app.
-Outputs: <dir>/params.rs and <dir>/versions.rs, default
+         patch/voice/*.json and versions/voice/*.json (the Voice OS recipes, "cpu": "dspic33f", and their manifests,
+         kept out of the Main version list: `generated/voice.rs`; any kind, a `test` build included, because the
+         app offers the Voice OS built from the user's own DSI Voice 1.5 file; each with its `changes`, the same
+         lists for musicians as a Main version, so the OS page shows both OSes the same way). A `superseded`
+         version stays in the table for its history row and to name what a chip holds, but the app never builds
+         or sends it; the newest Voice version must not be `superseded`).
+Outputs: <dir>/params.rs, <dir>/versions.rs and <dir>/voice.rs, default
          app/crates/tempest-proto/src/generated/ (committed, "generated, do not edit").
 --check  writes nothing and exits 1 when the committed files differ from a fresh generation
          (run by tools/verify.sh).
@@ -43,6 +49,7 @@ CHANGE_GROUPS = ('fixes', 'additions', 'changes')
 RUST_KINDS = {'release': 'Release', 'corrections': 'Corrections'}
 SUMMARY_MAX = 200
 SENTENCE_MAX = 300
+VOICE_SUMMARY_MAX = 400
 
 
 def rs_str(text: str) -> str:
@@ -168,12 +175,16 @@ def load_manifests(root: Path) -> list[dict]:
     return table
 
 
+def rs_changes(changes: dict) -> str:
+    groups = ', '.join(f'{g}: {rs_list(changes.get(g, []))}' for g in CHANGE_GROUPS)
+    return f'Changes {{ {groups} }}'
+
+
 def generate_version(spec: dict) -> str:
     refs = ', '.join('&' + patch_identifier(Path(p)) for p in spec['patches'])
-    changes = ', '.join(f'{g}: {rs_list(spec["changes"].get(g, []))}' for g in CHANGE_GROUPS)
     return (f'    Version {{\n        version: {rs_str(spec["version"])},\n        name: {rs_str(spec["name"])},\n'
             f'        kind: Kind::{RUST_KINDS[spec["kind"]]},\n        date: {rs_str(spec["date"])},\n'
-            f'        summary: {rs_str(spec["summary"])},\n        changes: Changes {{ {changes} }},\n'
+            f'        summary: {rs_str(spec["summary"])},\n        changes: {rs_changes(spec["changes"])},\n'
             f'        description: {rs_str(spec["description"])},\n'
             f'        sha256_image: {rs_str(reference_hash(spec, "sha256_image"))},\n'
             f'        sha256_image_written: {rs_str(reference_hash(spec, "sha256_image_written"))},\n'
@@ -203,12 +214,110 @@ def generate_versions(root: Path) -> str:
     return ''.join(out)
 
 
+# ---- Voice (dsPIC33F) -------------------------------------------------------------------------------------------------
+
+VOICE_JUMPS = {'goto': 'Goto', 'call': 'Call', 'bra': 'Bra', 'rcall': 'Rcall'}
+VOICE_KINDS = {'test': 'Test', 'release': 'Release', 'superseded': 'Superseded'}
+HEX64 = re.compile(r'[0-9a-f]{64}')
+
+
+def voice_patch_identifier(path: Path) -> str:
+    return 'PV_' + re.sub(r'[^A-Za-z0-9]', '_', path.stem).upper()
+
+
+def rs_voice_op(edit: 'recipe.Edit') -> str:
+    if edit.kind == 'word':
+        return f'VoiceOp::Word(0x{edit.value:06x})'
+    if edit.kind in VOICE_JUMPS:
+        return f'VoiceOp::Jump {{ kind: JumpKind::{VOICE_JUMPS[edit.kind]}, target: 0x{edit.value:06x} }}'
+    table = recipe.PIC24_FIELDS
+    fields = ', '.join(f'Field {{ lo: {table[n][0]}, width: {table[n][1]}, value: 0x{v:x} }}'
+                       for n, v in edit.fields.items())
+    return f'VoiceOp::Copy {{ from: 0x{edit.value:06x}, set: &[{fields}] }}'
+
+
+def generate_voice_patch(path: Path, spec: dict) -> str:
+    try:
+        recipe.check_shape(spec, path.name)
+        if recipe.cpu_of(spec) != 'dspic33f':
+            raise recipe.RecipeError(f'{path.name}: a recipe of patch/voice/ must have "cpu": "dspic33f"')
+        edits = [recipe.pic24_parse_edit(e, f'{path.name} edit {i}') for i, e in enumerate(spec['edits'])]
+    except recipe.RecipeError as e:
+        sys.exit(f'refused: {e}')
+    rows = [f'        VoiceEdit {{ address: 0x{e.at:06x}, count: {e.count}, op: {rs_voice_op(e)} }},\n' for e in edits]
+    return (f'static {voice_patch_identifier(path)}: VoicePatch = VoicePatch {{\n    name: {rs_str(spec["name"])},\n'
+            f'    file: {rs_str("patch/voice/" + path.name)},\n    input_sha256: {rs_str(spec["input_sha256"])},\n'
+            f'    edits: &[\n{"".join(rows)}    ],\n}};\n\n')
+
+
+def check_voice_manifest(spec: dict, where: str) -> None:
+    """What the app shows of a Voice version, and the hashes it compares a build with."""
+    if spec.get('os') != 'voice':
+        sys.exit(f'refused: {where}: "os" must be "voice"')
+    if spec.get('kind') not in VOICE_KINDS:
+        sys.exit(f'refused: {where}: kind must be one of {", ".join(VOICE_KINDS)}')
+    if not re.fullmatch(r'\d+(\.\d+){3}', str(spec.get('version'))):
+        sys.exit(f'refused: {where}: version must be four numbers separated by dots')
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(spec.get('date'))):
+        sys.exit(f'refused: {where}: date must be YYYY-MM-DD')
+    one_line(spec.get('name'), where, 'name', SENTENCE_MAX)
+    one_line(spec.get('summary'), where, 'summary', VOICE_SUMMARY_MAX)
+    check_changes(spec.get('changes'), where)
+    if not isinstance(spec.get('description'), str) or not spec['description'].strip():
+        sys.exit(f'refused: {where}: description (the technical details) is empty')
+    for key in ('sha256_image', 'sha256_image_written', 'sha256_syx'):
+        if not HEX64.fullmatch(str(spec.get(key))):
+            sys.exit(f'refused: {where}: {key} is missing or is not 64 lowercase hexadecimal characters; record it '
+                     f'with tools/build_version.py {where} <Voice_1.5.bin> <folder> --record')
+
+
+def generate_voice(root: Path) -> str:
+    """`generated/voice.rs`: the Voice recipes the manifests of versions/voice/ use, and those manifests."""
+    versions = []
+    for path in sorted((root / 'versions' / 'voice').glob('*.json')):
+        spec = json.loads(path.read_text())
+        check_voice_manifest(spec, str(path.relative_to(root)))
+        versions.append(spec)
+    numbers = [v['version'] for v in versions]
+    if len(set(numbers)) != len(numbers):
+        sys.exit('refused: two Voice versions have the same number')
+    newest = max(versions, key=lambda v: [int(part) for part in v['version'].split('.')], default=None)
+    if newest is not None and newest['kind'] == 'superseded':
+        sys.exit(f'refused: Voice {newest["version"]} is the newest Voice version: it cannot be `superseded`')
+    used = sorted({Path(p).name for v in versions for p in v['patches']})
+    specs = {name: json.loads((root / 'patch' / 'voice' / name).read_text()) for name in used}
+    origins = {s.get('input_sha256') for s in specs.values()}
+    if len(origins) != 1:
+        sys.exit(f'refused: Voice patches built on different images: {sorted(map(str, origins))}')
+    identifiers = [voice_patch_identifier(Path(n)) for n in specs]
+    if len(set(identifiers)) != len(identifiers):
+        sys.exit('refused: two Voice patch files give the same Rust identifier')
+    out = [HEADER.format(sources='patch/voice/*.json and versions/voice/*.json'),
+           'use crate::recipe::Field;\nuse crate::voice_recipe::{JumpKind, VoiceEdit, VoiceOp};\n'
+           'use crate::versions::Changes;\nuse crate::voice_versions::{VoiceKind, VoicePatch, VoiceVersion};\n\n',
+           f'pub const VOICE_ORIGIN_SHA256: &str = {rs_str(origins.pop())};\n\n']
+    out += [generate_voice_patch(root / 'patch' / 'voice' / n, s) for n, s in specs.items()]
+    out.append(f'pub static VOICE_VERSIONS: [VoiceVersion; {len(versions)}] = [\n')
+    for v in versions:
+        refs = ', '.join('&' + voice_patch_identifier(Path(p)) for p in v['patches'])
+        out.append(f'    VoiceVersion {{\n        version: {rs_str(v["version"])},\n        name: {rs_str(v["name"])},\n'
+                   f'        kind: VoiceKind::{VOICE_KINDS[v["kind"]]},\n        date: {rs_str(v["date"])},\n'
+                   f'        summary: {rs_str(v["summary"])},\n        changes: {rs_changes(v["changes"])},\n'
+                   f'        description: {rs_str(v["description"])},\n'
+                   f'        sha256_image: {rs_str(v["sha256_image"])},\n'
+                   f'        sha256_image_written: {rs_str(v["sha256_image_written"])},\n'
+                   f'        sha256_syx: {rs_str(v["sha256_syx"])},\n        patches: &[{refs}],\n    }},\n')
+    out.append('];\n')
+    return ''.join(out)
+
+
 def main() -> None:
     args = sys.argv[1:]
     check = '--check' in args
     out_dir = Path(args[args.index('--out') + 1]) if '--out' in args else DEFAULT_OUT
     table = json.loads((ROOT / 'profile' / 'dsi-tempest' / 'sound_params.json').read_text())
-    files = {'params.rs': generate_params(table), 'versions.rs': generate_versions(ROOT)}
+    files = {'params.rs': generate_params(table), 'versions.rs': generate_versions(ROOT),
+             'voice.rs': generate_voice(ROOT)}
     if check:
         stale = [n for n, text in files.items() if not (out_dir / n).is_file() or (out_dir / n).read_text() != text]
         if stale:

@@ -23,6 +23,7 @@ const FILES = [
   "os-versions.js",
   "os-verify.js",
   "page-machine.js",
+  "full-backup.js",
   "page-backup.js",
   "page-os.js",
   "page-play.js",

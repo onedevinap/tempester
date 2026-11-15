@@ -1,6 +1,6 @@
 /* Layout stability of the Panel page, in real browsers (Chrome and WebKit): no control may move or change size
    whatever the page shows. The page is the standalone preview (tools/preview_ui.py, a stub bridge, nothing is sent),
-   served on 127.0.0.1 by `python3 -m http.server`; every control of both views is measured, then many interactions
+   served on 127.0.0.1 by `python3 -I -m http.server`; every control of both views is measured, then many interactions
    are driven (turning the knobs, BPM across 2 and 3 digits, parameter reports, LED events, Pad Function mode changes,
    a sound with a long and a short name, counts appearing and expiring), and every control is measured again.
    Any movement or resize above 0.5 px fails. It also checks the rows (alignment), the transport group as on the

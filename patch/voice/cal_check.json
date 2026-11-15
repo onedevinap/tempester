@@ -1,0 +1,29 @@
+{
+ "format": "tempester-recipe/1",
+ "cpu": "dspic33f",
+ "name": "cal_check",
+ "image": "Voice 1.5",
+ "input_sha256": "a0ac129b327aa0d58ae5d009541baabc49c565d8623a2fae73583ddf118a49b6",
+ "explanation": "Tempester Voice, item 4: [routine] trusts the calibration page only when all 35 words were written (the Voice OS study §7.1, §10 row 10); otherwise the defaults, as DSI does for a blank page. DSI tests two words (A[1] and B[0] not 0xFFFF), so a half-written page is used. Here every word must hold what [routine] writes (tblwth.b 0xFF: upper byte 0xFF) and not the erased 0xFFFF. Nothing about the values: a code below [address] or a run that does not increase is used as DSI uses it ([routine], [address], does not bound the codes, and DSI's own default A[0] is low: a value test could reject a real page and detune the whole voice). Residual: a measured code of exactly 0xFFFF would be taken for an erased word (none on the six chips of the backup).",
+ "edits": [
+  {"at": "0x006c48", "rcall": "0x007140", "why": "rcall [address] ; W0 = 0 when every word was written"},
+  {"at": "0x006c4a", "word": "0000e0", "why": "cp0 W0"},
+  {"at": "0x006c4c", "word": "350032", "why": "bra z,[address] ; load the 35 words (original path)"},
+  {"at": "0x006c4e", "bra": "0x006c5e", "why": "bra [address] ; defaults (original path)"},
+  {"at": "0x007140", "word": "0000eb", "why": "clr W0"},
+  {"at": "0x007142", "word": "01802a", "why": "mov #[address],W1"},
+  {"at": "0x007144", "word": "320220", "why": "mov #0x23,W2 ; 35 words"},
+  {"at": "0x007146", "word": "9181ba", "why": "tblrdh [W1],W3"},
+  {"at": "0x007148", "word": "f40f20", "why": "mov #0xff,W4"},
+  {"at": "0x00714a", "copy": "0x006c4e", "set": {"f13": 6148}, "why": "cp W3,W4"},
+  {"at": "0x00714c", "word": "010032", "why": "bra z,[address]"},
+  {"at": "0x00714e", "word": "100020", "why": "mov #0x1,W0 ; upper byte not 0xFF: not written by [routine]"},
+  {"at": "0x007150", "word": "b101ba", "why": "tblrdl [W1++],W3"},
+  {"at": "0x007152", "word": "8301e8", "why": "inc W3,W3"},
+  {"at": "0x007154", "word": "01003a", "why": "bra nz,[address]"},
+  {"at": "0x007156", "word": "100020", "why": "mov #0x1,W0 ; 0xFFFF: erased"},
+  {"at": "0x007158", "word": "0201e9", "why": "dec W2,W2"},
+  {"at": "0x00715a", "word": "f5ff3a", "why": "bra nz,[address]"},
+  {"at": "0x00715c", "word": "000006", "why": "return"}
+ ]
+}

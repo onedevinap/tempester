@@ -10,6 +10,7 @@ DIN and USB unless stated; replies and reports leave on the cable or channel sta
 
 - [Versions](#versions)
 - [SysEx requests](#sysex-requests)
+- [Full backup](#full-backup)
 - [Identity](#identity)
 - [Sound parameters (NRPN)](#sound-parameters-nrpn)
 - [Remote panel](#remote-panel)
@@ -32,10 +33,16 @@ DIN and USB unless stated; replies and reports leave on the cable or channel sta
 | FX ribbons over MIDI (CC 108-113); play probability per pad (CC 14) | 1.6.3.0 | n°31, n°36 |
 | Mixer, beat and main values reported (NRPN 230-239) | 1.6.4.0 | n°38 |
 | Request `43` (exact Tempester version); Pad Function mode reported (CC 106) | 1.6.4.0 | n°39, n°40 |
+| Request `44` (full backup: six Voice chips, Main boot flash, System settings); every Voice OS dump aligned | 1.6.6.0 | n°62 |
+| Pitch, Filter, Aux 1 and Aux 2 Release capped at 123, as Amp Release | 1.6.6.0 | n°63 |
+| The five Release parameters up to 127 when the six Voice chips run Tempester Voice 1.5.1.0 (capped at 123 otherwise) | 1.6.7.0 | n°63 |
+| Request `43` also answers `45`: the Voice OS version of each chip | 1.6.7.0 | n°64 |
+| A second request `44` (or Debug Voice dump) in a power-on never reads a Voice chip past its flash: Tempester Voice chips re-aligned, a DSI Voice chip already read answers an empty message | 1.6.8.0 | n°62 |
+| Every Tempester Voice word (`0016`-`0079`) counts for the Release lift and the full-backup re-alignment | 1.6.9.0 | n°65 |
 
 ## SysEx requests
 
-The official OS answers no request. Tempester adds four. Each reply leaves on the cable set in System > *MIDI: SysEx
+The official OS answers no request. Tempester adds five. Each reply leaves on the cable set in System > *MIDI: SysEx
 IN+OUT Cable* (USB or DIN), and is the same message the machine's menu would send.
 
 | Request | Reply | Content |
@@ -43,7 +50,8 @@ IN+OUT Cable* (USB or DIN), and is the same message the machine's menu would sen
 | `F0 01 28 40 F7` | `F0 01 28 60 <data> F7` | the sound of the pad selected on the machine: 128 bytes, 7-bit packed |
 | `F0 01 28 41 F7` | `F0 01 28 5F <data> F7` | the current beat (events, settings and its 32 sounds) |
 | `F0 01 28 42 F7` | `F0 01 28 5E <data> F7`, then `F0 01 28 5C <k> <data> F7` for each beat k (0-15) present in the project | the whole project: header and 4 Play Lists, then its beats; byte for byte what the menu sends when it exports the project |
-| `F0 01 28 43 F7` | `F0 01 28 43 a1 a0 b1 b0 c1 c0 d1 d0 F7` | the exact Tempester version `a.b.c.d` (n°39), each digit `N` as two bytes `N >> 7`, `N & 7F` (0-16383): the number System > *Main OS Version* shows |
+| `F0 01 28 43 F7` | `F0 01 28 43 a1 a0 b1 b0 c1 c0 d1 d0 F7`; from 1.6.7.0 followed by `F0 01 28 45 <18 bytes> F7` ([Voice versions](#voice-versions)) | the exact Tempester version `a.b.c.d` (n°39), each digit `N` as two bytes `N >> 7`, `N & 7F` (0-16383): the number System > *Main OS Version* shows |
+| `F0 01 28 44 F7` | 8 messages: `78`-`7D`, `75`, `76` ([Full backup](#full-backup)) | the six Voice chips, the Main boot flash and the System settings (n°62) |
 
 Notes:
 
@@ -55,6 +63,100 @@ Notes:
   answer within a second falls back to what it knows (the identity says only « Tempester »).
 - The version is read from the same place the System screen reads it: every release announces its own number. A test
   build keeps the number of the release it is built on.
+
+### Voice versions
+
+From 1.6.7.0 (n°64), right after the `43` reply and on the same cable, a second message:
+`F0 01 28 45 h0 m0 l0 h1 m1 l1 h2 m2 l2 h3 m3 l3 h4 m4 l4 h5 m5 l5 F7` (23 bytes). For Voice chip k (voice k, 0-5),
+`v = hk << 14 | mk << 7 | lk` is the 16-bit word the chip answered when the Main asked its Voice OS version once at
+power-on, the word System > *Voice OS Version* shows as `(v & 7F) >> 4`.`v & F`:
+
+| `v` | Voice OS |
+|---|---|
+| `0015` | DSI Voice 1.5 |
+| `0016` | Tempester Voice 1.5.1.0 or 1.5.1.1 (the same word: what the Main does with it is the same) |
+| `0017` | Tempester Voice 1.5.1.2 |
+| any other | not a known Voice OS, or the chip did not answer |
+
+The Main itself takes a chip as Tempester Voice (Release up to 127, re-aligned full backups) when its word is exactly
+`0016` on 1.6.7.0 and 1.6.8.0, and any word `0016`-`0079` from 1.6.9.0: install Main 1.6.9.0 before Tempester Voice
+1.5.1.2.
+
+- The `43` reply is unchanged: a program that reads only `43` gets the same message as before, then a `45` it can
+  ignore. `45` is not a command of the machine; nothing is sent for it.
+- A machine before 1.6.7.0 sends no `45`: wait a short time after the `43` reply, then treat the versions as unknown.
+- The Release maximum follows from it: on 1.6.7.0 and 1.6.8.0, 127 for Pitch, Filter, Amp, Aux 1 and Aux 2 Release
+  (65, 70, 75, 83, 91) when the six words are `0016`, 123 otherwise; from 1.6.9.0, 127 when the six words are
+  `0016`-`0079`; on 1.6.6.0 always 123. The words are read at power-on only: a
+  Voice OS installed since then counts after the next power-on.
+
+## Full backup
+
+From 1.6.6.0 (n°62). Request `F0 01 28 44 F7`, accepted on the SysEx cable set in System like the other requests. The
+machine answers on that cable with eight messages, back to back, in this order, and draws nothing on its screen:
+
+| Order | Message | Content | Length |
+|---|---|---|---|
+| 1-6 | `F0 01 28 78+k <64 blocks> <c0> <c1> F7`, k = 0-5 | the whole flash image of Voice chip k (voice k), 65,536 bytes in the layout of a Voice OS file: boot page and the chip's own calibration page included | 74,951 bytes |
+| 7 | `F0 01 28 75 <12 blocks> <c0> <c1> F7` | the Main processor's boot flash, 12,288 bytes, its last 16 bytes the configuration words (DEVCFG3, 2, 1, 0) | 14,059 bytes |
+| 8 | `F0 01 28 76 <packed data> F7` | the System settings and the pad channels, 235 bytes in the standard 7-bit packing ([7-bit packing](#7-bit-packing)) | 277 bytes |
+
+Layout of messages 1-7 (the OS-file layout, the one the Debug menu's *Send ... OS over MIDI* uses): after the four
+header bytes, blocks of 1,024 data bytes, **each block packed on its own**: 146 groups of 8 bytes (1 + 7) then a group
+of 3 bytes (1 + the last 2 data bytes): 1,171 bytes a block; then two checksum bytes and `F7`. Checksum: the sum of the
+data read as 16-bit little-endian words, modulo 2^14, sent low 7 bits first (`c0 = sum & 7F`, `c1 = sum >> 7 & 7F`).
+Unpacking all the blocks of a message in one stream shifts every block by 3 bytes: unpack each 1,171-byte block alone.
+
+Message 8, unpacked (235 bytes; the last packed group is padded with zeros, which are not data):
+
+| Bytes | Content |
+|---|---|
+| 0 | 7, the version of the System settings file |
+| 1-202 | the 202 System settings, in the order of the System settings file |
+| 203-234 | the MIDI output channel of pads 1-32 (n°58): 0 stock route, 1-16 the channel with the played note, 17-32 channel − 16 with the pad's *MIDI Note: Pad* |
+
+The System settings file the machine saves (406 bytes) is rebuilt from it as 203 little-endian 16-bit words: word 0 =
+byte 0; word 1 + i (i = 0-201) = setting i in the low byte, and in the high byte the channel of pad i − 48 for i = 48-79
+(the *MIDI Note: Pad* entries), `FF` for i = 138-201 when setting i is 80 or above (the machine stores those 64 settings
+sign-extended), 0 otherwise.
+
+Alignment: a Voice chip answers each byte request with the next byte of a stream it never resets (DSI's Voice OS) and
+that does not stop at the end of its flash, so before 1.6.6.0 only the first Voice dump after power-on started at the
+beginning of the chip. 1.6.6.0 and 1.6.7.0 count the bytes they read from each chip and skip forward to the beginning
+before every dump; reading forward goes past the end of the chip's flash, which stops the chip: **with 1.6.6.0 and
+1.6.7.0 only make one full backup (or one Debug Voice dump) per power-on**; a second one silences the voices of a DSI
+Voice OS until power-off (its messages read all `FF`) and restarts the chips of Tempester Voice 1.5.1.0, often for good
+(its messages come back shifted). From 1.6.8.0 the Main never reads forward:
+
+| Chip, at a second dump in the same power-on | 1.6.8.0 does | Message `78+k` |
+|---|---|---|
+| answered `0016` at power-on (from 1.6.9.0: `0016`-`0079`; [Voice versions](#voice-versions)): Tempester Voice | sends it its own number again (`F5 0k`), which brings its stream back to the beginning | the whole chip, from its first byte |
+| any other answer (DSI Voice 1.5, no answer) | does not read it | `F0 01 28 78+k F7` (5 bytes: no data, no checksum): power the machine off and on, then ask again |
+
+The Debug menu's *Send Voice OS over MIDI* (`72`, voice 0) follows the same rule: when voice 0 cannot be read from its
+beginning it sends nothing (the screen shows the dump's title and « Sending MIDI » for a moment, then the menu again;
+no reason is shown). Tempester Voice 1.5.1.1 also brings its stream back to the beginning by itself at the end of its
+flash, so no Main can stop it this way (an older Main then gets a shifted message, the voice keeps playing). The
+counting holds while the Main and the Voice chips started together (power-on). If the Main restarts alone (a crash, a
+reset without switching the machine off) after its chips were read, it counts from zero again while the chips do not:
+a Tempester Voice chip is brought back to its beginning by the Main's own start-up (it sends `F5 0k` to every chip),
+but **a chip on DSI's Voice OS is then read from the middle of its stream, past the end of its flash: it stops and
+stays silent until the machine is switched off** (1.6.6.0, 1.6.7.0 and 1.6.8.0 alike). After any restart of the Main alone, switch the machine off and on
+before a full backup. A message whose first bytes are not the
+chip's reset jump (a `goto`: third byte `04`, then three zero bytes) or whose data is one byte repeated was not read
+from the chip: power the machine off and on and ask again.
+
+Timing and rules:
+- The machine reads the chips in at least 16 µs a byte (CPU, simulated at 80 MHz, one cycle per instruction, flash wait
+  states not counted): about 6.4 s for the whole backup on USB plus the USB transfer (1.6.6.0 and 1.6.7.0: up to 1.6 s more per chip to
+  skip forward to its beginning). On DIN the wire sets the pace: 464,042 bytes at 31,250 baud, about 2 min 35 s in all, about
+  25 s per Voice message.
+- While it answers, the machine's main loop does nothing else: no screen, no panel, no MIDI input is read (DIN bytes
+  beyond its 4 KB input ring are lost). Send nothing during a backup; stop the sequencer first (a playing voice may
+  lose a few frames).
+- Nothing in a backup is an update: the ids `75`, `76`, `78`-`7D` are no command of the machine, so a backup sent back
+  to it is ignored. Never send the Debug menu's `72` / `73` dumps back to a machine: those ids are update commands.
+- A machine without n°62 does not answer `44`. A program asks for the exact version first (request `43`).
 
 ## Identity
 
@@ -297,7 +399,9 @@ always send the standard layout (high bit j for byte j, zero padding). The app's
 
 ## Sound parameter numbers
 
-NRPN number = parameter index. Names and ranges come from the parameter table inside the firmware (`profile/dsi-tempest/sound_params.json`); a few entries carry the same name there (for example 116-120, 121-122) and are not yet told apart individually. The DSI manual describes what each parameter does.
+NRPN number = parameter index. From 1.6.6.0 (n°63) the five Release parameters (65, 70, 75, 83, 91)
+stop at 123: at 124-127 the voices never end the release. A stored sound with 124-127 loads, shows and plays as 123;
+its file keeps the value until it is saved again; an NRPN of 124-127 is clamped to 123. Names and ranges come from the parameter table inside the firmware (`profile/dsi-tempest/sound_params.json`); a few entries carry the same name there (for example 116-120, 121-122) and are not yet told apart individually. The DSI manual describes what each parameter does.
 
 | NRPN | Group | Parameter | Range |
 |---|---|---|---|
@@ -366,12 +470,12 @@ NRPN number = parameter index. Names and ranges come from the parameter table in
 | 62 | Env Pitch | Attack | 0-127 |
 | 63 | Env Pitch | Decay | 0-127 |
 | 64 | Env Pitch | Sustain | 0-127 |
-| 65 | Env Pitch | Release | 0-127 |
+| 65 | Env Pitch | Release | 0-127 (0-123 from 1.6.6.0) |
 | 66 | Env Filter | Delay | 0-127 |
 | 67 | Env Filter | Attack | 0-127 |
 | 68 | Env Filter | Decay | 0-127 |
 | 69 | Env Filter | Sustain | 0-127 |
-| 70 | Env Filter | Release | 0-127 |
+| 70 | Env Filter | Release | 0-127 (0-123 from 1.6.6.0) |
 | 71 | Env Amp | Delay | 0-127 |
 | 72 | Env Amp | Attack | 0-127 |
 | 73 | Env Amp | Decay | 0-127 |
@@ -384,7 +488,7 @@ NRPN number = parameter index. Names and ranges come from the parameter table in
 | 80 | Env Aux 1 | Attack | 0-127 |
 | 81 | Env Aux 1 | Decay | 0-127 |
 | 82 | Env Aux 1 | Sustain | 0-127 |
-| 83 | Env Aux 1 | Release | 0-127 |
+| 83 | Env Aux 1 | Release | 0-127 (0-123 from 1.6.6.0) |
 | 84 | Env Aux 2 | Destination | 0-57 |
 | 85 | Env Aux 2 | Amount | 0-254 |
 | 86 | Env Aux 2 | Vel Amt | 0-127 |
@@ -392,7 +496,7 @@ NRPN number = parameter index. Names and ranges come from the parameter table in
 | 88 | Env Aux 2 | Attack | 0-127 |
 | 89 | Env Aux 2 | Decay | 0-127 |
 | 90 | Env Aux 2 | Sustain | 0-127 |
-| 91 | Env Aux 2 | Release | 0-127 |
+| 91 | Env Aux 2 | Release | 0-127 (0-123 from 1.6.6.0) |
 | 92 | Mod matrix | Mod 1 source | 0-22 |
 | 93 | Mod matrix | Mod 1 amount | 0-254 |
 | 94 | Mod matrix | Mod 1 destination | 0-57 |

@@ -1,10 +1,14 @@
 //! A scripted Tempest for demos and tests (`TEMPESTER_FAKE_MIDI=1`): answers the identity request, `40` with a
 //! `60` sound, `41` with a `5F` beat, `42` with a whole project (`5E` + 16 x `5C`), all synthetic, and keeps the sound or beat it is sent, so that a restore
 //! can be seen. With its remote panel (Tempester 1.6.0.0, `fake_panel`) it also answers keys and LED requests, reports
-//! its Pad Function mode (n°40) and answers the version request (n°39) with 1.6.5.0, so that every control of the app is on
-//! (it keeps the 32 pad channels of n°58 in its panel).
+//! its Pad Function mode (n°40) and answers the version request (n°39) with 1.6.7.0, so that every control of the app is on
+//! (it keeps the 32 pad channels of n°58 in its panel). As a 1.6.7.0 it follows that answer with the Voice versions
+//! (n°64, message `45`): six chips on Tempester Voice 1.5.1.0 unless the test gives other words (`FakeOs`).
+//! A Main or Voice update sent to it (`71`, `72`) is accepted and ignored: nothing real is ever sent.
 //! A project sent to it (`5E`, then `5C n`) is stored and answered by request `42` (beats not sent keep their content,
 //! as on the machine); with the n°28 defect switched on it reads the Play Lists like the stock OS (`shifted_lists`).
+//! Request `44` is answered with the eight synthetic messages of the full backup in the wire format of 1.6.6.0
+//! (`full_backup::synthetic`), its `76` holding the pad channels of its panel.
 //! `debug_send` plays the Debug-menu OS sends, one of them as a constant (as seen on the real machine).
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -15,7 +19,11 @@ use tempest_midi::message::Message;
 use tempest_midi::{FakeTransport, StreamParser};
 use tempest_proto::beat::{self, PADS};
 use tempest_proto::beat_sequence::{synthetic_sequence_beat, BeatEvent};
-use tempest_proto::identity::{TempesterVersion, IDENTITY_REQUEST, VERSION_REQUEST};
+use tempest_proto::full_backup::{self, REQUEST_FULL_BACKUP};
+use tempest_proto::identity::{
+    voice_versions_reply, TempesterVersion, IDENTITY_REQUEST, VERSION_REQUEST, VOICE_CHIPS,
+    VOICE_WORD_TEMPESTER_1510,
+};
 use tempest_proto::mixer_report::{report_bytes, MixerItem};
 use tempest_proto::os_image::{self, OsId, BLOCK_SIZE};
 use tempest_proto::pad_notes::PadNotes;
@@ -29,8 +37,35 @@ const IDENTITY_REPLY: [u8; 14] = [
     0xF0, 0x7E, 0x7F, 0x06, 0x02, 0x01, 0x28, 0x01, 0x00, 0x00, 0x15, 0x02, 0x7F, 0xF7,
 ];
 
-/// What the fake announces to the version request (n°39).
-const ANNOUNCED: TempesterVersion = TempesterVersion([1, 6, 5, 0]);
+/// The OS the scripted machine plays: what it announces to the version request (n°39) and, from 1.6.7.0 (n°64), the
+/// version word of each Voice chip (`None`: it sends no `45`, like a Main without n°64).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FakeOs {
+    pub announced: TempesterVersion,
+    pub voice_words: Option<[u16; VOICE_CHIPS]>,
+}
+
+impl Default for FakeOs {
+    /// Tempester 1.6.7.0, the first release that reports the Voice chips (n°64), with the six chips on Tempester Voice
+    /// 1.5.1.0 (word `0x16`).
+    fn default() -> Self {
+        Self {
+            announced: TempesterVersion([1, 6, 7, 0]),
+            voice_words: Some([VOICE_WORD_TEMPESTER_1510; VOICE_CHIPS]),
+        }
+    }
+}
+
+impl FakeOs {
+    /// What the machine answers to the version request: the `43` reply, then the `45` when it has Voice versions.
+    fn version_answers(&self) -> Vec<Vec<u8>> {
+        let mut out: Vec<Vec<u8>> = self.announced.reply().into_iter().collect();
+        if let Some(words) = &self.voice_words {
+            out.push(voice_versions_reply(words));
+        }
+        out
+    }
+}
 
 /// The project in the machine's RAM: its decoded `5E` data and the decoded data of each of the 16 beats.
 struct StoredProject {
@@ -117,6 +152,7 @@ struct State {
     project_defect: Arc<AtomicBool>,
     /// `None`: a machine without the remote panel (original OS, or a Tempester before 1.6.0.0).
     panel: Option<FakePanel>,
+    os: FakeOs,
 }
 
 fn initial_sound() -> Sound {
@@ -133,15 +169,21 @@ fn initial_sound() -> Sound {
 /// or LED requests (original OS, or a Tempester before 1.6.0.0).
 #[cfg(test)]
 pub fn scripted(remote_panel: bool) -> Arc<FakeTransport> {
-    scripted_with(remote_panel, Arc::default(), PadNotes::default())
+    scripted_with(
+        remote_panel,
+        Arc::default(),
+        PadNotes::default(),
+        FakeOs::default(),
+    )
 }
 
-/// `scripted` with the switch of the n°28 defect, which the caller may flip while the machine runs, and the
-/// machine's own note of each pad.
+/// `scripted` with the switch of the n°28 defect, which the caller may flip while the machine runs, the machine's
+/// own note of each pad and the OS it plays.
 pub fn scripted_with(
     remote_panel: bool,
     project_defect: Arc<AtomicBool>,
     pad_notes: PadNotes,
+    os: FakeOs,
 ) -> Arc<FakeTransport> {
     let transport = Arc::new(FakeTransport::new());
     let state = Mutex::new(State {
@@ -151,6 +193,7 @@ pub fn scripted_with(
         project: StoredProject::synthetic(),
         project_defect,
         panel: remote_panel.then(|| FakePanel::with_pad_notes(pad_notes)),
+        os,
     });
     transport.set_responder(Box::new(move |packet| {
         let mut state = state.lock().unwrap_or_else(PoisonError::into_inner);
@@ -214,9 +257,16 @@ fn answer(state: &mut State, sysex: &[u8]) -> Vec<Vec<u8>> {
         return state
             .panel
             .as_ref()
-            .and_then(|_| ANNOUNCED.reply())
-            .into_iter()
-            .collect();
+            .map(|_| state.os.version_answers())
+            .unwrap_or_default();
+    }
+    if sysex == REQUEST_FULL_BACKUP {
+        // Only a Tempester (the one with the remote panel) knows the request; the others ignore it.
+        return state
+            .panel
+            .as_ref()
+            .map(|panel| full_backup::synthetic::answer_with(&panel.pad_channels))
+            .unwrap_or_default();
     }
     if sysex == REQUEST_SOUND {
         return vec![sound_message::encode_current(&state.sound)];
@@ -375,16 +425,71 @@ mod tests {
         assert_eq!(identity.version, 0x7F2);
     }
 
+    fn scripted_os(os: FakeOs) -> Arc<FakeTransport> {
+        scripted_with(true, Arc::default(), PadNotes::default(), os)
+    }
+
     #[test]
-    fn test_scripted_when_version_requested_returns_1_6_5_0_only_with_the_remote_panel() {
+    fn test_scripted_when_version_requested_returns_1_6_7_0_then_six_tempester_voices_only_with_the_remote_panel(
+    ) {
         let reply = ask(&scripted(true), &VERSION_REQUEST);
         let silent = ask(&scripted(false), &VERSION_REQUEST);
 
+        assert_eq!(reply.len(), 13 + 23, "the 43 reply, then the 45 message");
         assert_eq!(
-            tempest_proto::identity::parse_version(&reply),
-            Some(TempesterVersion([1, 6, 5, 0]))
+            tempest_proto::identity::parse_version(&reply[..13]),
+            Some(TempesterVersion([1, 6, 7, 0]))
+        );
+        assert_eq!(
+            tempest_proto::identity::parse_voice_versions(&reply[13..]),
+            Some([0x16; 6])
         );
         assert!(silent.is_empty());
+    }
+
+    #[test]
+    fn test_scripted_when_one_chip_word_is_set_returns_it_in_the_45_message() {
+        let mut words = [0x16; 6];
+        words[3] = 0x15;
+        let transport = scripted_os(FakeOs {
+            announced: TempesterVersion([1, 6, 7, 0]),
+            voice_words: Some(words),
+        });
+
+        let reply = ask(&transport, &VERSION_REQUEST);
+
+        assert_eq!(
+            tempest_proto::identity::parse_voice_versions(&reply[13..]),
+            Some(words)
+        );
+    }
+
+    #[test]
+    fn test_scripted_when_the_os_has_no_voice_versions_returns_only_the_43_reply() {
+        let transport = scripted_os(FakeOs {
+            announced: TempesterVersion([1, 6, 6, 0]),
+            voice_words: None,
+        });
+
+        let reply = ask(&transport, &VERSION_REQUEST);
+
+        assert_eq!(reply.len(), 13);
+        assert_eq!(
+            tempest_proto::identity::parse_version(&reply),
+            Some(TempesterVersion([1, 6, 6, 0]))
+        );
+    }
+
+    #[test]
+    fn test_scripted_when_a_voice_update_72_is_sent_returns_no_answer_and_keeps_answering() {
+        let transport = scripted(true);
+        let update = os_image::encode(OsId::Voice, &vec![0u8; OsId::Voice.blocks() * BLOCK_SIZE])
+            .expect("a Voice file");
+
+        let answer = ask(&transport, &update);
+
+        assert!(answer.is_empty(), "an update is taken, nothing comes back");
+        assert!(!ask(&transport, &IDENTITY_REQUEST).is_empty());
     }
 
     #[test]

@@ -47,6 +47,14 @@ input, textarea, [contenteditable], .log, .hint, .mono, [role=status], table.lis
 .connbar select { width: 150px; min-height: 38px; padding: 4px 8px; }
 /* A block, not an inline-flex: text-overflow does nothing on a flex container, and a centred overflow is cut at both ends. */
 .connbar .chip { display: block; width: 124px; padding: 0 8px; line-height: 24px; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+/* Down to the window's minimum width (900 px) the tabs, the pill and the connection controls must still fit in one
+   row (layout-header.js measures it): tighter tabs and gaps and a narrower port menu; the pill and the OS chip keep
+   their width, their text must stay whole. After the rules it narrows, so it wins at equal specificity. */
+@media (max-width: 1000px) {
+  .topbar { gap: 8px; padding: 0 10px; }
+  #nav button { padding: 6px 6px; }
+  .connbar select { width: 120px; }
+}
 .banner { display: flex; align-items: center; height: 32px; background: #2e2809; color: var(--warn); padding: 0 20px; border-bottom: 1px solid #5a4e14; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .banner[hidden] { display: none; }
 body.fake { --banner-h: 33px; }

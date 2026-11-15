@@ -1,5 +1,5 @@
-/* What the top bar and the status readouts say must be readable whole, in real browsers (Chrome and WebKit), at 1100,
-   1320 and 1920 px: the connection pill, the OS chip of the connection controls (with the longest release text the
+/* What the top bar and the status readouts say must be readable whole, in real browsers (Chrome and WebKit), at 900
+   (the window's minimum width), 1100, 1320 and 1920 px: the connection pill, the OS chip of the connection controls (with the longest release text the
    machine can report) and the sync status of the Panel bar, once connected to the fake machine. A readout is clipped
    when its content is wider than its box (scrollWidth > clientWidth: an ellipsis counts as clipped); the top bar's
    items must also stay inside the window and not overlap. Nothing is sent: the standalone preview has a stub bridge.
@@ -11,7 +11,7 @@ const { withPreview, launch, receive } = require("./layout-common");
 
 const [uiDir, workDir, repo] = process.argv.slice(2, 5);
 const QUICK = process.argv.includes("--quick");
-const WIDTHS = [1100, 1320, 1920];
+const WIDTHS = [900, 1100, 1320, 1920];
 
 const RELEASE = {
   version: "1.6.5.0",
@@ -151,7 +151,7 @@ async function run(port) {
     console.log(failures.length + " header problems");
     process.exit(1);
   }
-  console.log("top bar and status readouts whole at 3 widths");
+  console.log(`top bar and status readouts whole at ${WIDTHS.length} widths (${WIDTHS.join(", ")} px)`);
 })().catch((e) => {
   console.error(e);
   process.exit(2);

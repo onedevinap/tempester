@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/onedevinap/tempester/actions/workflows/ci.yml"><img src="https://github.com/onedevinap/tempester/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="https://github.com/onedevinap/tempester/releases"><img src="https://img.shields.io/github/v/release/onedevinap/tempester?include_prereleases&sort=semver&label=app" alt="Latest app release"></a>
-  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.6.5.0-e8833a" alt="Tempester OS 1.6.5.0"></a>
+  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.6.9.0-e8833a" alt="Tempester OS 1.6.9.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--3.0--or--later-blue" alt="Licence: GPL-3.0-or-later"></a>
   <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-555" alt="Platforms: macOS, Windows, Linux">
 </p>
@@ -37,7 +37,9 @@ back up what it holds. It has three parts that work together.
 - **Tempester OS** is a set of community firmware releases for the Tempest's Main board. They fix freezes, lost notes,
   silent voices and memory corruption, and add what the official OS never had: sound, beat and project requests,
   NRPN in both directions, the whole front panel over MIDI, FX ribbons over MIDI, a footswitch that plays a pad, a play
-  probability for each pad, and more. Each release is a *recipe* that you apply to your own official OS file.
+  probability for each pad, a full backup of the machine over MIDI, and more. Each release is a *recipe* that you
+  apply to your own official OS file. An optional **Tempester Voice** does the same for the six sound chips: no
+  more voices muted for good, and Release times that always end.
 - **The Tempester app** for macOS, Windows and Linux: a remote panel, a library for sounds, beats and projects, a
   step sequencer, a MIDI monitor, and a safe installer for Tempester OS that checks every file and reads the result
   back from the machine.
@@ -121,17 +123,25 @@ simulated Tempest and nothing reaches a MIDI port.
 
 ## Tempester OS releases
 
-Tempester OS replaces only the Main OS. Voice, Panel and SAM stay those of the official 1.5.0.2 package. The app
-installs these; the older releases stay listed in its History, to read only:
+Tempester OS replaces the Main OS; Panel and SAM stay those of the official 1.5.0.2 package, and the six Voice chips
+keep the official Voice 1.5 unless you also install Tempester Voice (below). The app installs these; the older releases
+stay listed in its History, to read only:
 
 | Release | What it is | Choose it if |
 |---|---|---|
-| **1.6.5.0** (latest) | Every fix and every addition: requests, NRPN, remote panel, project transfers, beat-wide positions, FX ribbons over MIDI, footswitch pads, Load Sound memory and alphabetical order, Revert confirmation, per-pad play probability, the machine reporting its mixer, tempo, Pad Function mode and exact version to an editor (up to 1.6.4.0); plus a MIDI channel and a settings page for each pad, notes as long as a whole 8-bar beat, finer Quantize values, Copy Sound with its sequence, a roll that can follow the swing, and six bug fixes; installed on 12 November 2026 (the Main OS read back equals the built image); the hand tests of the new functions are still to do | you want everything |
+| **1.6.9.0** (latest) | Every fix and every addition: requests, NRPN, remote panel, project transfers, beat-wide positions, FX ribbons over MIDI, footswitch pads, Load Sound memory and alphabetical order, Revert confirmation, per-pad play probability, the machine reporting its mixer, tempo, Pad Function mode and exact version to an editor, a MIDI channel and a settings page for each pad, notes as long as a whole 8-bar beat, finer Quantize values, Copy Sound with its sequence, a roll that can follow the swing (up to 1.6.5.0); plus a full backup of the machine over MIDI (the six voice chips with their calibration, the boot flash, the System settings), Release values capped at 123 where the official voices never end a release, back up to 127 with Tempester Voice, and the Voice OS of each chip reported; installed on 15 November 2026 (two full backups in a row identical); the hand tests of the 1.6.5.0 functions are still to do | you want everything |
 | **1.5.6.0** (corrections only) | The bug fixes, plus the sound and beat requests and NRPN; no remote panel, project request or new performance features | you want the fixes and as few changes as possible |
 | **DSI 1.5.0.2** (back to official) | The official OS, rebuilt unchanged from your own file | you want to go back |
 
-Full details: [firmware notes](docs/firmware.md) (each change, how it was proved, its limits) and the
-[changelog](CHANGELOG.md).
+**Tempester Voice** (the six sound chips, optional; built from your own `Tempest_Voice_1.5.syx`, one update for all
+six chips):
+
+| Release | What it is | Install |
+|---|---|---|
+| **1.5.1.2** (latest) | Voices no longer muted for good by a cut message or a stray calibration command, a full queue no longer drops a whole sound, a stuck chip restarts, a half-written calibration page is not used, Release 101-127 rise to 60 s and always end, no backup can stop a chip, its own version reported; installed on the six chips on 15 November 2026 | **after Main 1.6.9.0**, with a full backup before and after |
+
+Full details: [firmware notes](docs/firmware.md) (each change, how it was proved, its limits; [Tempester
+Voice](docs/firmware.md#tempester-voice)) and the [changelog](CHANGELOG.md).
 
 <details>
 <summary><strong>Everything Tempester OS changes</strong> (with the release that brought it)</summary>
@@ -168,6 +178,9 @@ Full details: [firmware notes](docs/firmware.md) (each change, how it was proved
 | Roll and arpeggio repeats on the grid with the sequencer stopped; Momentary Roll footswitch on while pressed only | 1.6.5.0 |
 | A playing beat roll no longer loses notes recorded late in its window | 1.6.5.0 |
 | The compressor envelope Amount reaches −127 as shown | 1.6.5.0 |
+| Every Voice OS dump starts at the beginning of the chip | 1.6.6.0 |
+| Pitch, Filter, Aux 1 and Aux 2 Release stop at 123 like Amp Release (the official voices never end a release at 124-127) | 1.6.6.0 |
+| A second full backup in the same power-on no longer stops the voices | 1.6.8.0 |
 
 **Additions and changes**
 
@@ -193,6 +206,10 @@ Full details: [firmware notes](docs/firmware.md) (each change, how it was proved
 | More Quantize values for recording: dotted, 64th, quintuplets, septuplets | 1.6.5.0 |
 | Edit > Copy Sound copies the sequence, Note FX and mixer settings to another beat | 1.6.5.0 |
 | System > Swing Source « +Roll »: the beat roll follows the swing | 1.6.5.0 |
+| Full backup over MIDI: the six voice chips with their calibration, the Main boot flash, the System settings (SysEx `44`) | 1.6.6.0 |
+| The five Release parameters up to 127 when the six voice chips run Tempester Voice | 1.6.7.0 |
+| The Voice OS of each chip reported (SysEx `45` after `43`) | 1.6.7.0 |
+| Every Tempester Voice version recognised, 1.5.1.2 included | 1.6.9.0 |
 
 Each release contains everything of the earlier ones. Release by release: [firmware notes](docs/firmware.md#versions).
 The new MIDI messages: [MIDI protocol](docs/midi-protocol.md).
@@ -211,6 +228,8 @@ The new MIDI messages: [MIDI protocol](docs/midi-protocol.md).
 | Remote panel (Panel, Machine view) | no | 1.6.0.0 or later |
 | Fetch the whole project | no | 1.6.1.0 or later |
 | Send a project back with its Play Lists | no | 1.6.2.0 or later |
+| Full backup (Backup page) | no | 1.6.6.0 or later (one per power-on before 1.6.8.0) |
+| Release knobs up to 127 | no | 1.6.7.0 or later with Tempester Voice on the six chips (Voice 1.5.1.2: Main 1.6.9.0 or later) |
 
 </details>
 
@@ -228,22 +247,28 @@ We try to say exactly what was checked, and on what.
 
 **Tested**
 
-- **Every Tempester OS release on real hardware.** Each release from 1.5.1.0 to 1.6.4.0 was installed over USB on the
-  project's Tempest, one after the other, without any programmer. For 1.5.5.0, 1.6.2.0, 1.6.3.0 and 1.6.4.0, the Main OS read
-  back from the machine was identical to the built image over the whole range an update writes.
+- **Every Tempester OS release on real hardware.** Each release from 1.5.1.0 to 1.6.9.0 was installed over USB on the
+  project's Tempest, one after the other, without any programmer. For 1.5.5.0, 1.6.2.0, 1.6.3.0, 1.6.4.0 and 1.6.5.0,
+  the Main OS read back from the machine was identical to the built image over the whole range an update writes.
+- **Every Tempester Voice release on real hardware**: 1.5.1.0, 1.5.1.1 and 1.5.1.2 were installed on the six chips,
+  each with a full backup before and after: each chip's program pages read back equal to the built image.
 - **The new features on the machine**: requests, NRPN, the remote panel, the project request, the 1.6.3.0 and 1.6.4.0
-  additions were used on the machine, over USB.
+  additions, the full backup (two in a row from 1.6.8.0) and the Release up to 127 with Tempester Voice were used on
+  the machine, over USB.
 - **Proofs before any install.** Every change is checked word by word against the official image; the later ones
   also run in an instruction-level simulator of the Main processor on the real firmware code, and the same checks must
   fail on the unpatched image and on deliberately wrong variants. See [testing](docs/testing.md).
-- **The app on macOS**, with the machine over USB. Automatic tests run on macOS, Windows and Linux, on a throwaway
-  home folder, with counter-proofs for the user-interface tests.
+- **The app on macOS**, with the machine over USB: Main and Voice OS installs from the OS update page, the full backup and the identity card were used with the app on the author's machine (some installs, Main 1.6.9.0 and Tempester
+  Voice 1.5.1.2 among them, were sent with the project's command-line sender instead). Automatic tests run on macOS,
+  Windows and Linux, on a throwaway home folder, with counter-proofs for the user-interface tests.
 
 **Not tested yet**
 
 - **Windows and Linux** builds come from CI only. They compile and pass the tests there, but have not been run with a
   Tempest, and their installers have not been installed by a person.
 - **Tempester Control** has been built and driven by a test host, but not yet loaded in a real DAW.
+- **The 1.6.5.0 functions by hand** (pad channels, pad settings page, long notes, fine Quantize, Copy Sound, rolls):
+  proved in simulation and installed, not yet tried one by one on the machine.
 - **The DIN cable**: almost everything was done over USB.
 - **Going back to DSI 1.5.0.2** on the test machine. It uses the same update path as every install above.
 - A few rare paths of the fixes (listed in [testing](docs/testing.md#not-verified)).
@@ -261,8 +286,11 @@ Changing the firmware of an instrument always carries some risk. Tempester is de
 - **Every file is checked.** Your official file, the built image and the file sent are all checked by SHA-256, and
   after the install the app compares what the machine reads back with what it sent.
 - **Going back is one click.** *Back to DSI 1.5.0.2* on the OS update page rebuilds the official OS from your file. You
-  can also use Sequential's own [update guide](https://sequential.com/updating-tempest-os/). The Voice, Panel and SAM
-  chips are never changed, so nothing else needs to be sent.
+  can also use Sequential's own [update guide](https://sequential.com/updating-tempest-os/). Panel and SAM are never
+  changed; if you installed Tempester Voice, send the official `Tempest_Voice_1.5.syx` too.
+- **Tempester Voice is a separate, optional step.** One Voice update goes to all six sound chips at once; a power cut
+  during its first two thirds leaves chips that only a programmer on their own header can bring back (the same risk as
+  an official Voice update). The app asks for a full backup before and after, and says to install Main 1.6.9.0 first.
 - **A hardware backup is optional.** For the rare case where the Main OS would no longer start at all, the
   [recovery guide](docs/recovery.md#optional-full-chip-backup-and-recovery-with-a-pickit) explains a full chip backup
   with a Microchip PICkit. You do not need one: every install above was made without it, and it has never been needed.
@@ -317,7 +345,7 @@ the DIN ports first. Step by step: [Before you install](docs/user-manual.md#befo
 <details>
 <summary><strong>Will it change my sounds, beats and projects?</strong></summary>
 
-An OS update rewrites the Main processor's program only. Your sounds, beats and projects live in the machine's
+An OS update rewrites only a program: the Main processor's (or, for Tempester Voice, the six voice chips'). Your sounds, beats and projects live in the machine's
 separate storage, and Tempester keeps their format. One addition uses a value the official OS never reads: a beat saved
 with a play probability below 100 % simply plays every note on the official OS. Still, back up your project before any
 update: the app's Library can fetch it, or receive it from the machine's own menu.

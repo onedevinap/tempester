@@ -15,7 +15,7 @@ use crate::command::{Command, Place};
 use crate::error::AppError;
 use crate::event::Event;
 use crate::storage::data_dir::Platform;
-use crate::storage::installed::running_json;
+use crate::storage::installed::{running_json, voice_installed_json};
 use crate::storage::settings::{KEY_CHANNEL, KEY_PANEL_VIEW, KEY_PANEL_ZOOM, KEY_PORT};
 
 const IDENTITY_TIMEOUT: Duration = Duration::from_millis(1500);
@@ -49,9 +49,13 @@ impl Machine {
         None
     }
 
-    /// The session when connected and no OS send is running (nothing else may talk during an update).
+    /// The session when connected and no OS send is running (nothing else may talk during an update), nor a full
+    /// backup (the machine reads no MIDI input while it answers).
     pub(super) fn idle_session(&self) -> Result<&Session, AppError> {
-        if self.os_active.load(Ordering::SeqCst) || self.project_busy() {
+        if self.os_active.load(Ordering::SeqCst)
+            || self.project_busy()
+            || self.full_backup_running()
+        {
             return Err(AppError::Busy);
         }
         self.session.as_ref().ok_or(AppError::NotConnected)
@@ -100,6 +104,12 @@ impl Machine {
                 .with("features", self.features())
                 .with("os_known", self.os_known())
                 .with("announced", self.announced.map(|v| v.to_string()))
+                .with("release_max", self.release_max())
+                .with("voice_versions", self.voice_versions())
+                .with(
+                    "voice_installed",
+                    voice_installed_json(self.voice_words.as_ref()),
+                )
                 .with(
                     "running",
                     running_json(self.announced.map(|v| v.to_string()).as_deref()),
@@ -151,11 +161,13 @@ impl Machine {
         self.release_touched_ribbons();
         self.forget_remote();
         self.announced = None;
+        self.voice_words = None;
         self.dsi_identity = false;
         self.beat_wide_in.forget();
         self.pad_channels.reset();
         self.stop_clock();
         self.backup = None;
+        self.full_backup = None;
         self.verify = None;
         self.project = None;
         self.monitor.detach();

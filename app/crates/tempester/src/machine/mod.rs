@@ -3,7 +3,7 @@
 //! and report through the same `Emitter`.
 //!
 //! One file per subject: `connection` (ports, identity, state), `panel` (NRPN), `sound`, `beat`, `library`,
-//! `manager` (the library manager: duplicate check, review, item actions, sending an item), `kit` (library sounds onto the pads of the machine's beat), `midi_export` (a beat as a Standard MIDI File), `backup`, `project`, `project_send` (a whole project back to the machine), `os_update`, `os_verify` (read the installed OS back from the machine), `play` (pads, clock master), `pad_map` (the machine's note of each pad: kept, edited, learned from the machine), `sequencer` (Euclidean and probability sequencer on the clock thread), `remote_panel` (keys, LEDs, controls of the 1.6.0.0 remote panel), `perform` (beat-wide positions, FX ribbons, play probability of 1.6.2.0 / 1.6.3.0), `announce` (the exact Tempester version, n°39, and the Pad Function mode, n°40), `editor` (the Panel page's editing tools: history, A/B, variations, MIDI learn), `monitor` (every message in and out, for the Machine page); `connector` and `fake_machine` stand in for real ports.
+//! `manager` (the library manager: duplicate check, review, item actions, sending an item), `kit` (library sounds onto the pads of the machine's beat), `midi_export` (a beat as a Standard MIDI File), `backup`, `full_backup` (the n°62 full machine backup: request, checks, dated folder), `project`, `project_send` (a whole project back to the machine), `os_update`, `os_verify` (read the installed OS back from the machine), `play` (pads, clock master), `pad_map` (the machine's note of each pad: kept, edited, learned from the machine), `sequencer` (Euclidean and probability sequencer on the clock thread), `remote_panel` (keys, LEDs, controls of the 1.6.0.0 remote panel), `perform` (beat-wide positions, FX ribbons, play probability of 1.6.2.0 / 1.6.3.0), `announce` (the exact Tempester version, n°39, and the Pad Function mode, n°40), `editor` (the Panel page's editing tools: history, A/B, variations, MIDI learn), `monitor` (every message in and out, for the Machine page); `connector` and `fake_machine` stand in for real ports.
 
 mod announce;
 mod backup;
@@ -13,6 +13,7 @@ pub mod connector;
 mod editor;
 pub mod fake_machine;
 mod fake_panel;
+mod full_backup;
 mod kit;
 mod library;
 mod manager;
@@ -45,7 +46,7 @@ use tempest_midi::message::Message;
 use tempest_midi::paced::DEFAULT_RATE;
 use tempest_midi::CancelToken;
 use tempest_proto::beat::BeatSummary;
-use tempest_proto::identity::TempesterVersion;
+use tempest_proto::identity::{TempesterVersion, VOICE_CHIPS};
 use tempest_proto::nrpn::{self, NrpnDecoder};
 use tempest_proto::pad_notes::PadNotes;
 use tempest_proto::performance::BeatWideReader;
@@ -102,6 +103,10 @@ pub struct Machine {
     fetched_beat: Option<BeatData>,
     opened_beat: Option<BeatData>,
     backup: Option<Capture>,
+    full_backup: Option<full_backup::FullBackup>,
+    /// A full backup was requested since the app started or since the user said the machine was powered off and on
+    /// (`full_backup::second_backup_allowed`). Kept across port changes: a reconnection is not a power cycle.
+    full_backup_read: bool,
     project: Option<ProjectCapture>,
     /// True while a project goes to the machine on its own thread: nothing else may talk on the port.
     project_sending: Arc<AtomicBool>,
@@ -130,6 +135,8 @@ pub struct Machine {
     remote: RemoteState,
     /// The exact version the machine announced (n°39), until the port closes or an OS update starts.
     announced: Option<TempesterVersion>,
+    /// The version word of each Voice chip as the Main reported it (n°64, message `45` after the version reply).
+    voice_words: Option<[u16; VOICE_CHIPS]>,
     /// True once the machine answered the identity request as the original DSI OS, until the port closes or it answers as
     /// a Tempester: no Tempester feature is available then, whatever the install record says.
     dsi_identity: bool,
@@ -159,6 +166,8 @@ impl Machine {
             fetched_beat: None,
             opened_beat: None,
             backup: None,
+            full_backup: None,
+            full_backup_read: false,
             project: None,
             project_sending: Arc::new(AtomicBool::new(false)),
             project_cancel: None,
@@ -178,6 +187,7 @@ impl Machine {
             pad_channels: pad_channel::Link::default(),
             remote: RemoteState::Unknown,
             announced: None,
+            voice_words: None,
             dsi_identity: false,
             monitor: Monitor::new(),
             edit,
@@ -239,6 +249,7 @@ impl Machine {
     pub fn poll_incoming(&mut self) {
         self.poll_monitor(Instant::now());
         self.expire_project(Instant::now());
+        self.expire_full_backup(Instant::now());
         self.poll_controller();
         let now = Instant::now();
         let Some(session) = &self.session else { return };
@@ -264,6 +275,7 @@ impl Machine {
                 Message::SysEx(bytes) => {
                     self.on_version_reply(&bytes);
                     self.on_sysex(&bytes);
+                    self.on_full_backup_sysex(&bytes);
                     self.on_project_sysex(&bytes);
                 }
                 _ => {}

@@ -652,6 +652,9 @@ window.Tempester.libbrowser = (function () {
           item.beats !== null && item.kind === "projects"
             ? fact("Beats", item.beats + " of 16")
             : [],
+          item.kind === "projects" && item.quantize
+            ? fact("Quantize", item.quantize)
+            : [],
           item.capture ? fact("Capture", item.capture) : [],
         ),
         item.slot

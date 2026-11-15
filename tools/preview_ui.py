@@ -54,7 +54,8 @@ window.__previewAnswers = {
       .map((name) => ({ name, size: 300 }));
     return { event: "library", kind: a[0], files };
   },
-  os_versions: () => ({ event: "os_versions", versions: window.__previewVersions || [] }),
+  os_versions: () => ({ event: "os_versions", versions: window.__previewVersions || [],
+                        voice_versions: window.__previewVoiceVersions || [] }),
   edit_state: () => ({ event: "edit", synced: true, undo: "n34", redo: null, depth: 1, a: true, b: true, active: "A" }),
   learn_ports: () => ({ event: "learn_ports", ports: ["EXAMPLE Controller"] }),
   pad_notes: () => window.__previewPadNotes(),
@@ -200,18 +201,23 @@ def params_js(table_path: Path) -> str:
 
 
 def versions_js(root: Path = ROOT) -> str:
-    """`window.__previewVersions`: the versions the app offers (kinds release and corrections, newest first), read from
-    the manifests like the generated Rust table, for the OS page's `os_versions` answer."""
+    """`window.__previewVersions` and `window.__previewVoiceVersions`: the Main versions the app offers (kinds release
+    and corrections) and the Tempester Voice versions (versions/voice/, any kind: a superseded one for its history
+    row), newest first, read from the
+    manifests like the generated Rust tables, for the OS page's `os_versions` answer."""
     def key(spec: dict) -> list[int]:
         return [int(part) for part in spec["version"].split(".")]
 
-    specs = [json.loads(path.read_text(encoding="utf-8")) for path in sorted((root / "versions").glob("*.json"))]
-    shown = [
-        {k: spec[k] for k in ("version", "name", "kind", "date", "summary", "changes", "description", "sha256_image", "sha256_syx")}
-        for spec in sorted(specs, key=key, reverse=True)
-        if spec.get("kind") in ("release", "corrections")
-    ]
-    return f"window.__previewVersions = {json.dumps(shown, ensure_ascii=False)};\n"
+    fields = ("version", "name", "kind", "date", "summary", "changes", "description", "sha256_image", "sha256_syx")
+
+    def listed(folder: Path, kinds: tuple[str, ...]) -> list[dict]:
+        specs = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(folder.glob("*.json"))]
+        return [{k: spec[k] for k in fields} for spec in sorted(specs, key=key, reverse=True) if spec.get("kind") in kinds]
+
+    main = listed(root / "versions", ("release", "corrections"))
+    voice = listed(root / "versions" / "voice", ("release", "test", "superseded"))
+    return (f"window.__previewVersions = {json.dumps(main, ensure_ascii=False)};\n"
+            f"window.__previewVoiceVersions = {json.dumps(voice, ensure_ascii=False)};\n")
 
 
 def inline_script(code: str) -> str:

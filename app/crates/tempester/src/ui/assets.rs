@@ -3,6 +3,7 @@
 
 use std::borrow::Cow;
 
+use tempest_proto::release_cap::RELEASES;
 use tempest_proto::sound::params;
 
 const HTML: &str = "text/html; charset=utf-8";
@@ -68,19 +69,28 @@ static ASSETS: &[Asset] = &[
     asset!("/lib-kit.js", JS, "lib-kit.js"),
     asset!("/lib-browser.js", JS, "lib-browser.js"),
     asset!("/page-library.js", JS, "page-library.js"),
+    asset!("/full-backup.js", JS, "full-backup.js"),
     asset!("/page-backup.js", JS, "page-backup.js"),
     asset!("/page-os.js", JS, "page-os.js"),
     asset!("/page-play.js", JS, "page-play.js"),
     asset!("/app.js", JS, "app.js"),
 ];
 
-/// `window.TEMPEST_PARAMS = [[index, max, default], ...]` for the panel.
+/// `window.TEMPEST_PARAMS = [[index, max, default], ...]` for the panel, then `window.TEMPEST_RELEASE_CAP`: the
+/// parameters whose maximum depends on the machine (the five Releases, n°63). The page takes their maximum from the
+/// `release_max` field of the `state` and `installed` events, computed by `tempest_proto::release_cap::release_max`
+/// from the Main OS and the Voice chips' versions: the table's maxima here are DSI's, used until the first event.
 pub fn params_js() -> String {
     let rows: Vec<String> = params()
         .iter()
         .map(|p| format!("[{},{},{}]", p.index, p.max, p.default))
         .collect();
-    format!("window.TEMPEST_PARAMS = [{}];\n", rows.join(","))
+    let capped: Vec<String> = RELEASES.iter().map(u8::to_string).collect();
+    format!(
+        "window.TEMPEST_PARAMS = [{}];\nwindow.TEMPEST_RELEASE_CAP = {{\"params\":[{}]}};\n",
+        rows.join(","),
+        capped.join(",")
+    )
 }
 
 /// The asset for a URL path (`/` is the page): its media type and bytes.
@@ -218,7 +228,8 @@ mod tests {
 
     #[test]
     fn test_params_js_when_generated_returns_all_127_rows_matching_the_table() {
-        let js = params_js();
+        let all = params_js();
+        let js = all.lines().next().expect("the table line");
 
         assert_eq!(js.matches('[').count(), 128);
         assert!(
@@ -226,6 +237,15 @@ mod tests {
             "{js}"
         );
         assert!(js.contains("[34,164,164]"));
+        assert!(
+            all.ends_with("window.TEMPEST_RELEASE_CAP = {\"params\":[65,70,75,83,91]};\n"),
+            "{all}"
+        );
+        // The five parameters are the five Releases of the table, with DSI's maxima (Amp Release already at 123).
+        for index in [65usize, 70, 75, 83, 91] {
+            let max = if index == 75 { 123 } else { 127 };
+            assert!(js.contains(&format!("[{index},{max},")), "{index}");
+        }
     }
 
     #[test]

@@ -146,3 +146,36 @@ fn test_summarize_when_real_beat_dump_returns_a_printable_name_and_events() {
     println!("beat name: {:?}, events: {}", summary.name, summary.events);
     assert!(!summary.name.is_empty() && !summary.name.contains('?'));
 }
+#[test]
+#[ignore = "needs the real DSI files (TEMPESTER_DSI_SYX)"]
+fn test_build_voice_when_real_voice_returns_every_version_with_the_recorded_hashes_and_intact_protected_zones(
+) {
+    use tempest_proto::voice_recipe;
+    use tempest_proto::voice_versions::{self, VoiceError};
+
+    let dsi = read(FILES[1].0);
+    let original = os_image::decode(&dsi).expect("real file decodes").image;
+    assert_eq!(sha256_hex(&original), voice_versions::VOICE_ORIGIN_SHA256);
+
+    for version in voice_versions::voice_versions() {
+        // `build_voice` itself refuses a build whose image, sent pages or .syx differ from the manifest.
+        let built = voice_versions::build_voice(version, &dsi).expect("version builds");
+
+        assert_eq!(built.image.len(), original.len(), "{}", version.version);
+        assert_ne!(built.image, original, "{}", version.version);
+        for pc in (0..(original.len() / 3 * 2) as u32).step_by(2) {
+            let same =
+                voice_recipe::word_at(&built.image, pc) == voice_recipe::word_at(&original, pc);
+            assert!(
+                same || voice_recipe::protected(pc).is_none(),
+                "{}: protected PC {pc:#x} changed",
+                version.version
+            );
+        }
+        assert_eq!(voice_recipe::word_at(&built.image, 0), Some(0x04_15F0));
+    }
+    assert_eq!(
+        voice_versions::build_voice(&voice_versions::voice_versions()[0], &read(FILES[0].0)),
+        Err(VoiceError::NotVoice(OsId::Main))
+    );
+}

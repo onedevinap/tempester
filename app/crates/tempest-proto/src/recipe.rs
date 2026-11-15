@@ -104,7 +104,7 @@ fn jump(at: u32, target: u32, link: bool) -> Result<u32, EditError> {
     Ok((if link { 3 } else { 2 }) << 26 | (target >> 2) & 0x03FF_FFFF)
 }
 
-fn set_fields(word: u32, set: &[Field]) -> Option<u32> {
+pub(crate) fn set_fields(word: u32, set: &[Field]) -> Option<u32> {
     set.iter().try_fold(word, |w, f| {
         let (lo, width) = (u32::from(f.lo), u32::from(f.width));
         if width == 0 || lo + width > 32 || (width < 32 && f.value >> width != 0) {

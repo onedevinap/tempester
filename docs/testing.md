@@ -68,8 +68,11 @@ Each patch is described with its proof in [firmware](firmware.md). In short:
 Simulated: n°8 (loop model), n°15, n°16, n°17 (two interrupts and the voice link, bit level), n°18-20 (MIDI input),
 n°21-23 (remote panel), n°24 and n°26 (project request, with the real screen routines), n°25, n°27 (packer and senders),
 n°28 (sender, app re-encoding and receiver on two simulated machines), n°29, n°30 (including a real OS update
-receive), n°31 and n°32 (ribbons and footswitch), n°33 to n°35 (on the real user-interface code), n°36, and 1.6.2.0 and
-1.6.3.0 and 1.6.4.0 as combined images. The other patches rest on code reading and static checks.
+receive), n°31 and n°32 (ribbons and footswitch), n°33 to n°35 (on the real user-interface code), n°36, n°37 to n°46,
+n°48 to n°56, n°58, n°59, n°61, n°62 to n°65 (full backup against models of the voice chips, Release cap and lift,
+Voice versions), and every release from 1.6.2.0 on as combined images; Tempester Voice on a simulator of the Voice
+processor (the chip's own code, the Main's reads, the release curve, the update). The other patches rest on code
+reading and static checks.
 
 The simulators, the stack and register checks and the patch assembly sources are not published: they work on the
 addresses and routines of DSI's code, which this repository does not describe. Their results are summarised patch by
@@ -79,8 +82,9 @@ recipes to its recorded hashes) and the app's tests.
 ## Verified on a real machine
 
 One Tempest, over USB, each installation with the author's go. Each version replaced the previous one; the machine
-now runs 1.6.5.0. The installations up to 1.6.2.0 were made with a SysEx sender of this repository
-(`tools/tempest_midi.swift`), not with the app's OS update page.
+now runs Tempester 1.6.9.0 with Tempester Voice 1.5.1.2 on its six voice chips. The installations up to 1.6.2.0, and
+some later ones (Main 1.6.9.0 and Tempester Voice 1.5.1.2 among them), were sent with a SysEx sender of this repository
+(`tools/tempest_midi.swift`); Main and Voice OS installs from the OS update page, the full backup and the identity card were used with the app on the author's machine.
 
 | Date | Version | What was checked on the machine |
 |---|---|---|
@@ -94,8 +98,12 @@ now runs 1.6.5.0. The installations up to 1.6.2.0 were made with a SysEx sender 
 | 8 Nov | 1.6.1.0 | the project request works (n°24); a project captured this way is read by the app (16 beats, Play Lists) |
 | 8 Nov | 1.6.2.0 | the Debug-menu *Send Main OS* dump is byte-identical to the built 1.6.2.0 image over the whole range an update writes (`0x9D000000`-`0x9D07EFFF`); the last page differs as expected (below) |
 | 9 Nov | 1.6.3.0 | started normally showing 1.6.3.0; the *Send Main OS* dump is byte-identical to the built image over the range an update writes, the last page is the machine's own; the behaviours of n°26 to n°36 used on the machine and confirmed by the author |
-| 10 Nov | 1.6.4.0 | installed over USB, the machine power-cycled by hand after the send; request 43 answers 1.6.4.0; the *Send Main OS* dump equals the built image on the written range; hand tests of its new behaviours: not yet |
+| 10 Nov | 1.6.4.0 | installed over USB, the machine power-cycled by hand after the send; request 43 answers 1.6.4.0; the *Send Main OS* dump equals the built image on the written range; n°38, n°40, n°41, n°43-n°46 tried by hand the same day: as simulated |
 | 12 Nov | 1.6.5.0 | the machine answers 1.6.5.0 to the exact-version request; the *Send Main OS* dump equals the built image on the written range (a first capture was damaged in transit, bytes of 0x80 and above inside the SysEx; a second dump was clean); n°52 listened to by the author, who keeps it; hand tests of the new behaviours: not yet (n°52 listened to, kept) |
+| 13 Nov | 1.6.6.0 | the first full backup of the machine (request `44`): the six voice chips with their calibration, the boot flash, the System settings |
+| 14 Nov | Tempester Voice 1.5.1.0, then 1.6.7.0 | the Voice update on the six chips, a full backup before and after (each chip's program pages equal to the built image); 1.6.7.0 reports six `0016` and the Release knobs reach 127 (heard); a second full backup in the same power-on stopped the voice chips (official Voice: silent until power-off; Tempester Voice 1.5.1.0: restarted, shifted): the defect fixed next |
+| 14 Nov | Tempester Voice 1.5.1.1, then 1.6.8.0 | two full backups in a row, identical byte for byte, the voices still playing |
+| 15 Nov | 1.6.9.0, then Tempester Voice 1.5.1.2 | request `43` answers 1.6.9.0; `45` reports six `0017`; two full backups in a row identical after each step; each chip's program pages equal to the built image, its calibration page unchanged |
 
 **Why the last flash page is left out of the comparison.** The last 4 KB page (`0x9D07F000` and up) holds the routine
 that writes the flash during an update. No update rewrites it, official or Tempester: every machine keeps the copy it
@@ -107,7 +115,8 @@ update writes and ignores the page it never writes.
 The checks above were made with small MIDI tools of this repository (`tools/tempest_midi.swift`, `tools/test_nrpn.py`,
 `tools/beat_voice_assign.py`, `tools/beat_fx_check.py`). The app was first used with the machine to receive a whole
 project (1.6.1.0, USB); by 9 Nov its pages (Panel, Library, Play, Machine) had been used with the machine on
-macOS over USB and confirmed by the author, with the open points listed below.
+macOS over USB and confirmed by the author, with the open points listed below; later the OS update page (Main and
+Voice installs), the full backup and the identity card were used with the machine too.
 
 ## Not verified
 
@@ -140,6 +149,11 @@ Be aware of these before relying on them.
   the machine, but not every case was tested on purpose (for example the SysEx timeout on DIN, or the first sorted Load
   Sound on a very large folder).
 - **n°25**: installed with 1.6.1.0, the LED behaviour not checked.
+- **n°48 to n°61** (1.6.5.0): installed, n°52 listened to; the other new behaviours not yet tried one by one on the
+  machine.
+- **Tempester Voice**: installed on the six chips and read back; not yet done on the machine: a Calibrate run, the
+  Release times 101-127 measured with a stopwatch (60 s at 127), one chip put back on the official Voice OS (the Main
+  must then report it and keep the Release knobs at 123), going back to the official Voice 1.5.
 - **n°2b, 2c, 3, 4a, 4b, 5, 6, 7a-7d, 8, 10, 12**: installed since 1.5.1.0 / 1.5.4.0 and in daily use, but no targeted
   reproduction of the original defect on the machine.
 - **n°17** (muted voices): the cause is found with medium confidence; confirming the fix needs long sessions with LFO

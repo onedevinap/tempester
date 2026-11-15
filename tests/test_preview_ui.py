@@ -4,6 +4,7 @@
 usage: python3 -I test_preview_ui.py   (writes only in a temporary folder)
 Counter-proofs: a page whose CSP meta is missing, or that names an asset the tool cannot inline, is refused."""
 import importlib.util
+import json
 import re
 import shutil
 import sys
@@ -28,7 +29,12 @@ def check_build() -> None:
         first_line = (preview.DEFAULT_UI / name).read_text(encoding="utf-8").splitlines()[0]
         assert first_line in html, f"{name} not inlined"
     assert "EXAMPLE" in html and "PREVIEW" in html
-    print("preview_ui: OK (all assets inlined, 127 parameters, example values marked)")
+    voices = re.search(r"window\.__previewVoiceVersions = (\[.*?\]);\n", html).group(1)
+    assert '"version": "1.5.1.2"' in voices and '"changes"' in voices, "the Voice versions are offered with their changes"
+    voice_list = json.loads(voices)
+    assert {v["version"]: v["kind"] for v in voice_list}.get("1.5.1.0") == "superseded", \
+        "1.5.1.0 is listed for its history row, marked superseded (the page offers no card for it)"
+    print("preview_ui: OK (all assets inlined, 127 parameters, example values marked, Voice versions listed)")
 
 
 def refused(ui_dir: Path) -> bool:

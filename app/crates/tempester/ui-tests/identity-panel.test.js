@@ -2,8 +2,10 @@
    run by tools/test_app.sh: `node identity-panel.test.js <ui folder>`. Every field is visible text after an
    identity event, nothing sits in a popover, the chip opens the Machine page. The exact version the machine reports
    (shared state of os-verify.js) fills the Version row and resolves every feature from Rust's table; it is forgotten
-   with the shared state. Then the same checks on copies of the scripts with one behaviour broken, each of which must
-   fail. */
+   with the shared state. The Voice OS of each of the six chips (n°64, `voice_versions` of Rust's events) fills six
+   fixed rows: the label Rust sends, a tone for Tempester / DSI / unknown, "Waiting" while a machine that has the
+   feature has not sent them yet, then "Not reported". Then the same checks on copies of the scripts with one
+   behaviour broken, each of which must fail. */
 "use strict";
 const fs = require("fs");
 const os = require("os");
@@ -65,6 +67,16 @@ const state = (event, count, run) => ({
   features: features(count),
   running: run,
 });
+
+/* The class (tone) of the value shown next to a label. */
+function tone(panel, label) {
+  const cells = all(panel).filter(
+    (n) => n.tagName === "DT" || n.tagName === "DD",
+  );
+  const at = cells.findIndex((n) => n.tagName === "DT" && textOf(n) === label);
+  assert.ok(at >= 0, "no row " + label);
+  return cells[at + 1].attrs.class;
+}
 
 /* The visible value shown next to a label, e.g. value(panel, "NRPN reception"). */
 function value(panel, label) {
@@ -221,15 +233,167 @@ function runDsi(env, panel, chip) {
   assert.strictEqual(value(panel, "Checked at"), "-");
 }
 
-function run(dir) {
+/* n°64: the six Voice rows. `voices`: what Rust sends in `voice_versions` (six {word, label}) or null. */
+const LABELS = {
+  0x15: "DSI 1.5",
+  0x16: "Tempester 1.5.1.0 or 1.5.1.1",
+  0x17: "Tempester 1.5.1.2",
+  0x18: "unknown (0x0018)",
+};
+const VOICES = [0x16, 0x16, 0x15, 0x16, 0x18, 0x17].map((word) => ({ word, label: LABELS[word] }));
+const voiceEvent = (on, voices, run) => ({
+  event: "installed",
+  features: {
+    voice_versions: {
+      label: "Voice versions reported",
+      on,
+      since: "1.6.7.0",
+    },
+  },
+  running: run,
+  voice_versions: voices,
+});
+const voiceValues = (panel) =>
+  [0, 1, 2, 3, 4, 5].map((k) => value(panel, "Voice " + k));
+
+function runVoices(env, panel) {
+  env.kit.updateSession({ connected: true, port: "Tempest", fake: false });
+  env.receive(voiceEvent(false, null, null));
+  assert.deepStrictEqual(voiceValues(panel), Array(6).fill("-"), "no machine: nothing");
+
+  env.receive(voiceEvent(true, VOICES, running("1.6.7.0")));
+  assert.deepStrictEqual(
+    voiceValues(panel),
+    VOICES.map((v) => v.label),
+    "each chip shows the label Rust sent, in its own row",
+  );
+  assert.strictEqual(tone(panel, "Voice 0"), "good");
+  assert.strictEqual(tone(panel, "Voice 2"), "off", "DSI 1.5 is shown as it is, not as a problem");
+  assert.strictEqual(tone(panel, "Voice 4"), "warn", "an unknown word is flagged");
+  assert.strictEqual(tone(panel, "Voice 5"), "good", "Tempester Voice 1.5.1.2 (0x17) is a Tempester Voice");
+
+  env.receive(voiceEvent(true, null, running("1.6.7.0")));
+  assert.deepStrictEqual(
+    voiceValues(panel),
+    Array(6).fill("Waiting for the machine..."),
+    "a Main that has n°64 has not sent them yet",
+  );
+
+  env.receive(voiceEvent(false, null, running("1.6.6.0")));
+  assert.deepStrictEqual(
+    voiceValues(panel),
+    Array(6).fill("Not reported"),
+    "a Main without n°64 never will: no waiting",
+  );
+
+  env.receive(voiceEvent(true, VOICES, running("1.6.7.0")));
+  env.kit.updateSession({ connected: false });
+  assert.deepStrictEqual(voiceValues(panel), Array(6).fill("-"), "disconnecting forgets them");
+}
+
+/* The wait for a message that never comes ends: « Not reported ». */
+async function runVoiceWait(env, panel, ms) {
+  env.window.Tempester.identityPanel.voiceWait.ms = ms;
+  env.kit.updateSession({ connected: true, port: "Tempest", fake: false });
+  env.receive(voiceEvent(true, null, running("1.6.7.0")));
+  assert.deepStrictEqual(voiceValues(panel), Array(6).fill("Waiting for the machine..."));
+  await new Promise((resolve) => setTimeout(resolve, ms + 40));
+  assert.deepStrictEqual(
+    voiceValues(panel),
+    Array(6).fill("Not reported"),
+    "after the wait the page says so",
+  );
+  env.receive(voiceEvent(true, VOICES, running("1.6.7.0")));
+  assert.strictEqual(
+    value(panel, "Voice 0"),
+    "Tempester 1.5.1.0 or 1.5.1.1",
+    "a late message still shows",
+  );
+}
+
+/* The two Release rows never contradict each other: Rust's `note` (decided by `release_max`) replaces "Available". */
+const CAP_ROWS = {
+  release_cap: { label: "Release capped at 123", since: "1.6.6.0" },
+  release_cap_voice: {
+    label: "Release up to 127 with Tempester Voice",
+    since: "1.6.7.0",
+  },
+};
+const capEvent = (run, rows) => ({
+  event: "installed",
+  features: Object.fromEntries(
+    Object.entries(CAP_ROWS).map(([id, base]) => [id, { ...base, ...rows[id] }]),
+  ),
+  running: run,
+});
+const LIFTED = { text: "Lifted (six Tempester Voice chips)", tone: "good" };
+const NEEDS_ALL = {
+  text: "Inactive: needs Tempester Voice on all six chips",
+  tone: "warn",
+};
+
+function runCap(env, panel) {
+  env.kit.updateSession({ connected: true, port: "Tempest", fake: false });
+  env.receive(
+    capEvent(running("1.6.7.0"), {
+      release_cap: { on: true, note: LIFTED },
+      release_cap_voice: { on: true },
+    }),
+  );
+  assert.strictEqual(
+    value(panel, "Release capped at 123"),
+    "Lifted (six Tempester Voice chips)",
+  );
+  assert.strictEqual(tone(panel, "Release capped at 123"), "good");
+  assert.strictEqual(
+    value(panel, "Release up to 127 with Tempester Voice"),
+    "Available",
+  );
+
+  env.receive(
+    capEvent(running("1.6.7.0"), {
+      release_cap: { on: true },
+      release_cap_voice: { on: true, note: NEEDS_ALL },
+    }),
+  );
+  assert.strictEqual(value(panel, "Release capped at 123"), "Available");
+  assert.strictEqual(
+    value(panel, "Release up to 127 with Tempester Voice"),
+    "Inactive: needs Tempester Voice on all six chips",
+  );
+  assert.strictEqual(
+    tone(panel, "Release up to 127 with Tempester Voice"),
+    "warn",
+  );
+  assert.ok(
+    all(panel).some((n) => n.tagName === "DD" && n.attrs.title === NEEDS_ALL.text),
+    "the full text stays on hover when the column cuts it",
+  );
+
+  env.receive(
+    capEvent(running("1.6.6.0"), {
+      release_cap: { on: true },
+      release_cap_voice: { on: false },
+    }),
+  );
+  assert.strictEqual(value(panel, "Release capped at 123"), "Available");
+  assert.strictEqual(
+    value(panel, "Release up to 127 with Tempester Voice"),
+    "Not in this version",
+  );
+}
+
+async function run(dir) {
   const { env, panel, switched, chip } = setup(dir);
   env.receive(state("state", 0, null));
   runWord(env, panel, switched, chip);
   runReported(env, panel);
   runDsi(env, panel, chip);
+  runVoices(env, panel);
+  runCap(env, panel);
+  await runVoiceWait(env, panel, 20);
 }
 
-run(uiDir);
 const read = (file) => fs.readFileSync(path.join(uiDir, file), "utf8");
 const PANEL = "identity-panel.js";
 const SHARED = "os-verify.js";
@@ -264,9 +428,18 @@ const broken = [
   [PANEL, "if (running && running.known)", "if (false)"],
   [
     PANEL,
-    'feature.on ? [S.featuresYes, "good"] : [S.featuresNotHere, "off"]',
-    '[S.featuresYes, "good"]',
+    'if (!feature.on) return [S.featuresNotHere, "off"];',
+    "",
   ],
+  // The Release cap rows (Rust's `note` replaces "Available").
+  [
+    PANEL,
+    "return feature.note\n        ? [feature.note.text, feature.note.tone]\n        : [S.featuresYes, \"good\"];",
+    'return [S.featuresYes, "good"];',
+  ],
+  [PANEL, "? [feature.note.text, feature.note.tone]", '? [feature.note.text, "good"]'],
+  [PANEL, "? [feature.note.text, feature.note.tone]", '? [S.featuresYes, feature.note.tone]'],
+  [PANEL, 'cell.value.setAttribute("title", text);', "void text;"],
   [
     PANEL,
     "if (running) return running.known ? S.reportedNote : S.unknownNote;",
@@ -289,26 +462,47 @@ const broken = [
   ],
   [
     SHARED,
-    "if (!session.connected) setView({ running: null, verified: null });",
+    "if (!session.connected)\n      setView({ running: null, verified: null, voiceVersions: null });",
     "",
   ],
+  // The Voice rows.
+  [PANEL, "const label = v.label || S.none;", "const label = S.none;"],
+  [
+    PANEL,
+    '/^Tempester/.test(label)\n          ? "good"',
+    '/^Zzz/.test(label)\n          ? "good"',
+  ],
+  [PANEL, '/^unknown/.test(label)\n            ? "warn"', '/^zzz/.test(label)\n            ? "warn"'],
+  [PANEL, "if (expected && !voiceWaitOver) {", "if (false) {"],
+  [PANEL, "voiceWaitOver = true;\n          render(", "render("],
+  [PANEL, "view.running ? S.voiceNotReported : S.none", "S.none"],
+  [PANEL, "view.running && view.running.known && feature && feature.on", "view.running && view.running.known"],
+  [SHARED, "voiceVersions: m.voice_versions || null,", "voiceVersions: view.voiceVersions,"],
   [
     SHARED,
     "const running = m.running || null;",
     "const running = m.running || view.running;",
   ],
 ];
-let refused = 0;
-for (const [file, from, to] of broken) {
-  const source = read(file);
-  assert.ok(source.includes(from), "counter-proof anchor missing: " + from);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "identity-panel-"));
-  for (const f of FILES)
-    fs.copyFileSync(path.join(uiDir, f), path.join(dir, f));
-  fs.writeFileSync(path.join(dir, file), source.replace(from, to));
-  assert.throws(() => run(dir), undefined, "broken copy accepted: " + from);
-  refused++;
-}
-console.log(
-  `ok: identity shown in full, no popover, chip opens Machine, reported version resolves features; ${refused} broken copies refused`,
-);
+(async () => {
+  await run(uiDir);
+  let refused = 0;
+  for (const [file, from, to] of broken) {
+    const source = read(file);
+    assert.ok(source.includes(from), "counter-proof anchor missing: " + from);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "identity-panel-"));
+    for (const f of FILES)
+      fs.copyFileSync(path.join(uiDir, f), path.join(dir, f));
+    fs.writeFileSync(path.join(dir, file), source.replace(from, to));
+    await assert.rejects(() => run(dir), undefined, "broken copy accepted: " + from);
+    refused++;
+  }
+  console.log(
+    `ok: identity shown in full, no popover, chip opens Machine, reported version resolves features, six Voice rows; ${refused} broken copies refused`,
+  );
+  // A broken copy may leave its wait timer re-arming itself: end the process rather than wait for it.
+  process.exit(0);
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

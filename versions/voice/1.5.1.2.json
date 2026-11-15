@@ -1,0 +1,28 @@
+{
+  "version": "1.5.1.2",
+  "os": "voice",
+  "name": "Tempester Voice 1.5.1.2 — a version word of its own",
+  "kind": "release",
+  "date": "2026-11-15",
+  "summary": "Tempester Voice 1.5.1.1 with its own version reply (0xFE00: 0x17), so the machine and this app can tell it from 1.5.1.0 / 1.5.1.1 (0x16). Install Main Tempester 1.6.9.0 first.",
+  "changes": {
+    "changes": [
+      "Reports its own version (Voice 1.7 on the System screen): the machine and this app can now tell it from Tempester Voice 1.5.1.0 and 1.5.1.1.",
+      "Install Main Tempester 1.6.9.0 BEFORE this Voice OS: with Main 1.6.7.0 or 1.6.8.0 the Release knobs fall back to 123 and a second full backup in a power-on skips the voice chips."
+    ]
+  },
+  "description": "1.5.1.1 with patch/voice/version_reply_1512.json in place of patch/voice/version_reply.json: the 0xFE00 reply becomes 0x17 (n°66), nothing else changes (the built image differs from 1.5.1.1 by one instruction word, the literal of the reply, verify.sh step 3c). Order: Main 1.6.9.0 (n°65) first. Main 1.6.7.0 / 1.6.8.0 test the exact word 0x16 for the Release lift (n°63) and the full-backup re-alignment (n°62): on them a 0x17 chip keeps the cap at 123 and is not read again in the same power-on (empty 78+k). 1.6.9.0 accepts 0x16-0x79 as Tempester Voice (every Tempester Voice from 1.5.1.0 on has the finite release 101-127 and the 0xF5nn dump pointer clear). Built and proved on the simulator. Brick window unchanged (pages 0-28). Installed on the six chips on 15/11/2026 after Main 1.6.9.0: message 45 reports six 0x17, pages 0-40 of each chip = this image, calibration page unchanged, two full backups in a row identical.",
+  "sha256_image": "132a235bed8ff9e9a8c278a3c825c6d62b630b776642f68ce37ea12c1c42e809",
+  "sha256_image_written": "4ee9ad0f21a7db5ff6cd209201d62de209851f7bd0eb01be94fa5d89413a7ade",
+  "sha256_syx": "fc04c2ad725c45608619ccf82eb2bb69f2f910b9eca0ef3da5ff2a3cf3ceba21",
+  "patches": [
+    "patch/voice/queue_full.json",
+    "patch/voice/parser_guard.json",
+    "patch/voice/trap_reset.json",
+    "patch/voice/cal_check.json",
+    "patch/voice/release_curve.json",
+    "patch/voice/notefx_burst.json",
+    "patch/voice/version_reply_1512.json",
+    "patch/voice/dump_wrap.json"
+  ]
+}

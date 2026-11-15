@@ -6,6 +6,7 @@ work/
 
 # Build output
 app/target/
+app/crates/tempester-plugin/target/
 dist/
 __pycache__/
 

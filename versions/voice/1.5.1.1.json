@@ -1,0 +1,30 @@
+{
+  "version": "1.5.1.1",
+  "os": "voice",
+  "name": "Tempester Voice 1.5.1.1 — the dump stream never leaves the flash",
+  "kind": "superseded",
+  "date": "2026-11-14",
+  "summary": "Tempester Voice 1.5.1.0 whose flash dump (0xF800) goes back to the first instruction at the end of the chip's flash, so no read, whatever the Main, can stop the chip (a second full backup did on 14/11/2026). Same version reply 0x16.",
+  "changes": {
+    "fixes": [
+      "Reading a chip past the end of its memory (a second full backup in the same power-on on Tempester 1.6.6.0 or 1.6.7.0, or the Debug menu's Voice dump twice) no longer stops the voice: the read starts over and the voice keeps playing."
+    ],
+    "changes": [
+      "Reports the same version as Tempester Voice 1.5.1.0 (Voice 1.6 on the System screen): the machine and this app cannot tell the two apart."
+    ]
+  },
+  "description": "1.5.1.0 plus patch/voice/dump_wrap.json: the dump pointer goes back to PC 0 at the end of the implemented flash. Defence in depth beside Main 1.6.8.0, which no longer reads forward: with Main 1.6.6.0 / 1.6.7.0 or the stock Debug menu a second dump in a power-on comes back shifted but the voice keeps playing. The 0xFE00 reply stays 0x16 (the Main tests == 0x16 for the Release lift and the backup re-alignment; both work the same on 1.5.1.0 and 1.5.1.1). Built and proved on the simulator; installed on the six chips on 14/11/2026 with Main 1.6.8.0 (two full backups in a row identical, pages 0-40 = this image). Brick window unchanged (pages 0-28: the new code is in page 28). Superseded by 1.5.1.2 (the same fixes, with a version word of its own) once 1.5.1.2 was installed and validated (author, 15/11/2026): no longer offered for building or sending; kept for its history row and to name what a chip holds.",
+  "sha256_image": "1dde4919092e6401cd5cfae6b9dc7e1aabc1af9d4cb226e623df0166f084262b",
+  "sha256_image_written": "2873ee251225e454073ae8d8213893e53f60d3aa0a03b193055cca3a8aa4853e",
+  "sha256_syx": "c9e091f3426f2716d4f05ab83c0315d098f9883398cb952c110b913ba693b9f2",
+  "patches": [
+    "patch/voice/queue_full.json",
+    "patch/voice/parser_guard.json",
+    "patch/voice/trap_reset.json",
+    "patch/voice/cal_check.json",
+    "patch/voice/release_curve.json",
+    "patch/voice/notefx_burst.json",
+    "patch/voice/version_reply.json",
+    "patch/voice/dump_wrap.json"
+  ]
+}
