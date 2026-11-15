@@ -20,7 +20,7 @@ of what owners ask for below is a reading of the forum, kept as a guide for the 
   sequence, a beat roll that can follow the swing, six bug fixes), 1.6.4.0 (room for new functions, the machine
   reporting its mixer, tempo, mode and exact version to an editor) and 1.6.3.0 (bug fixes, requests for sounds, beats
   and projects, NRPN in both directions, the front panel over MIDI, FX ribbons over MIDI, play probability per pad).
-  The hand tests of the 1.6.5.0 functions are still to do. See [firmware](firmware.md).
+  The 1.6.5.0 functions were tried by hand on the machine. See [firmware](firmware.md).
 - **Tempester Voice 1.5.1.2**, the first Tempester build of the voice chips' own OS, runs on the project's six voice
   chips (15 November 2026): no more voices muted for good, Release times that always end, its own version reported.
   See [firmware](firmware.md#tempester-voice).

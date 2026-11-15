@@ -504,7 +504,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Proof**: simulated through the real Reverse key and the two refresh routines that follow a beat change (the beat
   select and the MIDI Song Position one); with Reverse off, every byte and call identical to 1.6.4.0; wrong variants
   refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: a beat change made by a MIDI Stop in a playlist redraws nothing, so the LED is updated at the next
   screen refresh only.
 
@@ -516,7 +516,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   page and the others are reopened as before.
 - **Proof**: simulated for the six pages of the group and both key orders; the other pages identical to 1.6.4.0;
   wrong variants refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: other ways back into the mixer group (leaving a temporary screen) still return to the page last used.
 
 ### n°50: 16 Time Steps pads show and edit every note of their step
@@ -529,7 +529,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Proof**: simulated over a model of the sequence memory with random beats at the eight quantize values and three
   beat lengths: the LEDs equal the rule above, notes on the grid give the same LEDs as 1.6.4.0, a press on a dark pad
   writes what 1.6.4.0 writes; wrong variants refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: a refresh of the 16 LEDs reads more of the sequence memory (up to about 13 times more at 1/4, 4 times at
   1/16); simulated at about 51,000 instructions at 1/4, against 8,000 before. The Beat Events screen is unchanged.
 
@@ -544,7 +544,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Proof**: simulated tick by tick and by bunches of ticks over three loops: every repeat on the grid, one per grid
   point; the press with Roll off or with the sequencer playing identical to 1.6.4.0; the factory drift shown on
   1.6.4.0; wrong variants refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Try it**: stopped, 16 Sounds, Quantize 1/16, Roll on, Roll Mode « Retrig »: hold a pad, then a second one a
   little later. Before, the two repeated shifted by the press offset (heard as a flam); now they sound together on
   every sixteenth. In an arpeggio mode (Up, Down, Random…) the pads still alternate, by design, one per sixteenth.
@@ -577,7 +577,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   sequencer (queue, voices; 4 more cycles per read) and the beat file reader and writer (bit 15 kept); wrong
   variants refused. The original OS 1.5.0.2 was simulated on such a beat: it plays the low byte (a quarter of the
   length), nothing worse.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: a beat with long notes played on an OS without n°53 plays them short; the Tempester app reads, keeps and
   exports them.
 
@@ -586,7 +586,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Problem**: with swing on, the beat roll repeated its window identically: a 1/16 roll played straight 16ths (or every note late, on a swung 16th) instead of the long-short feel of the rest of the beat.
 - **Effect**: an option, System > Swing Source « Project+Roll », « Beat+Roll » or « System+Roll » (the same swing source, and the roll swung), kept in the System file. With it, each repetition of the roll plays as notes recorded on its own steps would: same swing amount, same 16th grid, same Time Shift. 1/8 and longer rolls keep their swing as before; 1/16, 1/16T, 1/32 and 1/32T rolls alternate. Without it (the default), swing 50 % or roll off: exactly as before.
 - **Proof**: simulated on the real sequencer interrupt and the real System screen code, for every roll grid, three swing amounts and three beat lengths: option off and swing 50 % identical to the image without the patch, roll off identical to 1.6.4.0; option on, every note at its swung place, once; wrong variants refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: « Project+Roll » is 12 characters; its fit on the screen is to be checked on the machine.
 
 ### n°61: the beat roll no longer loses notes
@@ -594,7 +594,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Problem**: a note of the roll window played past the end of its repetition (a note recorded late in the last 32nd of a 1/16 roll, or a swung one) was never read again by the sequencer: some repetitions lost it.
 - **Effect**: while the roll is on, the sequencer reads the roll window as a ring, so every repetition plays every note. Roll off: unchanged.
 - **Proof**: simulated for every roll grid, swing amount and beat length: no note missing (1.6.4.0 lost 888 of 25,252 in the same runs); roll off identical to 1.6.4.0; the processor time of the sequencer interrupt counted; wrong variants refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: windows of 1/32 (12 ticks) are read whole already and keep the stock path.
 
 ### n°55: more Quantize values for recording (dotted, 64th, tuplets)
@@ -613,7 +613,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   each of the 384 ticks of a bar for each new grid, the note read back by the playback routine at the expected tick;
   the project saved, read back and saved again; the same file loaded by 1.6.4.0 and by the official 1.5.0.2 (word
   ignored); with the old values the result equals 1.6.4.0 byte for byte; wrong variants refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: dotted LFO rates are not possible on the Main alone (the voice chips compute the LFO frequency); the new
   grids apply to real-time recording only; a dotted grid runs from the beat's start across bar lines; on a machine
   with an older OS the value falls back to Off.
@@ -631,7 +631,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   itself and all Off checked. While playing: the real sequencer interrupt taken every few hundred instructions of the
   copy (far more often than on the machine), the beat played and the copy in the same or another beat: no fault, the
   copy writes only the target sound, every other sound plays exactly as without the copy; wrong variants refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: no undo (the target sequence is replaced, as with Copy held); events past a shorter target beat's end are
   copied too and stay silent until the beat is made longer. Copying into the beat that plays: during the copy (a few
   milliseconds) the target sound plays only the steps already copied, so a note or two of it can be missing in that
@@ -652,7 +652,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Proof**: simulated on the firmware's own code: every pad at 0 gives exactly 1.6.4.0's bytes, RAM and registers;
   each pad with a channel gives what 1.6.4.0 sends when that pad is the Sequencer Sound on that channel; the real
   sequencer queue, the live pads, the CCs and the save / load of the settings file; 14 wrong variants refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: on the machine it is shown and set only on the pad settings page of n°59 (otherwise over MIDI, so the
   app); changing a pad's value while one of its notes sounds leaves that note on the old channel; « reset System settings » also clears the values.
   Requires n°9b.
@@ -673,7 +673,7 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Proof**: simulated with the firmware's own panel, dispatcher and main screen: the 6 modes, both Shift settings,
   4 pads, press / pressure / release, Shift changing while a pad is down; without Shift identical to 1.6.4.0; the
   page opened, its texts, the four edits, the save on leaving only when stopped; 18 wrong variants refused.
-- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: not yet.
+- **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: in 16 Beats and 16 Time Steps, Shift + pad now selects the pad's sound instead of a beat or a step; a
   pad pressed without Shift and released with Shift on keeps the original behaviour (its release action is skipped,
   as before); selecting in 16 Tunings / 16 Levels still sends the original note-off of the previous pad.

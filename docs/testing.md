@@ -149,8 +149,7 @@ Be aware of these before relying on them.
   the machine, but not every case was tested on purpose (for example the SysEx timeout on DIN, or the first sorted Load
   Sound on a very large folder).
 - **n°25**: installed with 1.6.1.0, the LED behaviour not checked.
-- **n°48 to n°61** (1.6.5.0): installed, n°52 listened to; the other new behaviours not yet tried one by one on the
-  machine.
+- **n°48 to n°61** (1.6.5.0): installed and tried by hand on the machine (15 November 2026).
 - **Tempester Voice**: installed on the six chips and read back; not yet done on the machine: a Calibrate run, the
   Release times 101-127 measured with a stopwatch (60 s at 127), one chip put back on the official Voice OS (the Main
   must then report it and keep the Release knobs at 123), going back to the official Voice 1.5.
