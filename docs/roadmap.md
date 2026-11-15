@@ -1,9 +1,13 @@
 # Roadmap
 
-What will probably come next, and why. Tempester is a spare-time project delivered as is: there are **no dates**, the
-order can change, an item listed here is a direction, not a promise, and nothing here is a commitment to anyone.
-Feature requests are not taken (see [Support and contributions](../README.md#support-and-contributions)); the table
-of what owners ask for below is a reading of the forum, kept as a guide for the authors' own choices.
+What will probably come next, and why.
+
+- Tempester is a spare-time project, delivered as is. There are **no dates**, and the order can change.
+- An item here is a direction, not a promise to anyone.
+- Feature requests are not taken ([Support and contributions](../README.md#support-and-contributions)). The table of
+  what owners ask for is a reading of the forum, kept as a guide for the authors' own choices.
+
+Contents:
 
 - [Where things stand](#where-things-stand)
 - [Firmware: making room](#firmware-making-room)
@@ -13,108 +17,126 @@ of what owners ask for below is a reading of the forum, kept as a guide for the 
 
 ## Where things stand
 
-- **Tempester OS 1.6.9.0** is the latest release (installed on the project's Tempest on 15 November 2026): a full
-  backup of the machine over MIDI, Release values capped at 123 where the official voices never end a release and
-  back up to 127 with Tempester Voice, the Voice OS of each chip reported, on top of 1.6.5.0 (a MIDI channel and a
-  settings page for each pad, notes as long as a whole 8-bar beat, finer Quantize values, Copy Sound with its
-  sequence, a beat roll that can follow the swing, six bug fixes), 1.6.4.0 (room for new functions, the machine
-  reporting its mixer, tempo, mode and exact version to an editor) and 1.6.3.0 (bug fixes, requests for sounds, beats
-  and projects, NRPN in both directions, the front panel over MIDI, FX ribbons over MIDI, play probability per pad).
-  The 1.6.5.0 functions were tried by hand on the machine. See [firmware](firmware.md).
+- **Tempester OS 1.6.9.0** is the latest release, installed on the project's Tempest on 15 November 2026. The 1.6.5.0
+  functions were tried by hand on the machine. What each release brings:
+  [Everything Tempester OS changes](firmware.md#everything-tempester-os-changes).
 - **Tempester Voice 1.5.1.2**, the first Tempester build of the voice chips' own OS, runs on the project's six voice
-  chips (15 November 2026): no more voices muted for good, Release times that always end, its own version reported.
-  See [firmware](firmware.md#tempester-voice).
-- **The Tempester app** is used daily on macOS; the Windows build is checked to compile, and neither Windows nor
-  Linux has been tried by a user yet.
-- **Tempester Control** (CLAP and VST3) has its 146 parameters and MIDI learn, but no window of its own yet: the
-  DAW shows its generic parameter list.
+  chips (15 November 2026). See [firmware](firmware.md#tempester-voice).
+- **The Tempester app** is used daily on macOS. The Windows build is checked to compile; neither Windows nor Linux has
+  been tried by a user yet.
+- **Tempester Control** (CLAP and VST3) has its 146 parameters and MIDI learn, but no window of its own yet. The DAW
+  shows its generic parameter list.
 
 ## Firmware: making room
 
-Every new feature in the Main OS needs code space, and space is what the Tempest lacks. Its makers said in 2017 that
-the instrument had reached the limits of its memory and processing power, and that each addition meant rewriting
-something else to free room. Tempester has so far lived on the flash the official OS leaves erased.
+Every new feature in the Main OS needs code space, and the Tempest lacks space. Its makers said in 2017 that the
+instrument had reached the limits of its memory and processing power: each addition meant rewriting something else.
+
+Tempester has so far lived on the flash the official OS leaves erased.
 
 | | Official 1.5.0.2 | Tempester 1.6.3.0 | Tempester 1.6.4.0 |
 |---|---:|---:|---:|
 | Erased flash (before the protected flasher page) | 22,420 bytes | 18,460 bytes | 28,336 bytes |
 | Largest single erased block | 14,776 bytes | 2,536 bytes | 2,536 bytes |
 
-The total is comfortable again, but it is spread in pieces: a large feature no longer fits in one block. The first
-step, done in 1.6.4.0, was to **reclaim dead code**: routines of the official OS that nothing can ever call.
+The total is comfortable again, but it is spread in pieces: a large feature no longer fits in one block.
 
-- **About 9.9 KB of the official code is proven unreachable** (about 2 % of it): an unused text formatter, unused
+**Reclaiming dead code** (done in 1.6.4.0, patch
+[n°37](firmware.md#n37-room-for-new-functions-dead-code-erased)):
+
+- About 9.9 KB of the official code is proven unreachable, about 2 % of it: an unused text formatter, unused
   floating-point helpers, file-system calls nothing makes, a USB helper, a flash-memory erase routine never called,
-  and a few MIDI send helpers. It sits in about 60 zones; most of the bytes are in 35 zones of 64 bytes or more.
-- **Done in 1.6.4.0** (patch n°37, [firmware](firmware.md#n37-room-for-new-functions-dead-code-erased)):
-  the reachability check was run again on the exact 1.6.3.0 image (a patch can make dead code live again), and the
-  38 proven zones of 64 bytes or more, 9,876 bytes, are erased by a recipe, like any other change. The image reaches
-  exactly the same code as 1.6.3.0. A zone counted as « probably dead » is not touched until it is proved. The
-  erased flash grows to 28,336 bytes, the new room being islands of 64 to 2,228 bytes inside the code.
-- **RAM** (128 KB) is tight too. Tempester reuses bytes the official OS reserves and never uses, each one checked
-  disjoint from every other patch.
+  and a few MIDI send helpers.
+- It sits in about 60 zones. Most of the bytes are in 35 zones of 64 bytes or more.
+- The reachability check was run again on the exact 1.6.3.0 image, since a patch can make dead code live again.
+- The 38 proven zones of 64 bytes or more, 9,876 bytes, are erased by a recipe, like any other change. The image
+  reaches exactly the same code as 1.6.3.0.
+- A zone counted as « probably dead » is not touched until it is proved.
+- The erased flash grows to 28,336 bytes. The new room is in islands of 64 to 2,228 bytes inside the code.
 
-This is about **program space**. The other memory owners ask for, room for more sounds (about 640 today), is a
-different matter: see [below](#the-features-tempest-owners-ask-for-most).
+**RAM** (128 KB) is tight too. Tempester reuses bytes the official OS reserves and never uses, each one checked
+disjoint from every other patch.
+
+This is about **program space**. Room for more sounds (about 640 today) is a different matter: see
+[below](#the-features-tempest-owners-ask-for-most).
 
 ## The plugin's editor window
 
-Tempester Control will get the same face as the app. The plan:
+Tempester Control will get the same face as the app:
 
-- **The app's Panel page inside the plugin window**, with its two views: *Full* (every sound parameter of the
-  selected pad, grouped as on the app) and *Machine* (the Tempest's front panel, knob for knob). One look, one set
-  of controls, whether you use the app or the plugin.
-- **A slim top bar**: the MIDI port and its state, MIDI learn, the view switch and the zoom, the same buttons as the
-  app's Panel bar.
-- **The host's knobs follow**: a learned controller or a knob turned on the Tempest moves the DAW parameter too, so
+- **The app's Panel page inside the plugin window**, with its two views: *Full* (every sound parameter of the selected
+  pad) and *Machine* (the Tempest's front panel, knob for knob).
+- **A slim top bar**: the MIDI port and its state, MIDI learn, the view switch and the zoom, as on the app's Panel bar.
+- **The host's knobs follow**: a learned controller, or a knob turned on the Tempest, moves the DAW parameter too. So
   automation records what you do on the machine.
 - **Then**: Audio Unit on macOS (through a CLAP wrapper), and 14-bit controllers (CC pairs) for the parameters wider
   than 7 bits.
 
-Before the window, the plugin needs testing in real DAWs: so far only a test host has driven it, and DAWs differ in
+Before the window, the plugin needs testing in real DAWs. So far only a test host has driven it, and DAWs differ in
 how they route a plugin's MIDI output.
 
 ## The features Tempest owners ask for most
 
-From a reading of the Tempest section of the Sequential forum in November 2026. The forum stopped answering during the
-reading, so part of the threads could not be read: the counts are **minimums** (distinct people per request). The
-rows follow the number of people asking.
+From a reading of the Tempest section of the Sequential forum in November 2026.
 
-**Feasibility** says what the change touches. *Main* means the Main OS that Tempester patches; the Voice chips run
-their own code, which only the optional Tempester Voice changes ([firmware](firmware.md#tempester-voice)), and the
-sample chip's code is not changed; a change to the sound, beat or project format must
-keep every existing file and every other Tempest working.
+- The forum stopped answering during the reading, so part of the threads could not be read. The counts are
+  **minimums** (distinct people per request).
+- *Main* means the Main OS that Tempester patches. The Voice chips run their own code, which only the optional
+  Tempester Voice changes. The sample chip's code is not changed.
+- A change to the sound, beat or project format must keep every existing file and every other Tempest working.
 
 | Request | People | Status | Feasibility |
 |---|---:|---|---|
-| **Polymeter**: a track length per sound, polyrhythms | 14+ | not yet | Hard but possible in the Main: a length per pad stored in the beat (format change) and a new playback rule in the sequencer. The largest candidate. |
-| **More memory** for sounds and projects | 11+ | not planned | Adding memory is hardware. Re-splitting the internal flash between sounds and beats means a new file system: risky for existing data. |
-| **MIDI control** of the FX and a fuller MIDI implementation | 10+ | **largely done** | Tempester OS: every sound parameter by NRPN, FX ribbons over MIDI, beat-wide controls in both directions, the whole front panel, sound, beat and project requests. |
-| **New samples**, sample import | 9+ | not planned | The samples live in the sample chip, whose bank format is unknown; replacing them would change every existing sound. |
-| **Multichannel MIDI**: one channel per pad, sequencing several synths | 8+ | **done** | Tempester OS 1.6.5.0: a channel per pad, set over MIDI (CC 15-17) or on the pad settings page. |
-| **Digital effects** (reverb, delay) | 8+ | not possible | The audio path is analogue; there is no effects processor to program. |
-| **Copy a sound's sequence to another beat** | 6+ | **done** | Tempester OS 1.6.5.0: Edit > Copy Sound obeys the Seq / NoteFX / Mixer switches of the Copy screen. |
-| **Real-time automation** of knobs and sliders | 6+ | later | A new or denser kind of event in the beat: format change. |
-| **Legato and glide modes** | 6+ | not planned | Both chips at once: the Main decides which voice a note takes and whether it restarts, the Voice OS runs the envelopes (Tempester Voice makes that half possible), and the 128-byte sound has no room left for the mode. |
-| **Load Sound knob** that stays where it was | 5+ | **done** | Tempester OS 1.6.3.0. |
-| **Song mode**: mutes in the Play List, change project while playing | 5+ | later | Play List format; loading a project during playback is heavy for the processor. |
-| **More modulation routes** and destinations | 5+ | not planned | Applied in the Voice chips, and the 128-byte sound is full. |
-| **Swing on the beat roll**, swing per sound | 5+ | **partly done** | Beat roll: option « +Roll » of System > Swing Source, Tempester OS 1.6.5.0. Per sound: format change. |
-| **Polyphonic recording** from the pads, MPE | 4+ | later | Voice allocation and the 8 events per step. |
-| **Dotted values**, 1/64 quantize | 4+ | **partly done** | Dotted, 1/64, quintuplet and septuplet Quantize values for recording: Tempester OS 1.6.5.0. Dotted LFO rates: computed in the Voice chips. |
-| **Note FX saved with the sound** | 4+ | not planned | The sound format is full. |
-| **File management**: bulk delete, audition and delete | 4+ | candidate | Likely in the Main. |
-| **Random steps, probability**, Euclidean rhythms | 3+ | **partly done** | Play probability per pad in 1.6.3.0. The app's step sequencer already makes Euclidean patterns. |
-| **Alphabetical order** in live sound loading | 1+ | **done** | Tempester OS 1.6.3.0 (it had been removed in 1.5.0.2 for lack of room). |
-| A pedal that plays a pad; a confirmation for Revert | 1+ each | **done** | Tempester OS 1.6.3.0. |
+| **Polymeter**: a track length per sound | 14+ | not yet | hard, but possible in the Main |
+| **More memory** for sounds and projects | 11+ | not planned | hardware, or a risky new file system |
+| **MIDI control** of the FX, fuller MIDI | 10+ | **largely done** | Tempester OS |
+| **New samples**, sample import | 9+ | not planned | sample bank format unknown |
+| **Multichannel MIDI**: one channel per pad | 8+ | **done** | Tempester OS 1.6.5.0 |
+| **Digital effects** (reverb, delay) | 8+ | not possible | the audio path is analogue |
+| **Copy a sound's sequence to another beat** | 6+ | **done** | Tempester OS 1.6.5.0 |
+| **Real-time automation** of knobs and sliders | 6+ | later | beat format change |
+| **Legato and glide modes** | 6+ | not planned | both chips, and the sound is full |
+| **Load Sound knob** that stays where it was | 5+ | **done** | Tempester OS 1.6.3.0 |
+| **Song mode** | 5+ | later | Play List format, processor load |
+| **More modulation routes** | 5+ | not planned | Voice chips, and the sound is full |
+| **Swing on the beat roll**, swing per sound | 5+ | **partly done** | roll: 1.6.5.0; per sound: format change |
+| **Polyphonic recording** from the pads, MPE | 4+ | later | voice allocation, 8 events per step |
+| **Dotted values**, 1/64 quantize | 4+ | **partly done** | Quantize: 1.6.5.0; LFO: Voice chips |
+| **Note FX saved with the sound** | 4+ | not planned | the sound format is full |
+| **File management**: bulk delete, audition and delete | 4+ | candidate | likely in the Main |
+| **Random steps, probability**, Euclidean rhythms | 3+ | **partly done** | probability: 1.6.3.0; Euclidean: the app |
+| **Alphabetical order** in live sound loading | 1+ | **done** | Tempester OS 1.6.3.0 |
+| A pedal that plays a pad; a Revert confirmation | 1+ each | **done** | Tempester OS 1.6.3.0 |
 
-**What comes first**: the *candidates* above share three traits: they touch no file format, they live in the Main
-OS, and each was asked for by several owners. Which one, and in what order, will be decided once dead code is
-reclaimed, since each needs room, and by the authors alone.
+Notes on the table:
+
+- **Polymeter** is the largest candidate: a length per pad stored in the beat (format change), and a new playback rule
+  in the sequencer.
+- **More memory**: adding memory is hardware. Re-splitting the internal flash between sounds and beats means a new
+  file system, which is risky for existing data.
+- **MIDI control**: every sound parameter by NRPN, FX ribbons over MIDI, beat-wide controls both ways, the whole front
+  panel, and sound, beat and project requests.
+- **New samples** live in the sample chip, whose bank format is unknown. Replacing them would change every existing
+  sound.
+- **Multichannel MIDI**: a channel per pad, set over MIDI (CC 15-17) or on the pad settings page.
+- **Copy a sequence**: Edit > Copy Sound obeys the Seq / NoteFX / Mixer switches of the Copy screen.
+- **Real-time automation** needs a new or denser kind of event in the beat.
+- **Legato and glide** need both chips: the Main decides which voice a note takes and whether it restarts; the Voice
+  OS runs the envelopes (Tempester Voice makes that half possible). The 128-byte sound has no room left for the mode.
+- **Song mode** means mutes in the Play List and changing project while playing. Loading a project during playback is
+  heavy for the processor.
+- **More modulation routes** are applied in the Voice chips, and the 128-byte sound is full.
+- **Swing on the roll**: option « +Roll » of System > Swing Source.
+- **Dotted values**: dotted, 1/64, quintuplet and septuplet Quantize values for recording. Dotted LFO rates are
+  computed in the Voice chips.
+- **Alphabetical order** had been removed in 1.5.0.2 for lack of room.
+
+**What comes first**: the *candidates* touch no file format, live in the Main OS, and were asked for by several owners.
+Which one, and in what order, will be decided once dead code is reclaimed (each needs room), and by the authors alone.
 
 ## The app
 
 - **Windows and Linux**: first real use, fixes from the first CI and release runs, then signed packages if possible.
 - **Library**: the sound type and the oscillator and sample names shown in plain words.
-- **Panel**: learn on the Machine view too, a channel filter for MIDI learn.
+- **Panel**: learn on the Machine view too, and a channel filter for MIDI learn.
 - **More languages**: the app is in English; other languages may come later.

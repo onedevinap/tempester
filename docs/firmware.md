@@ -1,14 +1,20 @@
 # Tempester firmware
 
-Tempester firmware versions are the official **Main OS 1.5.0.2** of the DSI Tempest with numbered patches applied.
-**Tempester Voice** is the same for the official **Voice OS 1.5** of the six sound chips (optional, from Tempester
-1.6.7.0 on). This page explains each version and each patch: the problem, what changes for you, how it was proved,
-whether it was checked on a real machine, and its limits. The new MIDI messages are specified in
-[MIDI protocol](midi-protocol.md).
+**In short**
+
+- Tempester OS is the official **Main OS 1.5.0.2** of the DSI Tempest with numbered patches (n°1, n°2a...) applied.
+- **Tempester Voice** does the same for the official **Voice OS 1.5** of the six sound chips. It is optional, from
+  Tempester 1.6.7.0 on.
+- The latest releases are **Tempester OS 1.6.9.0** and **Tempester Voice 1.5.1.2**. Install the Main first.
+- Every patch is a recipe applied to your own official file, checked by SHA-256.
+
+This page explains each version and each patch: the problem, what changes for you, how it was proved, whether it was
+checked on a real machine, and its limits. The new MIDI messages are specified in [MIDI protocol](midi-protocol.md).
 
 - [How a version is made](#how-a-version-is-made)
 - [Prerequisites](#prerequisites)
 - [Versions](#versions)
+- [Everything Tempester OS changes](#everything-tempester-os-changes)
 - [Patches](#patches)
 - [Tempester Voice](#tempester-voice)
 - [How the patches are proved](#how-the-patches-are-proved)
@@ -32,70 +38,180 @@ whether it was checked on a real machine, and its limits. The new MIDI messages 
 ## Prerequisites
 
 Tempester expects the complete official OS 1.5.0.2 set on the machine: Main 1.5.0.2 and the Voice (1.5), Panel (1.3)
-and SAM (1.1) files of the same package. Some patches rely on the other chips: the remote panel (n°21, n°22, n°25) uses
-the Panel chip's key codes and LED commands, n°4b and n°17 send words to the Voice chips, n°15 reads the Voice and Panel
-chips; n°62, n°63 and n°64 read the Voice chips at power-on and during a full backup. Step-by-step:
-[user manual](user-manual.md#before-you-install-a-tempester-version).
+and SAM (1.1) files of the same package.
+
+Some patches rely on the other chips:
+
+- the remote panel (n°21, n°22, n°25) uses the Panel chip's key codes and LED commands;
+- n°4b and n°17 send words to the Voice chips;
+- n°15 reads the Voice and Panel chips;
+- n°62, n°63 and n°64 read the Voice chips at power-on and during a full backup.
+
+Step by step: [user manual](user-manual.md#before-you-install-a-tempester-version).
 
 ## Versions
 
-Each version contains everything of the one it builds on. « Installed » means installed and used on a real Tempest
-over USB; « verified » adds that the Main OS read back from the machine matched the built image. See
-[testing](testing.md#verified-on-a-real-machine) for what was checked each time. The app offers the latest release and
-the corrections-only one (and the way back to DSI); the older releases stay listed here and in the app's History, to
-read, not to install. The test versions are built by the verifier only, to prove a patch on its own.
+Each version contains everything of the one it builds on.
 
-**Which one?** 1.6.9.0 is the latest release, with everything. 1.5.6.0 is the corrections-only release: the bug fixes
-with the sound and beat requests and NRPN, without the 1.6 additions. For the voice chips, Tempester Voice 1.5.1.2
-goes on **after** Main 1.6.9.0 ([Tempester Voice](#tempester-voice)).
+- « Installed » means installed and used on a real Tempest over USB.
+- « Verified » adds that the Main OS read back from the machine matched the built image.
+- What was checked each time: [testing](testing.md#verified-on-a-real-machine).
+
+The app offers the latest release, the corrections-only one and the way back to DSI. Older releases stay listed here
+and in the app's History, to read, not to install. Test versions are built by the verifier only, to prove a patch on
+its own.
+
+**Which one?**
+
+- **1.6.9.0** is the latest release, with everything.
+- **1.5.6.0** is the corrections-only release: the bug fixes, the sound and beat requests and NRPN, without the 1.6
+  additions.
+- For the voice chips, Tempester Voice 1.5.1.2 goes on **after** Main 1.6.9.0 ([Tempester Voice](#tempester-voice)).
 
 | Version | Builds on | Adds | Status |
 |---|---|---|---|
-| **1.5.1.0** fixes | official 1.5.0.2 | n°2a, 2b, 2c, 3, 4a, 4b, 5, 6, 7a, 7b, 7c, 8: bug fixes only, no new function | installed |
-| **1.5.2.0** fixes + requests | 1.5.1.0 | n°1: requests for the current sound and beat, identity answer on the chosen cable | installed |
+| **1.5.1.0** fixes | official 1.5.0.2 | n°2a, 2b, 2c, 3, 4a, 4b, 5, 6, 7a, 7b, 7c, 8: bug fixes only | installed |
+| **1.5.2.0** fixes + requests | 1.5.1.0 | n°1: sound and beat requests, identity on the chosen cable | installed |
 | **1.5.3.0** NRPN | 1.5.2.0 | n°9a, 9b: sound parameters received and sent as NRPN | installed |
 | 1.5.4.0 fixes 2 (test) | 1.5.3.0 | n°2d, 7d, 10, 11, 12, 13 | installed |
-| 1.5.4.1 update message (test) | 1.5.4.0 | n°14: clearer update screen | not installed alone (included from 1.5.5.0 on) |
-| **1.5.5.0** optimisation | 1.5.4.1 | n°15: the three Debug-menu OS senders merged, 1,584 bytes freed | installed |
+| 1.5.4.1 update message (test) | 1.5.4.0 | n°14: clearer update screen | not alone (in 1.5.5.0 on) |
+| **1.5.5.0** optimisation | 1.5.4.1 | n°15: Debug-menu OS senders merged, 1,584 bytes freed | installed |
 | **1.5.6.0** stability, corrections only | 1.5.5.0 | n°16, 17, 18, 19, 20 | installed |
 | **1.6.0.0** remote panel | 1.5.6.0 | n°21, 22, 23: keys, LEDs, encoders and knobs over MIDI | installed |
 | 1.6.0.1 (test) | 1.6.0.0 | n°25 alone | not installed |
-| **1.6.1.0** project request | 1.6.0.0 | n°24, 25: whole-project request, 4 Pole / AD Mode LEDs follow NRPN | installed |
-| 1.6.1.1 to 1.6.1.5 (test) | 1.6.1.0 | one patch each, n°26 to n°30, to prove it alone | not installed |
-| **1.6.2.0** MIDI transfers | 1.6.1.0 | n°26, 27, 28, 29, 30 together | installed and verified (8 Nov) |
+| **1.6.1.0** project request | 1.6.0.0 | n°24, 25: project request, 4 Pole / AD Mode LEDs follow NRPN | installed |
+| 1.6.1.1 to 1.6.1.5 (test) | 1.6.1.0 | one patch each, n°26 to n°30 | not installed |
+| **1.6.2.0** MIDI transfers | 1.6.1.0 | n°26, 27, 28, 29, 30 | verified (8 Nov) |
 | 1.6.3.0-a, -b, -c (test) | 1.6.2.0 | n°31-32, n°33-35 and n°36, each group alone | not installed |
-| **1.6.3.0** performance and browsing | 1.6.2.0 | n°31, 32, 33, 34, 35, 36 together | **installed and verified** (9 Nov) |
-| 1.6.4.0-a (test) | 1.6.3.0 | n°37 alone: dead code erased, room for new functions | not installed |
+| **1.6.3.0** performance and browsing | 1.6.2.0 | n°31, 32, 33, 34, 35, 36 | **verified** (9 Nov) |
+| 1.6.4.0-a (test) | 1.6.3.0 | n°37 alone: dead code erased | not installed |
 | 1.6.4.0-b (test) | 1.6.3.0 | n°38 alone | not installed |
-| 1.6.4.0-c (test) | 1.6.3.0 | n°39, 40: the exact version and the Pad Function mode announced | not installed |
-| 1.6.4.0-d (test) | 1.6.3.0 | n°41, 43, 44, 45, 46: five fixes of reported bugs | not installed |
-| **1.6.4.0** room, reports and fixes | 1.6.3.0 | n°37, 38, 39, 40, 41, 43, 44, 45, 46 together | **installed and verified** (10 Nov: the Main OS read back equals the built image; the exact version answered; n°38, 40, 41, 43-46 tried by hand the same day) |
-| 1.6.5.0-f (test) | 1.6.4.0 | n°48, 49, 50, 51: four fixes of reported bugs | not installed |
-| 1.6.5.0-g (test) | 1.6.4.0 | n°52, 53: compressor Amount to −127, notes longer than 255 | not installed |
-| 1.6.5.0-h (test) | 1.6.4.0 | n°54, 61: the roll follows the swing (option), no roll note lost | not installed |
-| 1.6.5.0-i (test) | 1.6.4.0 | n°55, 56: finer Quantize values, Copy Sound with its sequence | not installed |
-| 1.6.5.0-j (test) | 1.6.4.0 | n°58, 59: a MIDI channel per pad, Shift + pad and the pad settings page | not installed |
-| **1.6.5.0** rolls, channels and long notes | 1.6.4.0 | n°48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 61 together | **installed and verified** (12 Nov: the machine answers 1.6.5.0 to the exact-version request; the Main OS read back equals the built image on the written range) |
+| 1.6.4.0-c (test) | 1.6.3.0 | n°39, 40: exact version and Pad Function mode | not installed |
+| 1.6.4.0-d (test) | 1.6.3.0 | n°41, 43, 44, 45, 46: five bug fixes | not installed |
+| **1.6.4.0** room, reports and fixes | 1.6.3.0 | n°37, 38, 39, 40, 41, 43, 44, 45, 46 | **verified** (10 Nov) |
+| 1.6.5.0-f (test) | 1.6.4.0 | n°48, 49, 50, 51: four bug fixes | not installed |
+| 1.6.5.0-g (test) | 1.6.4.0 | n°52, 53: compressor Amount to −127, long notes | not installed |
+| 1.6.5.0-h (test) | 1.6.4.0 | n°54, 61: roll with swing, no roll note lost | not installed |
+| 1.6.5.0-i (test) | 1.6.4.0 | n°55, 56: finer Quantize, Copy Sound with its sequence | not installed |
+| 1.6.5.0-j (test) | 1.6.4.0 | n°58, 59: channel per pad, Shift + pad, pad settings | not installed |
+| **1.6.5.0** rolls, channels and long notes | 1.6.4.0 | n°48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 61 | **verified** (12 Nov) |
 | 1.6.6.0-a, -b (test) | 1.6.5.0 | n°62 alone, then n°62 + n°63 | not installed |
-| **1.6.6.0** full backup and Release cap | 1.6.5.0 | n°62, 63 | **installed** (13 Nov: the first full backup of the machine) |
+| **1.6.6.0** full backup and Release cap | 1.6.5.0 | n°62, 63 | **installed** (13 Nov) |
 | 1.6.7.0-a (test) | 1.6.6.0 | n°63 in its 1.6.7.0 form, n°64 | not installed |
-| **1.6.7.0** Release up to 127 with Tempester Voice | 1.6.6.0 | n°63 (lift with Tempester Voice), 64 | **installed** (14 Nov, with Tempester Voice 1.5.1.0: six chips reported, Release 127 heard) |
+| **1.6.7.0** Release up to 127 with Tempester Voice | 1.6.6.0 | n°63 (lift with Tempester Voice), 64 | **installed** (14 Nov) |
 | 1.6.8.0-a (test) | 1.6.7.0 | n°62 in its 1.6.8.0 form | not installed |
-| **1.6.8.0** a second full backup no longer stops a voice | 1.6.7.0 | n°62 (never reads a chip past its flash) | **installed** (14 Nov, with Tempester Voice 1.5.1.1: two full backups in a row, identical) |
+| **1.6.8.0** a second full backup no longer stops a voice | 1.6.7.0 | n°62 (never reads a chip past its flash) | **installed** (14 Nov) |
 | 1.6.9.0-a (test) | 1.6.8.0 | n°65: n°62 and n°63 in their 1.6.9.0 forms | not installed |
-| **1.6.9.0** every Tempester Voice recognised | 1.6.8.0 | n°65 | **installed** (15 Nov: answers 1.6.9.0; two full backups in a row identical; then Tempester Voice 1.5.1.2) |
+| **1.6.9.0** every Tempester Voice recognised | 1.6.8.0 | n°65 | **installed** (15 Nov) |
 
-The test versions are kept so that each patch can be checked on its own. 1.6.2.0 and 1.6.3.0 were installed on a real
-machine and verified by reading the Main OS back (see [testing](testing.md#verified-on-a-real-machine)); the behaviours
-of n°26 to n°36, proven by simulation first, were then used on the machine with 1.6.3.0.
+What was checked on the machine for the later releases:
+
+- **1.6.2.0** (8 Nov) and **1.6.3.0** (9 Nov): the Main OS read back equals the built image. The behaviours of n°26 to
+  n°36, proved by simulation first, were then used on the machine with 1.6.3.0.
+- **1.6.4.0** (10 Nov): the Main OS read back equals the built image; the exact version answered; n°38, 40, 41, 43-46
+  tried by hand the same day.
+- **1.6.5.0** (12 Nov): it answers 1.6.5.0 to the exact-version request; the Main OS read back equals the built image
+  on the written range. Its functions were tried by hand on 15 Nov.
+- **1.6.6.0** (13 Nov): the first full backup of the machine.
+- **1.6.7.0** (14 Nov), with Tempester Voice 1.5.1.0: six chips reported, Release 127 heard.
+- **1.6.8.0** (14 Nov), with Tempester Voice 1.5.1.1: two full backups in a row, identical.
+- **1.6.9.0** (15 Nov): it answers 1.6.9.0; two full backups in a row identical; then Tempester Voice 1.5.1.2.
+
+The test versions are kept so that each patch can be checked on its own.
+
+## Everything Tempester OS changes
+
+The release that brought each change. Each release contains everything of the earlier ones.
+
+**Fixes**
+
+| Change | From |
+|---|---|
+| No freeze on « Exporting Project »; a received beat no longer overwrites memory | 1.5.1.0 |
+| Play Lists: no freeze on an empty step or in RT REC, no write past 100 steps | 1.5.1.0 |
+| No Loop Screen freeze outside 4/4 | 1.5.1.0 |
+| The pressure of sliders 2 to 4 acts on the real-time FX | 1.5.1.0 |
+| Compressor Peak Hold is saved; the compressor envelope follows a beat change | 1.5.1.0 |
+| Note length editable up to 255 | 1.5.1.0 |
+| A USB SysEx import is no longer cut by traffic on the DIN input | 1.5.1.0 |
+| Play List Delete Step no longer writes into the next list | 1.5.5.0 |
+| Note FX values stay in their own field | 1.5.5.0 |
+| Deterministic note-off rule | 1.5.5.0 |
+| Voice Assign bounded on load | 1.5.5.0 |
+| Sequence copy uses the target beat | 1.5.5.0 |
+| A received SysEx no longer corrupts Compare and Undo | 1.5.6.0 |
+| Voices no longer fall silent with LFO Restart = Play | 1.5.6.0 |
+| A USB SysEx no longer causes lost or stuck notes from a DIN keyboard | 1.5.6.0 |
+| An abandoned SysEx closes the Receiving screen | 1.5.6.0 |
+| A bad beat number in a project is refused | 1.5.6.0 |
+| Every SysEx message the machine sends ends in the standard layout | 1.6.2.0 |
+| A project sent back to the machine keeps its Play Lists | 1.6.2.0 |
+| A SysEx message that never ends is abandoned after about 3 seconds | 1.6.2.0 |
+| The Load Sound knob remembers its place in each folder | 1.6.3.0 |
+| The Load Sound knob walks a folder in alphabetical order | 1.6.3.0 |
+| Pad to Note Mode « Mutes »: a note mutes its own pad's sound, bank A or B | 1.6.4.0 |
+| The first Save after power-on no longer offers the Factory folder | 1.6.4.0 |
+| Undo All Snds and Undo Beat restore sound types, play states, Voice Assign and pad LEDs | 1.6.4.0 |
+| Reverse Off clears the reverse of every beat and the live reverse | 1.6.4.0 |
+| The Save/Load browser lists a folder in one pass (much faster) | 1.6.4.0 |
+| After a beat change, the Reverse LED shows whether the pads play reversed | 1.6.5.0 |
+| « Mixer » (Pads + Sounds) opens the Mixer after the compressor pages | 1.6.5.0 |
+| 16 Time Steps: a pad lights for every note of its step; a press removes them | 1.6.5.0 |
+| Roll and arpeggio repeats on the grid with the sequencer stopped | 1.6.5.0 |
+| Momentary Roll footswitch: Roll on while pressed only | 1.6.5.0 |
+| A playing beat roll no longer loses notes recorded late in its window | 1.6.5.0 |
+| The compressor envelope Amount reaches −127 as shown | 1.6.5.0 |
+| Every Voice OS dump starts at the beginning of the chip | 1.6.6.0 |
+| Pitch, Filter, Aux 1 and Aux 2 Release stop at 123, like Amp Release | 1.6.6.0 |
+| A second full backup in the same power-on no longer stops the voices | 1.6.8.0 |
+
+The Release cap exists because the official voices never end a release at 124-127.
+
+**Additions and changes**
+
+| Change | From |
+|---|---|
+| Requests for the current sound and beat; identity answer on the chosen cable | 1.5.2.0 |
+| NRPN for every sound parameter, received and sent | 1.5.3.0 |
+| A clearer OS update screen; 1,584 bytes of code space freed | 1.5.5.0 |
+| The whole front panel over MIDI: keys, LEDs, encoders and knobs | 1.6.0.0 |
+| Request for the whole project; 4 Pole and AD Mode LEDs follow NRPN | 1.6.1.0 |
+| The project request draws nothing on the screen | 1.6.2.0 |
+| The 8 beat-wide positions of 16 Beats / 16 Mutes reported and set over MIDI | 1.6.2.0 |
+| The two FX ribbons over MIDI, both ways | 1.6.3.0 |
+| A footswitch can play a pad | 1.6.3.0 |
+| A play probability for each pad of each beat (CC 14) | 1.6.3.0 |
+| Revert Snd asks for a second press | 1.6.3.0 |
+| 9.9 KB of dead official code erased: room for new functions, same instructions run | 1.6.4.0 |
+| Mixer, tempo and main values reported over MIDI (NRPN 230-239) | 1.6.4.0 |
+| The Pad Function mode reported (CC 106) | 1.6.4.0 |
+| The exact Tempester version on request (SysEx `43`) | 1.6.4.0 |
+| A MIDI channel for each pad, with its played note or a fixed drum note (CC 15-17) | 1.6.5.0 |
+| Shift + pad selects a pad silently in every mode; a second press opens its settings page | 1.6.5.0 |
+| Notes up to 768 steps long, a whole 8-bar beat (255 before) | 1.6.5.0 |
+| More Quantize values for recording: dotted, 64th, quintuplets, septuplets | 1.6.5.0 |
+| Edit > Copy Sound copies the sequence, Note FX and mixer settings to another beat | 1.6.5.0 |
+| System > Swing Source « +Roll »: the beat roll follows the swing | 1.6.5.0 |
+| Full backup over MIDI: six voice chips with calibration, Main boot flash, System settings (SysEx `44`) | 1.6.6.0 |
+| The five Release parameters up to 127 when the six voice chips run Tempester Voice | 1.6.7.0 |
+| The Voice OS of each chip reported (SysEx `45` after `43`) | 1.6.7.0 |
+| Every Tempester Voice version recognised, 1.5.1.2 included | 1.6.9.0 |
+
+Notes:
+
+- NRPN 230-239 report Level, Pan, Delay Send, Delay Time, Delay Repeats, BPM, Swing, Volume, Distort and Compress.
+- The pad settings page holds the pad's note, channel, probability and Level.
+- The new MIDI messages: [MIDI protocol](midi-protocol.md).
 
 ## Patches
 
-Each entry: **Problem** in the official OS, **Effect** for you, **Proof**, **On a machine**, **Limits**. « Simulated »
-means the firmware's own instructions were run in an instruction-level simulator of the Main processor on the user's
-own image (the simulators are not published, see [testing](testing.md#firmware-proofs)), with counter-proofs: the
-same checks run on the unpatched image and on
-deliberately wrong variants of the patch, which must fail. See [How the patches are proved](#how-the-patches-are-proved).
+Each entry: **Problem** in the official OS, **Effect** for you, **Proof**, **On a machine**, **Limits**.
+
+« Simulated » means the firmware's own instructions were run in an instruction-level simulator of the Main processor,
+on the user's own image. The simulators are not published ([testing](testing.md#firmware-proofs)).
+
+Simulations come with counter-proofs: the same checks run on the unpatched image and on deliberately wrong variants of
+the patch, which must fail. See [How the patches are proved](#how-the-patches-are-proved).
 
 ### n°1: sound and beat requests
 
@@ -261,9 +377,10 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 
 ### n°21, n°22, n°23: remote panel
 
-- **Effect**: the whole panel over MIDI. (21) every key: CC 102 press, CC 103 release, value = key code; the Debug menu
-  cannot be opened remotely. (22) the panel LEDs are reported: CC 104 on, CC 105 off; CC 107 asks for all of them.
-  (23) the 14 encoders (NRPN 200-213, relative steps) and 10 absolute knobs (NRPN 220-229).
+- **Effect**: the whole panel over MIDI.
+  - n°21, every key: CC 102 press, CC 103 release, value = key code. The Debug menu cannot be opened remotely.
+  - n°22, the panel LEDs are reported: CC 104 on, CC 105 off. CC 107 asks for all of them.
+  - n°23, the 14 encoders (NRPN 200-213, relative steps) and 10 absolute knobs (NRPN 220-229).
 - **Proof**: simulated with the firmware's own panel handlers: 69, 30 and 51 checks, 29 wrong variants refused.
 - **On a machine**: verified on 1.6.0.0: the 44 LED states returned on request, a remote Click press lit the Click LED
   and was reported, a remote encoder step changed the sound by one step and the opposite step restored it byte for
@@ -394,11 +511,14 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
   for the next functions.
 - **Effect**: 9,876 bytes in 38 pieces of 64 to 2,228 bytes are erased (0xFF) and can hold new code. Nothing changes
   for you: the machine runs exactly the same instructions.
-- **Proof**: static: a reachability map of the whole image (from the reset and every interrupt vector, through every
-  jump, call, jump table and code pointer, including pointers built by instruction pairs) finds no path and no pointer
-  to any erased piece, a disassembler's own references agree, and the patched image reaches exactly the same code as
-  1.6.3.0. Counter-proofs: erasing a live routine next to an erased piece, code kept alive only by one pointer, or a
-  piece the map calls only « probably » dead is refused. Simulated: every simulation of 1.6.3.0 passes on it.
+- **Proof**:
+  - Static: a reachability map of the whole image finds no path and no pointer to any erased piece. It starts from the
+    reset and every interrupt vector, and follows every jump, call, jump table and code pointer, including pointers
+    built by instruction pairs. A disassembler's own references agree. The patched image reaches exactly the same code
+    as 1.6.3.0.
+  - Counter-proofs: erasing a live routine next to an erased piece, code kept alive only by one pointer, or a piece the
+    map calls only « probably » dead, is refused.
+  - Simulated: every simulation of 1.6.3.0 passes on it.
 - **On a machine**: installed in 1.6.4.0 (10 November 2026); the OS read back equals the built image, the 38 erased ranges read 0xFF and the n°37 check passes on that dump.
 - **Limits**: requires n°9a and n°17. A code address computed at run time by arithmetic would not be seen by the map
   (no sign of one). The Main OS read back from the machine shows 0xFF in those pieces.
@@ -407,10 +527,13 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 
 - **Problem**: Level, Pan, Delay Send, Delay Time, BPM... could be turned from an editor (remote panel), but turning
   them on the machine sent nothing, so the editor could not follow.
-- **Effect**: on Remote Pad OUT, the machine sends NRPN 230-239 when one of these values changes: Level, Pan and Delay
-  Send of the selected pad, Delay Time and Delay Repeats of the beat, the tempo (BPM × 10), Swing, Volume, Distort
-  and Compress. Coalesced, at most 4 per main-loop pass, only when the DIN output buffer is nearly empty; all 10 on
-  CC 107. CC 12 / CC 13 are not echoed. Bytes: [MIDI protocol](midi-protocol.md#mixer-beat-and-main-values).
+- **Effect**: on Remote Pad OUT, the machine sends NRPN 230-239 when one of these values changes:
+  - Level, Pan and Delay Send of the selected pad;
+  - Delay Time and Delay Repeats of the beat;
+  - the tempo (BPM × 10), Swing, Volume, Distort and Compress.
+
+  Coalesced, at most 4 per main-loop pass, only when the DIN output buffer is nearly empty. All 10 on CC 107. CC 12 /
+  CC 13 are not echoed. Bytes: [MIDI protocol](midi-protocol.md#mixer-beat-and-main-values).
 - **Proof**: simulated with the firmware's own knob handlers and MIDI input: every control x mode x Shift, the other
   messages unchanged, no echo, output rate limit; 18 wrong variants refused.
 - **On a machine**: installed in 1.6.4.0 (10 November 2026); the Main OS dump equals the built image on the written range; tried by hand the same day: behaves as simulated.
@@ -584,16 +707,29 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 ### n°54: the beat roll follows the swing (option)
 
 - **Problem**: with swing on, the beat roll repeated its window identically: a 1/16 roll played straight 16ths (or every note late, on a swung 16th) instead of the long-short feel of the rest of the beat.
-- **Effect**: an option, System > Swing Source « Project+Roll », « Beat+Roll » or « System+Roll » (the same swing source, and the roll swung), kept in the System file. With it, each repetition of the roll plays as notes recorded on its own steps would: same swing amount, same 16th grid, same Time Shift. 1/8 and longer rolls keep their swing as before; 1/16, 1/16T, 1/32 and 1/32T rolls alternate. Without it (the default), swing 50 % or roll off: exactly as before.
-- **Proof**: simulated on the real sequencer interrupt and the real System screen code, for every roll grid, three swing amounts and three beat lengths: option off and swing 50 % identical to the image without the patch, roll off identical to 1.6.4.0; option on, every note at its swung place, once; wrong variants refused.
+- **Effect**: an option, System > Swing Source « Project+Roll », « Beat+Roll » or « System+Roll ». It keeps the same
+  swing source and swings the roll too. It is kept in the System file.
+  - With it, each repetition of the roll plays as notes recorded on its own steps would: same swing amount, same 16th
+    grid, same Time Shift.
+  - 1/8 and longer rolls keep their swing as before; 1/16, 1/16T, 1/32 and 1/32T rolls alternate.
+  - Without it (the default), with swing 50 % or with roll off: exactly as before.
+- **Proof**: simulated on the real sequencer interrupt and the real System screen code, for every roll grid, three
+  swing amounts and three beat lengths.
+  - Option off and swing 50 %: identical to the image without the patch. Roll off: identical to 1.6.4.0.
+  - Option on: every note at its swung place, once.
+  - Wrong variants refused.
 - **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: « Project+Roll » is 12 characters; its fit on the screen is to be checked on the machine.
 
 ### n°61: the beat roll no longer loses notes
 
-- **Problem**: a note of the roll window played past the end of its repetition (a note recorded late in the last 32nd of a 1/16 roll, or a swung one) was never read again by the sequencer: some repetitions lost it.
-- **Effect**: while the roll is on, the sequencer reads the roll window as a ring, so every repetition plays every note. Roll off: unchanged.
-- **Proof**: simulated for every roll grid, swing amount and beat length: no note missing (1.6.4.0 lost 888 of 25,252 in the same runs); roll off identical to 1.6.4.0; the processor time of the sequencer interrupt counted; wrong variants refused.
+- **Problem**: a note of the roll window played past the end of its repetition was never read again by the sequencer,
+  so some repetitions lost it. Examples: a note recorded late in the last 32nd of a 1/16 roll, or a swung one.
+- **Effect**: while the roll is on, the sequencer reads the roll window as a ring, so every repetition plays every
+  note. Roll off: unchanged.
+- **Proof**: simulated for every roll grid, swing amount and beat length: no note missing (1.6.4.0 lost 888 of 25,252
+  in the same runs). Roll off identical to 1.6.4.0. The processor time of the sequencer interrupt counted. Wrong
+  variants refused.
 - **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: windows of 1/32 (12 ticks) are read whole already and keep the stock path.
 
@@ -601,18 +737,23 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 
 - **Problem**: Quantize stopped at 4th, 8th, 8T, 16th, 16T, 32nd, 32T and Off; users asked for dotted values, 1/64
   and quintuplets / septuplets (forum request n°15).
-- **Effect**: eight more values, « 8 Dot », « 16 Dot », « 32 Dot », « 64th », « 64T », « 8 Quint » (5 per half
-  note), « 16 Quint » (5 per quarter note) and « 16 Sept » (7 per quarter note); Shift + soft knob 3 walks all sixteen
-  from the longest to the shortest: 1/4, 8 Dot, 1/8, 8 Quint, 16 Dot, 1/8T, 1/16, 16 Quint, 32 Dot, 1/16T, 16 Sept,
-  1/32, 1/32T, 64th, 64T, Off. Notes recorded in real time land on the nearest point of that grid (quintuplets and
-  septuplets rounded to the tick, 96 per quarter note). Everything else (step entry, 16 Time Steps, Beat Events, roll
-  and arpeggiator, Loop screen) works as with Off. The value is saved with the project in a word the official OS never
-  reads ([format](midi-protocol.md#fine-quantize-value)): the official OS and earlier Tempester versions load such a
-  project with Off. Beats recorded this way play the same on the official OS.
-- **Proof**: simulated: the knob through the real screen code, every value and label (none too wide), recording at
-  each of the 384 ticks of a bar for each new grid, the note read back by the playback routine at the expected tick;
-  the project saved, read back and saved again; the same file loaded by 1.6.4.0 and by the official 1.5.0.2 (word
-  ignored); with the old values the result equals 1.6.4.0 byte for byte; wrong variants refused.
+- **Effect**: eight more values: « 8 Dot », « 16 Dot », « 32 Dot », « 64th », « 64T », « 8 Quint » (5 per half
+  note), « 16 Quint » (5 per quarter note) and « 16 Sept » (7 per quarter note).
+  - Shift + soft knob 3 walks all sixteen, longest to shortest: 1/4, 8 Dot, 1/8, 8 Quint, 16 Dot, 1/8T, 1/16,
+    16 Quint, 32 Dot, 1/16T, 16 Sept, 1/32, 1/32T, 64th, 64T, Off.
+  - Notes recorded in real time land on the nearest point of that grid. Quintuplets and septuplets are rounded to the
+    tick (96 per quarter note).
+  - Everything else (step entry, 16 Time Steps, Beat Events, roll and arpeggiator, Loop screen) works as with Off.
+  - The value is saved with the project in a word the official OS never reads
+    ([format](midi-protocol.md#fine-quantize-value)). The official OS and earlier Tempester versions load such a
+    project with Off. Beats recorded this way play the same on the official OS.
+- **Proof**: simulated:
+  - the knob through the real screen code, every value and label (none too wide);
+  - recording at each of the 384 ticks of a bar for each new grid, the note read back by the playback routine at the
+    expected tick;
+  - the project saved, read back and saved again; the same file loaded by 1.6.4.0 and by the official 1.5.0.2 (word
+    ignored);
+  - with the old values, the result equals 1.6.4.0 byte for byte; wrong variants refused.
 - **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
 - **Limits**: dotted LFO rates are not possible on the Main alone (the voice chips compute the LFO frequency); the new
   grids apply to real-time recording only; a dotted grid runs from the beat's start across bar lines; on a machine
@@ -622,97 +763,131 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 
 - **Problem**: a sound's sequence could only be copied inside the current beat (Copy held, two pads); Edit > Copy Sound
   copied the sound alone between beats (forum request n°7, « requested a gazillion times »).
-- **Effect**: Edit > Copy Sound obeys the Seq / NoteFX / Mixer switches of the Copy screen (hold Copy, soft knobs 2-4):
-  with Seq On it also copies the sequence, with NoteFX On the Note FX, with Mixer On the mixer settings, from any beat
-  to any beat. The Dest Sound caption says what goes with the copy (« Dest: Sound+Seq »...). All three Off: the old
-  Copy Sound. It works while the sequencer plays, as the Copy-held copy does.
-- **Proof**: simulated with the real panel keys for the 8 combinations: the result equals 1.6.4.0's Copy Sound followed
-  by the official routines of the Copy-held copy; the source beat and the other sounds unchanged; same sound onto
-  itself and all Off checked. While playing: the real sequencer interrupt taken every few hundred instructions of the
-  copy (far more often than on the machine), the beat played and the copy in the same or another beat: no fault, the
-  copy writes only the target sound, every other sound plays exactly as without the copy; wrong variants refused.
+- **Effect**: Edit > Copy Sound obeys the Seq / NoteFX / Mixer switches of the Copy screen (hold Copy, soft knobs 2-4),
+  from any beat to any beat.
+  - Seq On also copies the sequence; NoteFX On, the Note FX; Mixer On, the mixer settings.
+  - The Dest Sound caption says what goes with the copy (« Dest: Sound+Seq »...).
+  - All three Off: the old Copy Sound.
+  - It works while the sequencer plays, as the Copy-held copy does.
+- **Proof**: simulated with the real panel keys for the 8 combinations.
+  - The result equals 1.6.4.0's Copy Sound followed by the official routines of the Copy-held copy. The source beat
+    and the other sounds are unchanged. Same sound onto itself, and all Off, checked.
+  - While playing: the real sequencer interrupt taken every few hundred instructions of the copy (far more often than
+    on the machine), with the copy in the same or another beat. No fault; the copy writes only the target sound; every
+    other sound plays exactly as without the copy.
+  - Wrong variants refused.
 - **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
-- **Limits**: no undo (the target sequence is replaced, as with Copy held); events past a shorter target beat's end are
-  copied too and stay silent until the beat is made longer. Copying into the beat that plays: during the copy (a few
-  milliseconds) the target sound plays only the steps already copied, so a note or two of it can be missing in that
-  pass; never a note that is in neither the old nor the new sequence.
+- **Limits**:
+  - No undo: the target sequence is replaced, as with Copy held.
+  - Events past a shorter target beat's end are copied too, and stay silent until the beat is made longer.
+  - Copying into the beat that plays: during the copy (a few milliseconds) the target sound plays only the steps
+    already copied, so a note or two can be missing in that pass. Never a note that is in neither the old nor the new
+    sequence.
 
 ### n°58: one MIDI output channel per pad
 
 - **Problem**: the sequencer sends notes for one pad only (the « MIDI: Sequencer Sound », on the Sequencer Out
   channel), so the Tempest cannot sequence several external synths (a request of eight users).
-- **Effect**: each pad gets a value: 0 = as before; 1-16 = the pad sends its notes on that channel with the note it
-  plays (chromatic, 16 Tunings heard); 17-32 = channel (value - 16) with the pad's « MIDI Note: Pad » note (a fixed
-  drum note). It applies to the sequencer and to the pads played by hand, DIN and USB, instead of the pad's usual
-  route. Set over MIDI on Remote Pad IN: CC 15 = pad 0-31 (A1-B16; the machine answers CC 16 = its value on Remote Pad
-  OUT), CC 16 = value 0-32, CC 17 = 127 saves the System settings (only when stopped: that save stops the transport).
+- **Effect**: each pad gets a value:
+  - 0 = as before;
+  - 1-16 = the pad sends its notes on that channel, with the note it plays (chromatic, 16 Tunings heard);
+  - 17-32 = channel (value - 16), with the pad's « MIDI Note: Pad » note (a fixed drum note).
+
+  It applies to the sequencer and to the pads played by hand, DIN and USB, instead of the pad's usual route.
+- **Set over MIDI** on Remote Pad IN:
+  - CC 15 = pad 0-31 (A1-B16); the machine answers CC 16 = its value on Remote Pad OUT;
+  - CC 16 = value 0-32;
+  - CC 17 = 127 saves the System settings, only when stopped (that save stops the transport).
+
   Bytes: [MIDI protocol](midi-protocol.md#channel-per-pad-n58-needs-n9b).
 - **Stored**: in the System settings file, in the unused high byte of each pad's « MIDI Note: Pad » entry. The
   original OS and older Tempester read the same file and ignore it; a file they save again resets every pad to 0.
-- **Proof**: simulated on the firmware's own code: every pad at 0 gives exactly 1.6.4.0's bytes, RAM and registers;
-  each pad with a channel gives what 1.6.4.0 sends when that pad is the Sequencer Sound on that channel; the real
-  sequencer queue, the live pads, the CCs and the save / load of the settings file; 14 wrong variants refused.
+- **Proof**: simulated on the firmware's own code.
+  - Every pad at 0 gives exactly 1.6.4.0's bytes, RAM and registers.
+  - Each pad with a channel gives what 1.6.4.0 sends when that pad is the Sequencer Sound on that channel.
+  - The real sequencer queue, the live pads, the CCs and the save / load of the settings file.
+  - 14 wrong variants refused.
 - **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
-- **Limits**: on the machine it is shown and set only on the pad settings page of n°59 (otherwise over MIDI, so the
-  app); changing a pad's value while one of its notes sounds leaves that note on the old channel; « reset System settings » also clears the values.
-  Requires n°9b.
+- **Limits**:
+  - On the machine it is shown and set only on the pad settings page of n°59; otherwise over MIDI, so with the app.
+  - Changing a pad's value while one of its notes sounds leaves that note on the old channel.
+  - « Reset System settings » also clears the values.
+  - Requires n°9b.
 
 ### n°59: Shift + pad selects a pad without playing it, in every mode
 
 - **Problem**: Shift + pad selected a pad silently only in 16 Sounds, 16 Tunings, 16 Mutes and 16 Levels (with the
   System setting « Shift On + Pad »); in 16 Beats and 16 Time Steps the pad still played or acted.
 - **Effect**: with Shift on (latched, or held with « Shift Held + Pad »), a pad press only selects that pad, in every
-  mode: no sound, no MIDI, no recording, no beat or step change; its pressure and release are ignored too, even if
-  Shift goes off first. Without Shift nothing changes. A **second press of the same pad** with Shift still on opens
-  the « pad settings » page: the pad's MIDI note (System « MIDI Note: Pad »), its MIDI channel (n°58: Off, 1-16,
-  or « n Fix » for the fixed pad note), its play probability in the edited beat (n°36) and its Mixer Level. The four
-  encoders under the screen change them (note 0-127, channel Off / 1-16 / 1-16 Fix, probability 0-100 %, Level
-  0-127 exactly as the Mixer). Any key or another pad leaves the page; leaving saves the note and the channel in
-  the System settings when the transport is stopped (while playing they stay to save: leave the page again once
-  stopped).
-- **Proof**: simulated with the firmware's own panel, dispatcher and main screen: the 6 modes, both Shift settings,
-  4 pads, press / pressure / release, Shift changing while a pad is down; without Shift identical to 1.6.4.0; the
-  page opened, its texts, the four edits, the save on leaving only when stopped; 18 wrong variants refused.
+  mode.
+  - No sound, no MIDI, no recording, no beat or step change. Its pressure and release are ignored too, even if Shift
+    goes off first.
+  - Without Shift nothing changes.
+- **Pad settings page**: a **second press of the same pad**, with Shift still on, opens it. The four encoders under the
+  screen change:
+  - the pad's MIDI note (System « MIDI Note: Pad »), 0-127;
+  - its MIDI channel (n°58): Off, 1-16, or « n Fix » for the fixed pad note;
+  - its play probability in the edited beat (n°36), 0-100 %;
+  - its Mixer Level, 0-127, exactly as the Mixer.
+
+  Any key or another pad leaves the page. Leaving saves the note and the channel in the System settings when the
+  transport is stopped. While playing they stay to save: leave the page again once stopped.
+- **Proof**: simulated with the firmware's own panel, dispatcher and main screen.
+  - The 6 modes, both Shift settings, 4 pads, press / pressure / release, Shift changing while a pad is down.
+  - Without Shift, identical to 1.6.4.0.
+  - The page opened, its texts, the four edits, the save on leaving only when stopped.
+  - 18 wrong variants refused.
 - **On a machine**: installed in 1.6.5.0 (12 November 2026); tried by hand: yes (15 November 2026).
-- **Limits**: in 16 Beats and 16 Time Steps, Shift + pad now selects the pad's sound instead of a beat or a step; a
-  pad pressed without Shift and released with Shift on keeps the original behaviour (its release action is skipped,
-  as before); selecting in 16 Tunings / 16 Levels still sends the original note-off of the previous pad.
+- **Limits**:
+  - In 16 Beats and 16 Time Steps, Shift + pad now selects the pad's sound instead of a beat or a step.
+  - A pad pressed without Shift and released with Shift on keeps the original behaviour (its release action is
+    skipped, as before).
+  - Selecting in 16 Tunings / 16 Levels still sends the original note-off of the previous pad.
 
 ### n°62: full backup over MIDI, every Voice dump aligned
 
-- **Problem**: the official OS can send the Main, Voice and Panel OS from its Debug menu, but not the six Voice chips
-  one by one with their own calibration, the Main's boot flash or the System settings; and only the first Voice dump
-  after power-on started at the beginning of the chip (the chip's stream never goes back to its start).
-- **Effect**: request `F0 01 28 44 F7` makes the machine send, on the SysEx cable, eight messages: the whole flash of
-  each Voice chip (calibration page included), the Main boot flash with its configuration words, and the System
-  settings with the pad channels of n°58. Nothing is drawn; no message is a command of the machine, so a backup sent
-  back is ignored. The app's Backup page asks for it and saves the files for a programmer restore. Bytes:
-  [MIDI protocol](midi-protocol.md#full-backup).
-- **Versions**: 1.6.6.0 and 1.6.7.0 skip forward to the beginning of each chip before every dump; reading forward goes
-  past the end of the chip's flash on a second dump in the same power-on, which stops the chips (found on the machine
-  on 14 November 2026). **With 1.6.6.0 and 1.6.7.0, one full backup per power-on.** From 1.6.8.0 the Main never reads
-  forward: a Tempester Voice chip is brought back to its beginning by its own voice number, a chip on the official
-  Voice OS is read once per power-on (a second request gets an empty message for it: power the machine off and on).
-  1.6.9.0: see n°65.
-- **Proof**: simulated with the firmware's own request path and the Voice link, against models of the chips (the
-  official Voice OS, each Tempester Voice) that read the end of the flash as measured on the machine; the invariant
-  « no chip is ever read past its flash » over every sequence of requests; the 14 November captures reproduced byte
-  for byte; 1.6.7.0 and 14 wrong variants refused.
-- **On a machine**: installed in 1.6.6.0 (13 November 2026, first full backup); the defect of a second backup measured
-  on 1.6.7.0; 1.6.8.0 and 1.6.9.0: two full backups in a row identical (14 and 15 November).
-- **Limits**: about 6.4 s on USB, about 2 min 35 s on DIN, during which the machine reads no MIDI and draws nothing;
-  if the Main restarts alone (without switching the machine off), a chip on the official Voice OS is read from the
-  middle of its stream and stops until power-off: power-cycle before a backup. The files are for a programmer restore:
-  the app never sends them back.
+- **Problem**: the official OS can send the Main, Voice and Panel OS from its Debug menu. It cannot send the six Voice
+  chips one by one with their own calibration, the Main's boot flash or the System settings. And only the first Voice
+  dump after power-on started at the beginning of the chip: the chip's stream never goes back to its start.
+- **Effect**: request `F0 01 28 44 F7` makes the machine send eight messages on the SysEx cable:
+  - the whole flash of each Voice chip, calibration page included;
+  - the Main boot flash with its configuration words;
+  - the System settings, with the pad channels of n°58.
+
+  Nothing is drawn. No message is a command of the machine, so a backup sent back is ignored. The app's Backup page
+  asks for it and saves the files for a programmer restore. Bytes: [MIDI protocol](midi-protocol.md#full-backup).
+- **Versions**:
+  - 1.6.6.0 and 1.6.7.0 skip forward to the beginning of each chip before every dump. On a second dump in the same
+    power-on, reading forward goes past the end of the chip's flash, which stops the chips (found on the machine on
+    14 November 2026). **With 1.6.6.0 and 1.6.7.0, one full backup per power-on.**
+  - From 1.6.8.0 the Main never reads forward. A Tempester Voice chip is brought back to its beginning by its own voice
+    number. A chip on the official Voice OS is read once per power-on: a second request gets an empty message for it
+    (power the machine off and on).
+  - 1.6.9.0: see n°65.
+- **Proof**: simulated with the firmware's own request path and the Voice link.
+  - Against models of the chips (the official Voice OS, each Tempester Voice) that read the end of the flash as
+    measured on the machine.
+  - The invariant « no chip is ever read past its flash », over every sequence of requests.
+  - The 14 November captures reproduced byte for byte.
+  - 1.6.7.0 and 14 wrong variants refused.
+- **On a machine**: installed in 1.6.6.0 (13 November 2026, first full backup). The defect of a second backup measured
+  on 1.6.7.0. 1.6.8.0 and 1.6.9.0: two full backups in a row identical (14 and 15 November).
+- **Limits**:
+  - About 6.4 s on USB, about 2 min 35 s on DIN. Meanwhile the machine reads no MIDI and draws nothing.
+  - If the Main restarts alone (without switching the machine off), a chip on the official Voice OS is read from the
+    middle of its stream and stops until power-off. Power-cycle before a backup.
+  - The files are for a programmer restore: the app never sends them back.
 
 ### n°63: Release capped at 123, then lifted with Tempester Voice
 
 - **Problem**: on the official Voice OS a Release of 124-127 never ends: the voice holds until another note takes it.
   The official Main stops Amp Release at 123 for that reason, but not Pitch, Filter, Aux 1 and Aux 2 Release.
-- **Effect**: 1.6.6.0 stops the four other Releases (parameters 65, 70, 83, 91) at 123 too, on the knob, over NRPN,
-  on the screen and when a sound is loaded (a stored 124-127 plays and shows as 123). From 1.6.7.0, when all six Voice
-  chips answered at power-on as Tempester Voice (whose releases always end, up to 60 s at 127), the five Releases, Amp
-  included, go up to 127 again; with any chip on another Voice OS they stay at 123.
+- **Effect**:
+  - 1.6.6.0 stops the four other Releases (parameters 65, 70, 83, 91) at 123 too: on the knob, over NRPN, on the
+    screen and when a sound is loaded. A stored 124-127 plays and shows as 123.
+  - From 1.6.7.0, when all six Voice chips answered at power-on as Tempester Voice (whose releases always end, up to
+    60 s at 127), the five Releases, Amp included, go up to 127 again.
+  - With any chip on another Voice OS, they stay at 123.
 - **Proof**: simulated: the knob, NRPN, display, load and send paths capped and lifted; the start-up decision for every
   combination of chip answers; the image without n°63 and more than 20 wrong variants refused.
 - **On a machine**: installed in 1.6.6.0 (13 November 2026); the lift with six Tempester Voice 1.5.1.0 chips in 1.6.7.0
@@ -736,13 +911,15 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 - **Problem**: 1.6.7.0 and 1.6.8.0 take a chip as Tempester Voice only when its version word is exactly `0016` (Tempester
   Voice 1.5.1.0 and 1.5.1.1). Tempester Voice 1.5.1.2 answers `0017`, so on them it would keep the Release cap at 123
   and be read once per power-on by the full backup.
-- **Effect**: 1.6.9.0 takes any word `0016`-`0079` as Tempester Voice (the official Voice 1.5 answers `0015`, a chip
-  that does not answer `0000` or `FFFF`; `0079` is the highest word the machine accepts from a chip at start-up), for
-  the Release lift (n°63) and the full-backup re-alignment (n°62). Nothing else changes: with the older test on the two
-  places, the manifest builds 1.6.8.0 byte for byte. **Install 1.6.9.0 before Tempester Voice 1.5.1.2.**
-- **Proof**: simulated: the lift for 69 sets of chip words and the full backup with 1.5.1.2 chips, mixes and the bounds;
-  29 and 20 wrong variants refused (among them the exact `0016` test, ranges that take `0015` or `007A`, a signed
-  compare); 1.6.8.0 refused on `0017` chips.
+- **Effect**: 1.6.9.0 takes any word `0016`-`0079` as Tempester Voice, for the Release lift (n°63) and the
+  full-backup re-alignment (n°62).
+  - The official Voice 1.5 answers `0015`. A chip that does not answer gives `0000` or `FFFF`.
+  - `0079` is the highest word the machine accepts from a chip at start-up.
+  - Nothing else changes: with the older test in the two places, the manifest builds 1.6.8.0 byte for byte.
+  - **Install 1.6.9.0 before Tempester Voice 1.5.1.2.**
+- **Proof**: simulated: the lift for 69 sets of chip words, and the full backup with 1.5.1.2 chips, mixes and the
+  bounds. 29 and 20 wrong variants refused, among them the exact `0016` test, ranges that take `0015` or `007A`, and a
+  signed compare. 1.6.8.0 refused on `0017` chips.
 - **On a machine**: installed on 15 November 2026: it answers 1.6.9.0, two full backups in a row identical before and
   after Tempester Voice 1.5.1.2, whose six chips it reports as `0017`.
 - **Limits**: a future Tempester Voice must keep what both gates rely on (releases that end, and the voice number that
@@ -750,11 +927,13 @@ deliberately wrong variants of the patch, which must fail. See [How the patches 
 
 ## Tempester Voice
 
-Tempester Voice is a Tempester build of the official **Voice OS 1.5**, the program of the six sound chips. It is
-optional: every Tempester OS works with the official Voice OS. It is built the same way, from your own
-`Tempest_Voice_1.5.syx` (SHA-256 checked, the result checked against the SHA-256 of the version), and sent with the
-Voice OS update of the machine, which goes to **all six chips at once**. The boot page and each chip's own calibration
-page are never written by an update.
+Tempester Voice is a Tempester build of the official **Voice OS 1.5**, the program of the six sound chips.
+
+- It is optional: every Tempester OS works with the official Voice OS.
+- It is built the same way, from your own `Tempest_Voice_1.5.syx`: SHA-256 checked, and the result checked against
+  the SHA-256 of the version.
+- It is sent with the machine's Voice OS update, which goes to **all six chips at once**.
+- The boot page and each chip's own calibration page are never written by an update.
 
 | Version | Builds on | Adds | Status |
 |---|---|---|---|
@@ -781,19 +960,25 @@ What Tempester Voice changes (all in 1.5.1.2):
 - **Each chip reports its own version** (« 1.7 » for 1.5.1.2 on the System screen; n°66): the machine and the app can
   tell it from 1.5.1.0 / 1.5.1.1 (« 1.6 ») and from the official OS (« 1.5 »).
 
-- **Proof**: an instruction-level simulator of the Voice processor runs the chip's own code from your image: the
-  replies to the Main's reads in time (no later than the official OS), the five frame scenarios, the release curve
-  for every index, the calibration check, the queue, the traps, the dump stream; each check also runs on the official
-  image and on deliberately wrong variants, which must fail (34 for 1.5.1.2); the Voice update itself is simulated on
-  every built image. 1.5.1.2 differs from 1.5.1.1 by one instruction's value.
+- **Proof**: an instruction-level simulator of the Voice processor runs the chip's own code from your image. It
+  checks:
+  - the replies to the Main's reads, in time (no later than the official OS);
+  - the five frame scenarios, the release curve for every index, the calibration check, the queue, the traps, the
+    dump stream;
+  - each check also on the official image and on deliberately wrong variants, which must fail (34 for 1.5.1.2);
+  - the Voice update itself, on every built image.
+
+  1.5.1.2 differs from 1.5.1.1 by one instruction's value.
 - **On a machine**: each version installed on the six chips of the project's Tempest, with a full backup (n°62) right
-  before and right after: each chip's program pages equal to the built image, its calibration page unchanged.
-- **Install order**: Main 1.6.9.0 first, then Tempester Voice 1.5.1.2. On Main 1.6.7.0 or 1.6.8.0 a 1.5.1.2 chip keeps
-  the Release knobs at 123 and is read once per power-on by the full backup (nothing is damaged); the app warns at
-  send time when the machine reported an older Main or none.
-- **Risk**: one update goes to the six chips at once, there is no trying one chip first. A power cut while the first 29
-  of its 41 pages are written leaves chips that only a programmer on their own ICSP header can bring back (the same
-  risk as an official Voice update). Make a full backup before and after; never unplug during the update.
+  before and right after. Each chip's program pages equal the built image; its calibration page is unchanged.
+- **Install order**: Main 1.6.9.0 first, then Tempester Voice 1.5.1.2.
+  - On Main 1.6.7.0 or 1.6.8.0, a 1.5.1.2 chip keeps the Release knobs at 123 and is read once per power-on by the full
+    backup. Nothing is damaged.
+  - The app warns at send time when the machine reported an older Main, or none.
+- **Risk**: one update goes to the six chips at once; there is no trying one chip first.
+  - A power cut while the first 29 of its 41 pages are written leaves chips that only a programmer on their own ICSP
+    header can bring back. This is the same risk as an official Voice update.
+  - Make a full backup before and after. Never unplug during the update.
 - **Way back**: send the official `Tempest_Voice_1.5.syx` (Sequential's update method, or the app's OS page:
   « Choose an OS .syx file to check », then send); it rewrites the same pages.
 - **Limits**: the Compressor envelope retrigger and the dotted LFO values are not changed; a few rare paths are listed
@@ -815,8 +1000,12 @@ None of this is a guarantee. Read [Before you install](user-manual.md#before-you
 
 ## Known defects not fixed
 
-Among others: crossed note-offs lost in rare cases; the projection shift in odd-meter loops (n°8 limits); a latent defect in the factory update routine (a failed read-back of one row erases the whole
-4 KB page and rewrites only that row; it never showed and the page is never modified by Tempester); several forum
-reports studied but not fixed (copy of a beat onto the playing beat, arpeggiator sync, and more); the
-« start offset as slave » report is not explained by the code: the first step plays a tenth of a millisecond after the
-first clock, and only the last quarter of each clock is late.
+Among others:
+
+- crossed note-offs lost in rare cases;
+- the projection shift in odd-meter loops (n°8 limits);
+- a latent defect in the factory update routine: a failed read-back of one row erases the whole 4 KB page and rewrites
+  only that row. It never showed, and Tempester never modifies that page;
+- several forum reports studied but not fixed: copy of a beat onto the playing beat, arpeggiator sync, and more;
+- the « start offset as slave » report is not explained by the code. The first step plays a tenth of a millisecond
+  after the first clock, and only the last quarter of each clock is late.

@@ -31,20 +31,17 @@
 
 ## What is Tempester?
 
-Tempester fixes long-standing bugs of the Tempest, opens the machine up over MIDI, and lets a computer edit, store and
-back up what it holds. It has three parts that work together.
+Tempester fixes old bugs of the Tempest and opens it up over MIDI. It has three parts.
 
-- **Tempester OS** is a set of community firmware releases for the Tempest's Main board. They fix freezes, lost notes,
-  silent voices and memory corruption, and add what the official OS never had: sound, beat and project requests,
-  NRPN in both directions, the whole front panel over MIDI, FX ribbons over MIDI, a footswitch that plays a pad, a play
-  probability for each pad, a full backup of the machine over MIDI, and more. Each release is a *recipe* that you
-  apply to your own official OS file. An optional **Tempester Voice** does the same for the six sound chips: no
-  more voices muted for good, and Release times that always end.
-- **The Tempester app** for macOS, Windows and Linux: a remote panel, a library for sounds, beats and projects, a
-  step sequencer, a MIDI monitor, and a safe installer for Tempester OS that checks every file and reads the result
-  back from the machine.
-- **Tempester Control** is a CLAP and VST3 plugin that turns the Tempest's sound parameters into automatable
-  parameters in your DAW.
+- **Tempester OS**: community firmware for the Tempest's Main board.
+  - It fixes freezes, lost notes, silent voices and memory corruption.
+  - It adds sound, beat and project requests, NRPN both ways, the whole front panel over MIDI, a MIDI channel per
+    pad, play probability per pad, a full backup over MIDI, and more.
+  - The optional **Tempester Voice** does the same for the six sound chips.
+- **The Tempester app** (macOS, Windows, Linux): a remote panel, a library for sounds, beats and projects, a step
+  sequencer, a MIDI monitor and a safe OS installer.
+- **Tempester Control**: a CLAP and VST3 plugin that turns the sound parameters into DAW automation. It is
+  experimental.
 
 > [!NOTE]
 > Tempester is an independent project. It is **not affiliated with, endorsed by or supported by** Sequential, Dave Smith
@@ -56,38 +53,31 @@ back up what it holds. It has three parts that work together.
   <tr>
     <td width="50%" valign="top">
       <img src="docs/images/panel-machine.png" alt="Panel page, Machine view">
-      <p><strong>Remote panel.</strong> The Machine view draws the real panel's controls in their places and plays
-      them over MIDI: 49 keys, 14 encoders, 10 knobs, 16 pads and the LEDs. The Full view has all of that plus the 127
-      sound parameters, live in both directions.</p>
+      <p><strong>Remote panel.</strong> Every key, knob, pad and LED of the Tempest, live over MIDI.</p>
     </td>
     <td width="50%" valign="top">
       <img src="docs/images/library.png" alt="Library page">
-      <p><strong>Library.</strong> Fetch and send sounds, beats and whole projects. Search, tags, favourites, older
-      versions and a trash. Nothing is overwritten in silence: what a send replaces is saved first.</p>
+      <p><strong>Library.</strong> Fetch and send sounds, beats and projects. Nothing is overwritten without a copy.</p>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
       <img src="docs/images/play.png" alt="Play page with the step sequencer">
-      <p><strong>Play.</strong> 16 pads, a MIDI clock master and a Euclidean sequencer with a probability for each
-      pad. Also in the Library: a kit builder and the export of a beat as a Standard MIDI File.</p>
+      <p><strong>Play.</strong> 16 pads, a MIDI clock and a Euclidean sequencer.</p>
     </td>
     <td width="50%" valign="top">
       <img src="docs/images/os-update.png" alt="OS update page">
-      <p><strong>Safe OS updates.</strong> Builds a Tempester OS release from your own official file, checks it
-      against the reference SHA-256, sends it, then reads the installed OS back from the machine and compares.</p>
+      <p><strong>Safe OS updates.</strong> Built from your file, checked by SHA-256, read back from the machine.</p>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
       <img src="docs/images/machine.png" alt="Machine page with the MIDI monitor">
-      <p><strong>Machine and MIDI monitor.</strong> The identity of the installed OS and what it can do, and a readable
-      log of every message sent and received.</p>
+      <p><strong>Machine.</strong> What the installed OS can do, and a readable MIDI monitor.</p>
     </td>
     <td width="50%" valign="top">
       <img src="docs/images/backup.png" alt="Backup page">
-      <p><strong>Backup.</strong> Captures the Main, Voice and Panel operating systems that the Tempest sends from its
-      Debug menu, with a check of each one.</p>
+      <p><strong>Backup.</strong> A full backup of the machine and its operating systems.</p>
     </td>
   </tr>
 </table>
@@ -96,328 +86,210 @@ back up what it holds. It has three parts that work together.
 
 ## Get started
 
-You need a Tempest, a USB cable (or a MIDI interface on the DIN ports) and a computer.
+You need a Tempest, a USB cable (or a MIDI interface) and a computer.
 
-1. **Install the app.** Download the package for your system from the
-   [Releases](https://github.com/onedevinap/tempester/releases) page (macOS, Windows, Debian and Ubuntu). On Linux,
-   take the two `.deb` files whose name ends with your Ubuntu release: `_ubuntu24.04.deb` or `_ubuntu26.04.deb`
-   ([which one for another Debian-based system](docs/building.md#installing-a-release-package)). The packages
-   are not signed, so each system blocks the first launch: the commands and clicks that get past it, per system, are
-   in [Installing a release package](docs/building.md#installing-a-release-package).
-   You can also [build it from source](docs/building.md#building-and-running-the-app).
-2. **Prepare the Tempest.** It must run the complete official **OS 1.5.0.2**: Main 1.5.0.2 with the Voice, Panel
-   and SAM files of the same package. Download that package from
-   [Sequential's Tempest OS page](https://sequential.com/support/download/tempest-operating-system/) and keep
-   `Tempest_Main_1.5.0.2.syx`: every Tempester OS release is built from it. In System, set the SysEx cable, Remote Pad
-   IN and Remote Pad OUT ([which values](docs/user-manual.md#setting-up-the-tempest)).
-3. **Back up, then install Tempester OS.** Save your project and the OS dumps (Library and Backup pages). On the
-   *OS update* page, choose your official file, pick a release and press **Build**: the app checks the result against
-   the release's reference SHA-256. Press **Send to the machine** and wait about three minutes, then power the Tempest
-   off and on when it says so.
-4. **Verify.** System > *Main OS Version* shows the new number. In the app, **Verify the installed OS** reads the Main
-   OS back from the machine (Debug menu, *Send Main OS*) and compares it with what was sent.
+1. **Install the app** (version 0.1.2). Download it from the
+   [Releases](https://github.com/onedevinap/tempester/releases) page.
+   - The packages are not signed, so your system blocks the first launch. How to get past it:
+     [Installing a release package](docs/building.md#installing-a-release-package).
+   - On Linux, take the two `.deb` files for your Ubuntu release (`_ubuntu24.04` or `_ubuntu26.04`).
+   - You can also [build it from source](docs/building.md#building-and-running-the-app).
+2. **Prepare the Tempest.** It must run the complete official **OS 1.5.0.2**.
+   - Download the package from
+     [Sequential's Tempest OS page](https://sequential.com/support/download/tempest-operating-system/).
+   - Keep `Tempest_Main_1.5.0.2.syx`: every Tempester OS release is built from it.
+   - In System, set the SysEx cable, Remote Pad IN and Remote Pad OUT
+     ([which values](docs/user-manual.md#setting-up-the-tempest)).
+3. **Back up.** Save your project and make the OS backups (Library and Backup pages).
+4. **Install.** On the *OS update* page, choose your official file, pick a release and press **Build**. Then press
+   **Send to the machine**. It takes about three minutes. Power the Tempest off and on when told.
+5. **Verify.** System > *Main OS Version* shows the new number. **Verify the installed OS** in the app reads it back
+   and compares.
 
-Read [Before you install](docs/user-manual.md#before-you-install-a-tempester-version) once before the first
-installation. To look around first without a machine, start the app with `TEMPESTER_FAKE_MIDI=1`: it then talks to a
-simulated Tempest and nothing reaches a MIDI port.
+Read [Before you install](docs/user-manual.md#before-you-install-a-tempester-version) once before your first install.
+
+To look around without a machine, start the app with `TEMPESTER_FAKE_MIDI=1`. It then talks to a simulated Tempest.
 
 ## Tempester OS releases
 
-Tempester OS replaces the Main OS; Panel and SAM stay those of the official 1.5.0.2 package, and the six Voice chips
-keep the official Voice 1.5 unless you also install Tempester Voice (below). The app installs these; the older releases
-stay listed in its History, to read only:
+Tempester OS replaces the Main OS only. Panel and SAM stay those of the official 1.5.0.2 package.
 
 | Release | What it is | Choose it if |
 |---|---|---|
-| **1.6.9.0** (latest) | Every fix and every addition: requests, NRPN, remote panel, project transfers, beat-wide positions, FX ribbons over MIDI, footswitch pads, Load Sound memory and alphabetical order, Revert confirmation, per-pad play probability, the machine reporting its mixer, tempo, Pad Function mode and exact version to an editor, a MIDI channel and a settings page for each pad, notes as long as a whole 8-bar beat, finer Quantize values, Copy Sound with its sequence, a roll that can follow the swing (up to 1.6.5.0); plus a full backup of the machine over MIDI (the six voice chips with their calibration, the boot flash, the System settings), Release values capped at 123 where the official voices never end a release, back up to 127 with Tempester Voice, and the Voice OS of each chip reported; installed on 15 November 2026 (two full backups in a row identical); the 1.6.5.0 functions tried by hand on the machine | you want everything |
-| **1.5.6.0** (corrections only) | The bug fixes, plus the sound and beat requests and NRPN; no remote panel, project request or new performance features | you want the fixes and as few changes as possible |
-| **DSI 1.5.0.2** (back to official) | The official OS, rebuilt unchanged from your own file | you want to go back |
+| **1.6.9.0** (latest) | Every fix and every addition | you want everything |
+| **1.5.6.0** | Bug fixes, requests and NRPN only | you want the fewest changes |
+| **DSI 1.5.0.2** | The official OS, rebuilt unchanged | you want to go back |
 
-**Tempester Voice** (the six sound chips, optional; built from your own `Tempest_Voice_1.5.syx`, one update for all
-six chips):
+Each release contains everything of the earlier ones. The app keeps older releases in its History, to read only.
 
-| Release | What it is | Install |
-|---|---|---|
-| **1.5.1.2** (latest) | Voices no longer muted for good by a cut message or a stray calibration command, a full queue no longer drops a whole sound, a stuck chip restarts, a half-written calibration page is not used, Release 101-127 rise to 60 s and always end, no backup can stop a chip, its own version reported; installed on the six chips on 15 November 2026 | **after Main 1.6.9.0**, with a full backup before and after |
+- The full list of changes: [Everything Tempester OS changes](docs/firmware.md#everything-tempester-os-changes).
+- Which app feature needs which OS: [the table in the manual](docs/user-manual.md#which-features-need-which-os).
+- Each change in detail, with its proof: [firmware notes](docs/firmware.md) and the [changelog](CHANGELOG.md).
 
-Full details: [firmware notes](docs/firmware.md) (each change, how it was proved, its limits; [Tempester
-Voice](docs/firmware.md#tempester-voice)) and the [changelog](CHANGELOG.md).
+### Tempester Voice
 
-<details>
-<summary><strong>Everything Tempester OS changes</strong> (with the release that brought it)</summary>
+Tempester Voice is optional. It updates the six sound chips in one go, built from your own `Tempest_Voice_1.5.syx`.
 
-**Fixes**
+- **1.5.1.2** is the latest. 1.5.1.0 and 1.5.1.1 are superseded.
+- Voices are no longer muted for good, and Release times always end (up to 60 s at 127).
+- **Install Main 1.6.9.0 first**, then Voice 1.5.1.2.
+- Make a full backup before and after.
 
-| Change | From |
-|---|---|
-| No freeze on « Exporting Project »; a received beat no longer overwrites memory | 1.5.1.0 |
-| Play Lists: no freeze on an empty step or in RT REC, no write past 100 steps | 1.5.1.0 |
-| No Loop Screen freeze outside 4/4 | 1.5.1.0 |
-| The pressure of sliders 2 to 4 acts on the real-time FX | 1.5.1.0 |
-| Compressor Peak Hold is saved; the compressor envelope follows a beat change | 1.5.1.0 |
-| Note length editable up to 255 | 1.5.1.0 |
-| A USB SysEx import is no longer cut by traffic on the DIN input | 1.5.1.0 |
-| Play List Delete Step no longer writes into the next list | 1.5.5.0 |
-| Note FX values stay in their own field; deterministic note-off rule; Voice Assign bounded on load; sequence copy uses the target beat | 1.5.5.0 |
-| A received SysEx no longer corrupts Compare and Undo | 1.5.6.0 |
-| Voices no longer fall silent with LFO Restart = Play | 1.5.6.0 |
-| A USB SysEx no longer causes lost or stuck notes from a DIN keyboard | 1.5.6.0 |
-| An abandoned SysEx closes the Receiving screen; a bad beat number in a project is refused | 1.5.6.0 |
-| Every SysEx message the machine sends ends in the standard layout | 1.6.2.0 |
-| A project sent back to the machine keeps its Play Lists | 1.6.2.0 |
-| A SysEx message that never ends is abandoned after about 3 seconds | 1.6.2.0 |
-| The Load Sound knob remembers its place in each folder and walks it in alphabetical order | 1.6.3.0 |
-| In Pad to Note Mode « Mutes », a note mutes its own pad's sound, bank A or B | 1.6.4.0 |
-| The first Save after power-on no longer offers the Factory folder | 1.6.4.0 |
-| Undo All Snds and Undo Beat restore sound types, play states, Voice Assign and pad LEDs | 1.6.4.0 |
-| Reverse Off clears the reverse of every beat and the live reverse | 1.6.4.0 |
-| The Save/Load browser lists a folder in one pass (much faster) | 1.6.4.0 |
-| After a beat change the Reverse LED shows whether the pads play reversed | 1.6.5.0 |
-| « Mixer » (Pads + Sounds) opens the Mixer after the compressor pages | 1.6.5.0 |
-| 16 Time Steps: a pad lights for every note of its step, a press on it removes them | 1.6.5.0 |
-| Roll and arpeggio repeats on the grid with the sequencer stopped; Momentary Roll footswitch on while pressed only | 1.6.5.0 |
-| A playing beat roll no longer loses notes recorded late in its window | 1.6.5.0 |
-| The compressor envelope Amount reaches −127 as shown | 1.6.5.0 |
-| Every Voice OS dump starts at the beginning of the chip | 1.6.6.0 |
-| Pitch, Filter, Aux 1 and Aux 2 Release stop at 123 like Amp Release (the official voices never end a release at 124-127) | 1.6.6.0 |
-| A second full backup in the same power-on no longer stops the voices | 1.6.8.0 |
-
-**Additions and changes**
-
-| Change | From |
-|---|---|
-| Requests for the current sound and beat; identity answer on the chosen cable | 1.5.2.0 |
-| NRPN for every sound parameter, received and sent | 1.5.3.0 |
-| A clearer OS update screen; 1,584 bytes of code space freed | 1.5.5.0 |
-| The whole front panel over MIDI: keys, LEDs, encoders and knobs | 1.6.0.0 |
-| Request for the whole project; 4 Pole and AD Mode LEDs follow NRPN | 1.6.1.0 |
-| The project request draws nothing on the screen | 1.6.2.0 |
-| The 8 beat-wide positions of 16 Beats / 16 Mutes reported and set over MIDI | 1.6.2.0 |
-| The two FX ribbons over MIDI, both ways | 1.6.3.0 |
-| A footswitch can play a pad | 1.6.3.0 |
-| A play probability for each pad of each beat (MIDI CC 14) | 1.6.3.0 |
-| Revert Snd asks for a second press | 1.6.3.0 |
-| 9.9 KB of dead official code erased: room for new functions, same instructions run | 1.6.4.0 |
-| Level, Pan, Delay Send, Delay Time, Delay Repeats, BPM, Swing, Volume, Distort and Compress reported over MIDI (NRPN 230-239) | 1.6.4.0 |
-| The Pad Function mode reported (CC 106); the exact Tempester version on request (SysEx `43`) | 1.6.4.0 |
-| A MIDI channel for each pad, with its played note or a fixed drum note (CC 15-17) | 1.6.5.0 |
-| Shift + pad selects a pad silently in every mode; a second press opens its settings page (note, channel, probability, Level) | 1.6.5.0 |
-| Notes up to 768 steps long, a whole 8-bar beat (255 before) | 1.6.5.0 |
-| More Quantize values for recording: dotted, 64th, quintuplets, septuplets | 1.6.5.0 |
-| Edit > Copy Sound copies the sequence, Note FX and mixer settings to another beat | 1.6.5.0 |
-| System > Swing Source « +Roll »: the beat roll follows the swing | 1.6.5.0 |
-| Full backup over MIDI: the six voice chips with their calibration, the Main boot flash, the System settings (SysEx `44`) | 1.6.6.0 |
-| The five Release parameters up to 127 when the six voice chips run Tempester Voice | 1.6.7.0 |
-| The Voice OS of each chip reported (SysEx `45` after `43`) | 1.6.7.0 |
-| Every Tempester Voice version recognised, 1.5.1.2 included | 1.6.9.0 |
-
-Each release contains everything of the earlier ones. Release by release: [firmware notes](docs/firmware.md#versions).
-The new MIDI messages: [MIDI protocol](docs/midi-protocol.md).
-
-</details>
-
-<details>
-<summary><strong>Which app features need which OS</strong></summary>
-
-| Feature | Official OS 1.5.0.2 | Tempester OS |
-|---|---|---|
-| Send sounds, beats, projects and OS files; Backup page; Play page and sequencer; MIDI monitor | yes | yes |
-| Receive a project started from the machine's menu | yes | yes |
-| Fetch the current sound or beat; kit builder | no | 1.5.2.0 or later |
-| Live sound parameters (Panel, Full view); Tempester Control plugin | no | 1.5.3.0 or later |
-| Remote panel (Panel, Machine view) | no | 1.6.0.0 or later |
-| Fetch the whole project | no | 1.6.1.0 or later |
-| Send a project back with its Play Lists | no | 1.6.2.0 or later |
-| Full backup (Backup page) | no | 1.6.6.0 or later (one per power-on before 1.6.8.0) |
-| Release knobs up to 127 | no | 1.6.7.0 or later with Tempester Voice on the six chips (Voice 1.5.1.2: Main 1.6.9.0 or later) |
-
-</details>
+Details: [Tempester Voice](docs/firmware.md#tempester-voice).
 
 ### Why recipes?
 
-The Tempest's firmware belongs to its maker, so this repository contains none of it. A Tempester OS release is a list
-of changes written by the project: which words of the Main OS to replace, and with what. You apply it to your own
-official file, on your computer, with the app (or a [script](docs/building.md#rebuilding-a-firmware-version-from-your-own-dsi-file)).
-Your input file is checked by SHA-256 before anything is done, and the result is checked against the SHA-256 recorded
-for the release, so everyone gets exactly the same image. See the [recipe format](docs/patch-recipe-format.md).
+The Tempest's firmware belongs to its maker, so this project distributes none of it.
+
+A Tempester release is a *recipe*: a list of changes written by the project. You apply it to your own official file,
+on your computer, with the app or a
+[script](docs/building.md#rebuilding-a-firmware-version-from-your-own-dsi-file).
+
+Your file is checked by SHA-256 first. The result is checked against the SHA-256 recorded for the release, so
+everyone gets exactly the same image. See the [recipe format](docs/patch-recipe-format.md).
 
 ## What is tested
 
-We try to say exactly what was checked, and on what.
+All hardware tests were made on one Tempest, over USB. It now runs Main 1.6.9.0 and Voice 1.5.1.2.
 
-**Tested**
+**Tested on the machine**
 
-- **Every Tempester OS release on real hardware.** Each release from 1.5.1.0 to 1.6.9.0 was installed over USB on the
-  project's Tempest, one after the other, without any programmer. For 1.5.5.0, 1.6.2.0, 1.6.3.0, 1.6.4.0 and 1.6.5.0,
-  the Main OS read back from the machine was identical to the built image over the whole range an update writes.
-- **Every Tempester Voice release on real hardware**: 1.5.1.0, 1.5.1.1 and 1.5.1.2 were installed on the six chips,
-  each with a full backup before and after: each chip's program pages read back equal to the built image.
-- **The new features on the machine**: requests, NRPN, the remote panel, the project request, the 1.6.3.0 and 1.6.4.0
-  additions, the full backup (two in a row from 1.6.8.0) and the Release up to 127 with Tempester Voice were used on
-  the machine, over USB.
-- **Proofs before any install.** Every change is checked word by word against the official image; the later ones
-  also run in an instruction-level simulator of the Main processor on the real firmware code, and the same checks must
-  fail on the unpatched image and on deliberately wrong variants. See [testing](docs/testing.md).
-- **The app on macOS**, with the machine over USB: Main and Voice OS installs from the OS update page, the full backup and the identity card were used with the app on the author's machine (some installs, Main 1.6.9.0 and Tempester
-  Voice 1.5.1.2 among them, were sent with the project's command-line sender instead). Automatic tests run on macOS,
-  Windows and Linux, on a throwaway home folder, with counter-proofs for the user-interface tests.
+- Every Tempester OS release from 1.5.1.0 to 1.6.9.0, installed one after the other, without a programmer.
+- Every Tempester Voice release, each with a full backup before and after.
+- The new functions, including the 1.6.5.0 ones, tried by hand.
+- The app on macOS: Main and Voice installs, the full backup page and the identity card.
+
+**Proved before any install**
+
+- Every change is checked word by word against the official image.
+- Most changes also run in a simulator of the Main processor, on the real firmware code.
+- The same checks must fail on the unpatched image and on deliberately wrong variants.
 
 **Not tested yet**
 
-- **Windows and Linux** builds come from CI only. They compile and pass the tests there, but have not been run with a
-  Tempest, and their installers have not been installed by a person.
-- **Tempester Control** has been built and driven by a test host, but not yet loaded in a real DAW.
-- **The 1.6.5.0 functions by hand** (pad channels, pad settings page, long notes, fine Quantize, Copy Sound, rolls):
-  proved in simulation and installed, not yet tried one by one on the machine.
-- **The DIN cable**: almost everything was done over USB.
-- **Going back to DSI 1.5.0.2** on the test machine. It uses the same update path as every install above.
-- A few rare paths of the fixes (listed in [testing](docs/testing.md#not-verified)).
+- Windows and Linux: they pass the automatic tests, but nobody has used them with a Tempest.
+- The plugin in a real DAW. It has no window of its own yet.
+- The DIN cable.
+- Going back to DSI 1.5.0.2 on the test machine. It uses the same update path as every install.
+- A few rare paths of the fixes.
 
-Reports from your own machine, especially on Windows, Linux or a DIN cable, help; nothing is promised in return (see
-[Support](#support-and-contributions)).
+Full details: [testing](docs/testing.md).
 
 ## Safety
 
-Changing the firmware of an instrument always carries some risk. Tempester is designed to keep it small.
-
-- **The update routine is never touched.** The Tempest writes a new Main OS with a routine stored in the last page of
-  its flash, and no update rewrites that page. Every Tempester build refuses a change there. So an interrupted or failed
-  update can simply be sent again, as long as the machine starts its updater.
-- **Every file is checked.** Your official file, the built image and the file sent are all checked by SHA-256, and
-  after the install the app compares what the machine reads back with what it sent.
-- **Going back is one click.** *Back to DSI 1.5.0.2* on the OS update page rebuilds the official OS from your file. You
-  can also use Sequential's own [update guide](https://sequential.com/updating-tempest-os/). Panel and SAM are never
-  changed; if you installed Tempester Voice, send the official `Tempest_Voice_1.5.syx` too.
-- **Tempester Voice is a separate, optional step.** One Voice update goes to all six sound chips at once; a power cut
-  during its first two thirds leaves chips that only a programmer on their own header can bring back (the same risk as
-  an official Voice update). The app asks for a full backup before and after, and says to install Main 1.6.9.0 first.
-- **A hardware backup is optional.** For the rare case where the Main OS would no longer start at all, the
-  [recovery guide](docs/recovery.md#optional-full-chip-backup-and-recovery-with-a-pickit) explains a full chip backup
-  with a Microchip PICkit. You do not need one: every install above was made without it, and it has never been needed.
-- **No warranty, no responsibility.** Everything is documented and most of it was tested, on one machine, as described
-  in [testing](docs/testing.md); but Tempester is to be taken as it is, and its contributors are not responsible for
-  any problem on your machine. You use it at your own risk (see the [licence](LICENSE) and the
-  [legal notes](docs/legal.md#delivered-as-is)).
+- **Back up first.** Save your project and make a full backup before and after any update.
+- **The update routine is never touched.** No Tempester build changes it. A failed update can simply be sent again.
+- **Every file is checked** by SHA-256, before and after the install.
+- **You can go back at any time.** *Back to DSI 1.5.0.2* on the OS update page rebuilds the official OS from your file.
+  Sequential's [update guide](https://sequential.com/updating-tempest-os/) works too.
+- **Tempester Voice has one real risk.** A power cut during a Voice update can leave chips that only a programmer can
+  bring back. This is also true of an official Voice update.
+- **No programmer is needed.** A PICkit backup is optional: see [recovery](docs/recovery.md).
+- **No warranty.** You use Tempester at your own risk ([legal notes](docs/legal.md#delivered-as-is)).
 
 ## Documentation
 
 | Guide | What you find there |
 |---|---|
-| [User manual](docs/user-manual.md) | every page of the app, step by step, the Tempest's MIDI settings, and the plugin |
-| [Firmware](docs/firmware.md) | each Tempester OS release and each change: the problem, the effect, the proof, the limits |
-| [MIDI protocol](docs/midi-protocol.md) | the messages Tempester OS adds: requests, NRPN, remote panel, ribbons, probability |
-| [Testing](docs/testing.md) | what is tested and how, what was checked on a real machine, and what was not |
-| [Recovery](docs/recovery.md) | going back, sending an update again, and the optional programmer backup |
-| [Building](docs/building.md) | build the app, the plugin and the packages; rebuild a release from your own file |
-| [Recipe format](docs/patch-recipe-format.md) | how a firmware change is written without any DSI byte |
-| [Legal notes](docs/legal.md) | why this repository holds no DSI material, and the rules it relies on |
-| [Roadmap](docs/roadmap.md) | what will probably come next: room in the firmware, the plugin's window, the most requested features |
-| [Changelog](CHANGELOG.md) | the history of the app and of Tempester OS |
+| [User manual](docs/user-manual.md) | every page of the app, and the plugin |
+| [Firmware](docs/firmware.md) | each release and each change |
+| [MIDI protocol](docs/midi-protocol.md) | the MIDI messages Tempester OS adds |
+| [Testing](docs/testing.md) | what is tested, and what is not |
+| [Recovery](docs/recovery.md) | going back, and the optional programmer backup |
+| [Building](docs/building.md) | building the app and the releases yourself |
+| [Recipe format](docs/patch-recipe-format.md) | how a change is written without DSI bytes |
+| [Legal notes](docs/legal.md) | why no DSI material is here |
+| [Roadmap](docs/roadmap.md) | what may come next |
+| [Changelog](CHANGELOG.md) | the history of the app and the firmware |
 
 ## FAQ
 
 <details>
 <summary><strong>Is this official? Can it affect my warranty?</strong></summary>
 
-Tempester is not official and not supported by Sequential. It installs through the Tempest's normal OS update over MIDI,
-without opening the machine. Whether unofficial firmware matters for a warranty or a repair depends on the seller and
-the country; if in doubt, go back to the official OS before you send the machine for service.
+No, it is not official. It installs through the Tempest's normal MIDI update, without opening the machine.
+
+Warranty rules depend on the seller and the country. If in doubt, go back to the official OS before a repair.
 
 </details>
 
 <details>
 <summary><strong>Can I go back to the official OS?</strong></summary>
 
-Yes, at any time and over MIDI: *Back to DSI 1.5.0.2* on the app's OS update page, or Sequential's own update method
-with the official file. See [recovery](docs/recovery.md).
+Yes, at any time, over MIDI. See [recovery](docs/recovery.md).
 
 </details>
 
 <details>
 <summary><strong>Which OS must be on the machine first?</strong></summary>
 
-The complete official OS 1.5.0.2: Main 1.5.0.2 and the Voice 1.5, Panel 1.3 and SAM 1.1 files of the same package.
-Check them with System > *Show System Information*. USB updates need Main 1.2 or later; an older machine updates over
-the DIN ports first. Step by step: [Before you install](docs/user-manual.md#before-you-install-a-tempester-version).
+The complete official OS 1.5.0.2: Main 1.5.0.2, Voice 1.5, Panel 1.3 and SAM 1.1. USB updates need Main 1.2 or later.
+
+Step by step: [Before you install](docs/user-manual.md#before-you-install-a-tempester-version).
 
 </details>
 
 <details>
 <summary><strong>Will it change my sounds, beats and projects?</strong></summary>
 
-An OS update rewrites only a program: the Main processor's (or, for Tempester Voice, the six voice chips'). Your sounds, beats and projects live in the machine's
-separate storage, and Tempester keeps their format. One addition uses a value the official OS never reads: a beat saved
-with a play probability below 100 % simply plays every note on the official OS. Still, back up your project before any
-update: the app's Library can fetch it, or receive it from the machine's own menu.
+No. An update rewrites a program, not your data, and the file formats stay the same.
+
+Still, back up your project before any update.
 
 </details>
 
 <details>
 <summary><strong>Does the app work with the official OS?</strong></summary>
 
-Partly. It can send sounds, beats, projects and OS files, receive a project sent from the machine's menu, capture
-backups, play pads and run the sequencer. Fetching, live parameters and the remote panel need Tempester OS, because the
-official OS answers no request and ignores NRPN. See the table under [Tempester OS releases](#tempester-os-releases).
-
-</details>
-
-<details>
-<summary><strong>Does it run on Mac, Windows and Linux?</strong></summary>
-
-The app and the plugin are built for all three. The app is tested with the machine on macOS; the Windows and Linux
-builds pass the automatic tests but have not been tried with a Tempest yet (see [What is tested](#what-is-tested)).
-
-</details>
-
-<details>
-<summary><strong>Why recipes instead of ready-made firmware files?</strong></summary>
-
-The firmware is Sequential's work and is not ours to distribute. Recipes publish only the project's own changes; you
-apply them to the file you downloaded from Sequential, and SHA-256 checks prove that the input and the result are
-exactly the expected ones. See [Why recipes?](#why-recipes) and the [legal notes](docs/legal.md).
+Partly. Sending files, backups, the pads and the sequencer work. Fetching, live parameters and the remote panel need
+Tempester OS. See [which features need which OS](docs/user-manual.md#which-features-need-which-os).
 
 </details>
 
 <details>
 <summary><strong>Do I need a PICkit or any special hardware?</strong></summary>
 
-No. Installing, changing and removing Tempester OS all happen over USB or MIDI. A PICkit backup is an optional safety
-net for experienced users ([recovery](docs/recovery.md)).
+No. Everything happens over USB or MIDI. A PICkit backup is an optional safety net ([recovery](docs/recovery.md)).
 
 </details>
 
 ## How it is made
 
-Tempester is **vibe-coded**: the code, the analyses, the tools and these pages are written by **Claude** (Anthropic's AI
-model, through Claude Code) in conversation with the project's author, who decides what to build, reads the results,
-installs each version on their own Tempest and tests it by hand. The author asked for this to be said plainly.
+Tempester is **vibe-coded**. The code, the analyses, the tools and these pages are written by **Claude** (Anthropic's
+AI model, through Claude Code), in conversation with the project's author. The author decides what to build, reads
+the results, and installs and tests each version on their own Tempest. The author asked for this to be said plainly.
 
-What keeps that honest: nothing is taken on the AI's word. Every firmware change is a recipe proved by simulating the
-machine's own code (`tools/verify.sh`: round trips, builds, counter-proofs where a deliberately broken variant must be
-refused, static checks of registers and stack); the app and the plugin have their tests and counter-proofs; and each
-release is read back from the real machine and compared byte for byte with what was built. The limits are stated in
-[testing](docs/testing.md#not-verified). Judge the result on the code and the proofs, not on how it was written.
+Nothing is taken on the AI's word:
+
+- every firmware change is proved by simulating the machine's own code, with counter-proofs;
+- the app and the plugin have their own tests;
+- each release is read back from the real machine and compared byte for byte.
+
+The limits are listed in [testing](docs/testing.md#not-verified). Judge the result on the code and the proofs.
 
 ## Support and contributions
 
-**Tempester is delivered as is.** There is no support, no help desk and no commitment to fix a bug, answer a question
-or add a function; the licence excludes any warranty ([GPL v3 §15 and §16](LICENSE)). You install a Tempester OS on
-your own machine at your own risk, after reading [Safety](#safety) and [recovery](docs/recovery.md). Issues and pull
-requests may be read when time allows and may stay unanswered; feature requests are not taken. If you still send
-something, read [CONTRIBUTING.md](CONTRIBUTING.md) first. The one strict rule: **never attach or commit DSI files**,
-firmware dumps, manuals or pictures.
+**Tempester is delivered as is.**
+
+- No support, no warranty, no feature requests, no promised response times.
+- Issues and pull requests may be read when time allows, and may stay unanswered.
+- You install Tempester OS at your own risk, after reading [Safety](#safety) and [recovery](docs/recovery.md).
+
+If you still send something, read [CONTRIBUTING.md](CONTRIBUTING.md) first. The one strict rule: **never attach or
+commit DSI files**, firmware dumps, manuals or pictures.
 
 ## Security
 
-A firmware change that could harm a machine, or an app behaviour that could lose data, is a security issue. Please
-report it privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
+A firmware change that could harm a machine, or an app bug that could lose data, is a security issue. Report it
+privately as described in [SECURITY.md](SECURITY.md).
 
 ## Legal
 
-Tempester is an independent project, not affiliated with, endorsed by or supported by Sequential LLC, Dave Smith
-Instruments, Focusrite plc or Roger Linn Design. « Tempest », « DSI », « Dave Smith Instruments » and « Sequential »
-are trademarks of their owners and are used here only to say which instrument this software works with. This
-repository contains no DSI software, manual, picture or logo: the official files are downloaded from
+Tempester is not affiliated with, endorsed by or supported by Sequential LLC, Dave Smith Instruments, Focusrite plc
+or Roger Linn Design. « Tempest », « DSI », « Dave Smith Instruments » and « Sequential » are trademarks of their
+owners. They are used here only to name the instrument this software works with.
+
+This repository contains no DSI software, manual, picture or logo. The official files come from
 [Sequential's website](https://sequential.com/support/download/tempest-operating-system/). Details:
 [legal notes](docs/legal.md).
 
