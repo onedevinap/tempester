@@ -8,6 +8,16 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ### [Unreleased]
 
+### [0.1.3] - 2026-11-16
+
+#### Fixed
+- **macOS: the downloaded app was reported « damaged » and would not open.** The packaging signed only the binary
+  (the linker's ad-hoc signature), so the bundle's Info.plist and resources were not sealed and the signature was
+  invalid; with the download quarantine, Gatekeeper refused it with no way past. The app and the CLAP / VST3 bundles
+  are now ad-hoc signed as a whole (`tools/app_mac.sh`, `tools/package_mac.sh`): the first launch asks for **Open
+  Anyway** in System Settings > Privacy & Security, as documented. The packages are still not signed with an Apple
+  Developer ID. If 0.1.2 is already installed: `xattr -dr com.apple.quarantine /Applications/Tempester.app`.
+
 ### [0.1.2] - 2026-11-15
 
 #### Added

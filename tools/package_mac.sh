@@ -58,6 +58,10 @@ component() {
   local name="$1" location="$2" source="$3" root="$WORK/root-$1" plist="$WORK/$1.plist" i=0
   mkdir -p "$root"
   ditto "$source" "$root/$(basename "$source")"
+  # Every bundle ad-hoc signed as a whole (see app_mac.sh): a valid signature, so a quarantined plugin is « not
+  # verified », never « damaged ».
+  codesign --force --deep --sign - "$root/$(basename "$source")" > /dev/null 2>&1
+  codesign --verify --deep --strict "$root/$(basename "$source")"
   pkgbuild --analyze --root "$root" "$plist" > /dev/null
   # Relocation off and version check off, whatever the analysis wrote (a key may be absent, hence Add after Set).
   # Relocatable would update a copy found anywhere (a plugin installed by hand under ~/Library) instead of installing

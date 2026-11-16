@@ -1,6 +1,6 @@
 # Tempester user manual
 
-This manual covers the Tempester app 0.1.2, the Tempester Control plugin, and how to install Tempester OS.
+This manual covers the Tempester app 0.1.3, the Tempester Control plugin, and how to install Tempester OS.
 
 What each firmware release changes: [firmware](firmware.md). The exact MIDI messages: [MIDI protocol](midi-protocol.md).
 Screenshots show the app with example data.

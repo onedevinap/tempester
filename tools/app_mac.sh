@@ -3,7 +3,8 @@
 #
 # usage: tools/app_mac.sh [<output folder>]     (default: app/target/release)
 # Contents/MacOS/tempester, Contents/Resources/tempest.icns (app/crates/tempester/icons), Contents/Info.plist with the
-# workspace version of app/Cargo.toml. Unsigned: the first launch needs right-click > Open.
+# workspace version of app/Cargo.toml. Ad-hoc signed (no Developer ID): the first launch needs Open Anyway in
+# System Settings > Privacy & Security (macOS 15 and later).
 set -euo pipefail
 P="$(cd "$(dirname "$0")/.." && pwd)"
 export RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}" CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
@@ -36,4 +37,9 @@ cat > "$A/Info.plist" <<PLIST
 </plist>
 PLIST
 plutil -lint "$A/Info.plist" > /dev/null
+# Ad-hoc signature of the whole bundle: the linker signs only the binary, so Info.plist and Resources were not sealed
+# and `codesign --verify` failed; a downloaded (quarantined) bundle with an invalid signature is reported « damaged »
+# by Gatekeeper, with no Open Anyway. Ad-hoc is not a Developer ID: the first launch still needs Open Anyway.
+codesign --force --deep --sign - "$OUT/Tempester.app" > /dev/null 2>&1
+codesign --verify --deep --strict "$OUT/Tempester.app"
 echo "$OUT/Tempester.app ($VERSION)"

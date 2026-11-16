@@ -102,11 +102,13 @@ Check the file first. The Releases page lists the SHA-256 of each package:
      xattr -dr com.apple.quarantine /Applications/Tempester.app
      ```
 
+If macOS says the app « is damaged » (the 0.1.2 packages had an invalid signature), use the Terminal command above.
+
 The `.pkg` installs the app and, if you keep them selected, the CLAP and VST3 plugins in `/Library/Audio/Plug-Ins`
 (administrator password).
 
 - To open it: `xattr -d com.apple.quarantine ~/Downloads/Tempester-*-macos-*.pkg`, then double-click. Or
-  Control-click > *Open*, then *Open Anyway* in Privacy & Security.
+  double-click it once, then click *Open Anyway* in System Settings > Privacy & Security.
 - If a DAW refuses the plugins:
 
   ```bash
