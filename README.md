@@ -92,6 +92,9 @@ You need a Tempest, a USB cable (or a MIDI interface) and a computer.
    [Releases](https://github.com/onedevinap/tempester/releases) page.
    - The packages are not signed, so your system blocks the first launch. How to get past it:
      [Installing a release package](docs/building.md#installing-a-release-package).
+   - macOS blocks the app or says it « is damaged »? In Terminal:
+     `xattr -dr com.apple.quarantine /Applications/Tempester.app`
+     ([details](docs/building.md#macos-blocks-the-app-or-says-it-is-damaged)).
    - On Linux, take the two `.deb` files for your Ubuntu release (`_ubuntu24.04` or `_ubuntu26.04`).
    - You can also [build it from source](docs/building.md#building-and-running-the-app).
 2. **Prepare the Tempest.** It must run the complete official **OS 1.5.0.2**.

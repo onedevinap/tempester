@@ -93,28 +93,47 @@ Check the file first. The Releases page lists the SHA-256 of each package:
 
 ### macOS
 
+The packages are not signed with an Apple Developer ID, so macOS blocks them the first time.
+
+**The app (`.dmg`)**
+
 1. Open the `.dmg` and drag `Tempester.app` to Applications.
-2. On macOS 15 (Sequoia) and later, right-click > *Open* no longer works for an unsigned app. Either:
-   - open **System Settings > Privacy & Security**, scroll to « Tempester was blocked » and click **Open Anyway**; or
-   - remove the quarantine mark in Terminal:
+2. Open the app once. macOS refuses it.
+3. Open **System Settings > Privacy & Security**, scroll to « Tempester was blocked » and click **Open Anyway**.
 
-     ```bash
-     xattr -dr com.apple.quarantine /Applications/Tempester.app
-     ```
+**The installer (`.pkg`)**
 
-If macOS says the app « is damaged » (the 0.1.2 packages had an invalid signature), use the Terminal command above.
-
-The `.pkg` installs the app and, if you keep them selected, the CLAP and VST3 plugins in `/Library/Audio/Plug-Ins`
+It installs the app and, if you keep them selected, the CLAP and VST3 plugins in `/Library/Audio/Plug-Ins`
 (administrator password).
 
-- To open it: `xattr -d com.apple.quarantine ~/Downloads/Tempester-*-macos-*.pkg`, then double-click. Or
-  double-click it once, then click *Open Anyway* in System Settings > Privacy & Security.
-- If a DAW refuses the plugins:
+1. Double-click the `.pkg` once. macOS refuses it.
+2. Click **Open Anyway** in **System Settings > Privacy & Security**, then run the installer.
+
+#### macOS blocks the app or says it is damaged
+
+Remove the quarantine mark macOS puts on downloaded files. In Terminal:
+
+- the app:
+
+  ```bash
+  xattr -dr com.apple.quarantine /Applications/Tempester.app
+  ```
+
+- the installer, before opening it:
+
+  ```bash
+  xattr -d com.apple.quarantine ~/Downloads/Tempester-*-macos-arm64.pkg
+  ```
+
+- the plugins, if a DAW refuses them:
 
   ```bash
   sudo xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/CLAP/Tempester Control.clap" \
     "/Library/Audio/Plug-Ins/VST3/Tempester Control.vst3"
   ```
+
+« Is damaged » came from the 0.1.2 packages, whose signature was invalid; 0.1.3 fixes it. Right-click > *Open* no
+longer works for an unsigned app on macOS 15 (Sequoia) and later.
 
 ### Windows
 
