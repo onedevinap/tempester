@@ -16,6 +16,7 @@ pub struct FakeTransport {
     receiver: Mutex<Option<Receiver>>,
     responder: Mutex<Option<Responder>>,
     failing: AtomicBool,
+    refusing_fragments: AtomicBool,
 }
 
 impl FakeTransport {
@@ -50,6 +51,12 @@ impl FakeTransport {
         self.failing.store(true, Ordering::SeqCst);
     }
 
+    /// Makes the fake behave like midir on Windows (WinMM): a packet that does not start with `F0` and is longer than
+    /// a channel message is refused, so a SysEx can only go out whole.
+    pub fn refuse_sysex_fragments(&self) {
+        self.refusing_fragments.store(true, Ordering::SeqCst);
+    }
+
     /// True when a receiver is installed.
     pub fn has_receiver(&self) -> bool {
         lock(&self.receiver).is_some()
@@ -60,6 +67,12 @@ impl Transport for FakeTransport {
     fn send(&self, bytes: &[u8]) -> Result<(), MidiError> {
         if self.failing.load(Ordering::SeqCst) {
             return Err(MidiError::Send("fake transport set to fail".into()));
+        }
+        if self.refusing_fragments.load(Ordering::SeqCst) && is_winmm_refused(bytes) {
+            // midir's WinMM wording, so that a test reads like the report of a Windows user.
+            return Err(MidiError::Send(
+                "non-sysex message must not be longer than 3 bytes".into(),
+            ));
         }
         lock(&self.sent).push(bytes.to_vec());
         let answers = match lock(&self.responder).as_mut() {
@@ -72,9 +85,19 @@ impl Transport for FakeTransport {
         Ok(())
     }
 
+    fn accepts_sysex_fragments(&self) -> bool {
+        !self.refusing_fragments.load(Ordering::SeqCst)
+    }
+
     fn set_receiver(&self, receiver: Option<Receiver>) {
         *lock(&self.receiver) = receiver;
     }
+}
+
+/// midir 0.11 on WinMM sends a packet starting with `F0` as one long message and anything else as a short message
+/// of at most 3 bytes (`backend/winmm/mod.rs`, `MidiOutputConnection::send`).
+fn is_winmm_refused(bytes: &[u8]) -> bool {
+    bytes.len() > 3 && bytes.first() != Some(&0xF0)
 }
 
 /// A fake controller in tests: its `sent()` stays empty because an `InputPort` cannot send.
@@ -145,5 +168,41 @@ mod tests {
 
         assert!(matches!(fake.send(&[1]), Err(MidiError::Send(_))));
         assert!(fake.sent().is_empty());
+    }
+
+    #[test]
+    fn test_accepts_sysex_fragments_when_default_returns_true() {
+        let fake = FakeTransport::new();
+
+        assert!(fake.accepts_sysex_fragments());
+        assert_eq!(fake.send(&[0x01, 0x02, 0x03, 0x04, 0xF7]), Ok(()));
+    }
+
+    #[test]
+    fn test_send_when_refusing_fragments_and_long_packet_without_f0_returns_send_error() {
+        let fake = FakeTransport::new();
+        fake.refuse_sysex_fragments();
+
+        let result = fake.send(&[0x01, 0x02, 0x03, 0x04]);
+
+        assert!(!fake.accepts_sysex_fragments());
+        assert_eq!(
+            result,
+            Err(MidiError::Send(
+                "non-sysex message must not be longer than 3 bytes".into()
+            ))
+        );
+        assert!(fake.sent().is_empty());
+    }
+
+    #[test]
+    fn test_send_when_refusing_fragments_and_sysex_or_short_message_returns_ok() {
+        let fake = FakeTransport::new();
+        fake.refuse_sysex_fragments();
+
+        assert_eq!(fake.send(&[0xF0, 0x01, 0x02, 0x03, 0x04]), Ok(()));
+        assert_eq!(fake.send(&[0x90, 36, 100]), Ok(()));
+
+        assert_eq!(fake.sent().len(), 2);
     }
 }

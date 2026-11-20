@@ -482,7 +482,10 @@ impl OsJob {
             Event::new("os_started")
                 .with("label", label.clone())
                 .with("chip", chip_name(self.pending.id))
-                .with("total", total),
+                .with("total", total)
+                // An OS file is one SysEx message: where the port takes no part of a message, it leaves in one
+                // piece, so the page has no progress until the end and no cancel to offer.
+                .with("in_one_piece", !self.transport.accepts_sysex_fragments()),
         );
         let result = self.send();
         let installed = self.remember(&result);

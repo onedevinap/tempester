@@ -5,6 +5,7 @@
 //! - `message` and `listener`: splitting the byte stream into messages (SysEx, channel messages with running
 //!   status, real-time bytes anywhere);
 //! - `paced`: sending large SysEx at a MIDI-cable rate, with progress and cancellation;
+//! - `split`: cutting a packet into its messages for the systems that take one message per call (WinMM, ALSA);
 //! - `request`: send a request and wait for the matching SysEx, with a timeout.
 //!
 //! Nothing here sends to a machine by itself: callers decide, after the user's explicit go.
@@ -16,6 +17,7 @@ pub mod message;
 pub mod midir_transport;
 pub mod paced;
 pub mod request;
+mod split;
 pub mod transport;
 
 pub use error::MidiError;

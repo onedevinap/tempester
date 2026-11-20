@@ -10,8 +10,14 @@ pub type Receiver = Box<dyn FnMut(&[u8]) + Send + 'static>;
 
 /// A MIDI input+output pair. Implemented by `MidirTransport` (real ports) and `FakeTransport` (tests).
 pub trait Transport: Send + Sync {
-    /// Writes bytes to the output port (one call = one packet for the system).
+    /// Writes bytes to the output port: one or several whole messages, or (where `accepts_sysex_fragments`) part of
+    /// a SysEx. `MidirTransport` hands them to a system that takes one message per call message by message.
     fn send(&self, bytes: &[u8]) -> Result<(), MidiError>;
+
+    /// Whether `send` takes part of a SysEx message (a packet that does not start with `F0`, or lacks its `F7`).
+    /// When false, a SysEx must be sent whole, `F0` to `F7`, in one call. No default: a wrapper must forward the
+    /// answer of the transport it wraps, a guess would break large sends on one system or another.
+    fn accepts_sysex_fragments(&self) -> bool;
 
     /// Replaces the receiving callback (`None` drops incoming bytes).
     fn set_receiver(&self, receiver: Option<Receiver>);

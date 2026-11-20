@@ -2,7 +2,8 @@
    `node os-voice.test.js <ui folder>`. The Voice card (built from the user's DSI Voice file, which is another file than
    the Main one; in its own Voice group and history, never in the Main one), the build command, and the send of a Voice file: a confirmation that says it goes
    to all six chips at once and what a power cut means, before any byte; the same wording for an unknown Voice file;
-   the Main flow keeping its own text; the end message that asks for a full backup; the cancel warning.
+   the Main flow keeping its own text; the end message that asks for a full backup; the cancel warning; a send in one
+   piece (a port that takes no part of a message) says so and offers no cancel.
    os-voice-counter-proof.js runs the same checks on copies with one behaviour broken. */
 "use strict";
 const assert = require("assert");
@@ -302,6 +303,27 @@ async function checkProgressAndEnd(env) {
   assert.ok(!dialogText(env).includes("Voice chips"), "the Main cancel text is its own");
 }
 
+/* Windows and Linux: the OS file leaves in a single send, nothing to follow or stop until it ends. */
+async function checkOnePiece(env) {
+  const root = env.roots.os;
+  env.receive({
+    event: "os_started",
+    label: "Tempester 1.6.7.0",
+    chip: "Main",
+    total: 599559,
+    in_one_piece: true,
+  });
+  const text = textOf(root);
+  assert.ok(text.includes("sent in one piece"), text);
+  assert.ok(text.includes("no progress until the end and no cancel"), text);
+  assert.ok(control(root, "Cancel the update").disabled, "no cancel for a send in one piece");
+  env.receive({ event: "os_finished", state: "done", sent: 599559, total: 599559 });
+  env.receive({ event: "os_started", label: "Tempester 1.6.7.0", chip: "Main", total: 599559 });
+  assert.ok(!textOf(root).includes("in one piece"), "a send in pieces shows its progress");
+  assert.ok(!control(root, "Cancel the update").disabled, "and can be cancelled");
+  env.receive({ event: "os_finished", state: "done", sent: 599559, total: 599559 });
+}
+
 (async () => {
   const env = setup();
   await checkCard(env);
@@ -311,7 +333,8 @@ async function checkProgressAndEnd(env) {
   await checkMainKeepsItsText(env);
   await checkUnknownVoice(env);
   await checkProgressAndEnd(env);
-  console.log("ok, Voice card, build, all-six confirmation, end message and cancel warning");
+  await checkOnePiece(env);
+  console.log("ok, Voice card, build, all-six confirmation, end message, cancel warning, send in one piece");
 })().catch((e) => {
   console.error(e);
   process.exit(1);

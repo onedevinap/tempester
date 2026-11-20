@@ -20,10 +20,14 @@ pub enum MidiError {
     Timeout,
     /// The receiving side is gone.
     Disconnected,
-    /// A paced send was cancelled after `sent` bytes: the machine may hold a half message.
+    /// A paced send was cancelled after `sent` bytes: the machine may hold a half message (none when the
+    /// transport only takes whole SysEx messages).
     Cancelled { sent: usize },
     /// A paced send with a rate of zero bytes per second.
     InvalidRate,
+    /// Data for a transport that only takes whole SysEx messages is not a sequence of `F0 … F7` messages: `offset`
+    /// is the first byte that breaks it. Nothing was sent.
+    NotWholeSysex { offset: usize },
 }
 
 impl fmt::Display for MidiError {
@@ -39,6 +43,10 @@ impl fmt::Display for MidiError {
             Self::Disconnected => write!(f, "the MIDI input is closed"),
             Self::Cancelled { sent } => write!(f, "send cancelled after {sent} bytes"),
             Self::InvalidRate => write!(f, "send rate must be above zero"),
+            Self::NotWholeSysex { offset } => write!(
+                f,
+                "the data is not a sequence of whole SysEx messages (byte {offset}): nothing was sent"
+            ),
         }
     }
 }

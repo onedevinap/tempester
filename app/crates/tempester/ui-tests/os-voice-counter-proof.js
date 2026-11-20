@@ -130,6 +130,21 @@ const variants = {
     "lines: sendingVoice ? S.cancelVoiceLines : S.cancelLines,",
     "lines: S.cancelLines,",
   ],
+  "one piece: cancel offered": [
+    "page-os.js",
+    "els.cancel.disabled = !sending || onePiece;",
+    "els.cancel.disabled = !sending;",
+  ],
+  "one piece: shown as a progress": [
+    "page-os.js",
+    "(onePiece ? S.sendingOnePiece : S.sending)(",
+    "S.sending(",
+  ],
+  "one piece: the flag kept from the last send": [
+    "page-os.js",
+    "onePiece = !!m.in_one_piece;",
+    "onePiece = onePiece || !!m.in_one_piece;",
+  ],
 };
 
 let failed = 0;

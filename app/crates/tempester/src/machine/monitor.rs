@@ -97,6 +97,10 @@ impl Transport for TappedTransport {
         self.inner.send(bytes)
     }
 
+    fn accepts_sysex_fragments(&self) -> bool {
+        self.inner.accepts_sysex_fragments()
+    }
+
     fn set_receiver(&self, receiver: Option<ByteReceiver>) {
         let Some(mut receiver) = receiver else {
             return self.inner.set_receiver(None);
@@ -630,6 +634,19 @@ mod tests {
 
         assert_eq!(event.field("dropped"), Some(&Json::Int(8)));
         assert_eq!(texts(&event).len(), 4, "two notes and the two kept chunks");
+    }
+
+    #[test]
+    fn test_accepts_sysex_fragments_when_tapped_returns_the_answer_of_the_wrapped_transport() {
+        let mut monitor = Monitor::with_limits(CHANNEL_CAPACITY, PENDING_MAX);
+        let whole_only = Arc::new(FakeTransport::new());
+        whole_only.refuse_sysex_fragments();
+
+        let tapped_whole = monitor.attach(whole_only, "Tempest");
+        let tapped_pieces = monitor.attach(Arc::new(FakeTransport::new()), "Tempest");
+
+        assert!(!tapped_whole.accepts_sysex_fragments());
+        assert!(tapped_pieces.accepts_sysex_fragments());
     }
 
     #[test]

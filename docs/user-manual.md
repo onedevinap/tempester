@@ -1,6 +1,6 @@
 # Tempester user manual
 
-This manual covers the Tempester app 0.1.3, the Tempester Control plugin, and how to install Tempester OS.
+This manual covers the Tempester app 0.1.4, the Tempester Control plugin, and how to install Tempester OS.
 
 What each firmware release changes: [firmware](firmware.md). The exact MIDI messages: [MIDI protocol](midi-protocol.md).
 Screenshots show the app with example data.
@@ -360,7 +360,9 @@ The page has four numbered panels.
 - An opened file is recognised by its SHA-256 (a Tempester version or the official 1.5.0.2). Any other file is an
   *Unknown build*, which needs an extra confirmation.
 - **Send to the machine...** asks for a confirmation, then sends at the MIDI cable rate (about 3 minutes for the Main),
-  with a progress bar and a **Cancel** button.
+  with a progress bar and a **Cancel** button. On Windows and Linux the MIDI driver takes no part of a message, and
+  an OS file is one message: it leaves in one piece, with no progress until the end and no **Cancel**; the countdown
+  on the Tempest's screen shows the progress.
 
 **4. After the update**: see [Installing a version](#installing-a-version-with-the-app), steps 4-6.
 
@@ -543,7 +545,11 @@ These work on the Tempest itself. The app follows them where it edits the data. 
 `TEMPESTER_DATA_DIR` replaces it.
 
 Inside: `sounds/`, `beats/`, `projects/`, `backups/<date>/`, `os/`, `exports/`, the library index `library.json`, the
-trash, the history of older versions, and `settings.txt`. Files are never overwritten.
+trash, the history of older versions, and `settings.txt`. Files are never overwritten. On Windows it also holds
+`WebView2/`, the data of the window's web view.
+
+If the app closes as soon as it starts, the reason is written to `startup-error.txt` in that folder (in the temporary
+folder, `%TEMP%` on Windows, when the data folder itself could not be opened).
 
 ## Trying the app without a machine
 

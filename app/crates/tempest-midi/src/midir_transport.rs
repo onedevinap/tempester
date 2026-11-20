@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use midir::{Ignore, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 
 use crate::error::MidiError;
+use crate::split::packets_for;
 use crate::transport::{lock, InputPort, Receiver, Transport};
 
 /// Name of the Tempest's USB MIDI port.
@@ -152,10 +153,26 @@ fn connect_output(name: &str) -> Result<MidiOutputConnection, MidiError> {
 }
 
 impl Transport for MidirTransport {
+    /// Off macOS the packet is handed to midir one message at a time (`split`), stopping at the first error. The
+    /// lock is held for the whole packet, so that another thread's send never falls between the four CCs of an NRPN.
     fn send(&self, bytes: &[u8]) -> Result<(), MidiError> {
-        lock(&self.output)
-            .send(bytes)
-            .map_err(|e| MidiError::Send(e.to_string()))
+        let mut output = lock(&self.output);
+        for packet in packets_for(bytes, !self.accepts_sysex_fragments()) {
+            output
+                .send(packet)
+                .map_err(|e| MidiError::Send(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    /// Only CoreMIDI takes SysEx in pieces (the 128-byte pacing proven on the machine). midir 0.11 elsewhere:
+    /// - WinMM sends a packet as a long message only if it starts with `F0`, and refuses any other packet longer than
+    ///   3 bytes (`backend/winmm/mod.rs`, `MidiOutputConnection::send`);
+    /// - ALSA turns one packet into at most one sequencer event and drops the bytes the encoder did not consume
+    ///   (`backend/alsa/mod.rs`, `MidiOutputConnection::send`), so a packet holding the end of one message and the
+    ///   start of the next loses that start, and a piece without `F0` relies on encoder state midir does not promise.
+    fn accepts_sysex_fragments(&self) -> bool {
+        cfg!(target_os = "macos")
     }
 
     fn set_receiver(&self, receiver: Option<Receiver>) {

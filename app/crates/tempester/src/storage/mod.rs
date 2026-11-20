@@ -1,5 +1,6 @@
 //! Everything the app writes lives under the data folder (`data_dir`): `sounds/`, `beats/`, `projects/`,
-//! `backups/<date>/`, `os/` and `settings.txt` (which also holds the last installed OS, see `installed`). A received project puts its beats and sounds in a sub-folder of
+//! `backups/<date>/`, `os/` and `settings.txt` (which also holds the last installed OS, see `installed`); also
+//! `WebView2/` on Windows (`ui`) and `startup-error.txt` after a failed start (`startup_error`). A received project puts its beats and sounds in a sub-folder of
 //! `beats/` and `sounds/`, which the listing shows one level deep (`<folder>/<file>.syx`). A file is never overwritten: a name already taken gets a ` (2)`, ` (3)`... suffix.
 
 pub mod data_dir;

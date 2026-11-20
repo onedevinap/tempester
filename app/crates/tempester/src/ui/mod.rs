@@ -7,6 +7,7 @@ mod script;
 mod window_icon;
 
 use std::borrow::Cow;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -15,7 +16,7 @@ use tao::event::{Event as WindowEvent, WindowEvent as Inner};
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
 use tao::window::WindowBuilder;
 use wry::http::{header::CONTENT_TYPE, Request, Response, StatusCode};
-use wry::WebViewBuilder;
+use wry::{WebContext, WebViewBuilder};
 
 use crate::command::{self, Command};
 use crate::error::AppError;
@@ -25,6 +26,8 @@ use crate::storage::Storage;
 use script::script_for;
 
 const SCHEME: &str = "tempester";
+/// The web view's own data (WebView2's profile: cache, local storage), inside the data folder.
+const WEBVIEW_DATA_DIR: &str = "WebView2";
 
 /// What the worker threads ask of the UI thread.
 enum UserEvent {
@@ -56,6 +59,26 @@ fn failure(status: StatusCode) -> Response<Cow<'static, [u8]>> {
     response
 }
 
+fn webview_data_dir(data_root: &Path) -> PathBuf {
+    data_root.join(WEBVIEW_DATA_DIR)
+}
+
+/// A web context with a data folder, on Windows only. Given none, WebView2 keeps its profile beside the executable
+/// (`tempester.exe.WebView2`): under Program Files, where the installer puts the app, that folder cannot be written,
+/// the WebView2 environment fails and the window closes at once (the portable zip, unpacked somewhere writable, works).
+/// WKWebView never reads the folder (wry's wkwebview backend ignores the context); WebKitGTK would move the data that
+/// Linux users already have, for no defect there.
+fn web_context(data_root: &Path) -> Option<WebContext> {
+    cfg!(target_os = "windows").then(|| WebContext::new(Some(webview_data_dir(data_root))))
+}
+
+fn new_builder(context: Option<&mut WebContext>) -> WebViewBuilder<'_> {
+    match context {
+        Some(context) => WebViewBuilder::new_with_web_context(context),
+        None => WebViewBuilder::new(),
+    }
+}
+
 fn ui_error(error: impl std::fmt::Display) -> AppError {
     AppError::Io(error.to_string())
 }
@@ -70,6 +93,8 @@ pub fn run(connector: Box<dyn Connector>, storage: Storage) -> Result<(), AppErr
         // The loop is gone only when the app is closing.
         let _ = proxy.send_event(UserEvent::Script(script_for(&event)));
     });
+    // Never dropped: `event_loop.run` does not return, and the web view may need its context as long as it lives.
+    let mut context = web_context(storage.root());
     let worker = machine::spawn(connector, storage, Arc::clone(&emit))?;
     let commands = worker.commands.clone();
     let parse_errors = Arc::clone(&emit);
@@ -81,7 +106,7 @@ pub fn run(connector: Box<dyn Connector>, storage: Storage) -> Result<(), AppErr
         .with_min_inner_size(LogicalSize::new(900.0, 600.0))
         .build(&event_loop)
         .map_err(ui_error)?;
-    let builder = WebViewBuilder::new()
+    let builder = new_builder(context.as_mut())
         .with_custom_protocol(SCHEME.to_string(), |_id, request| respond(&request))
         .with_url(start_url())
         .with_ipc_handler(
@@ -182,5 +207,23 @@ mod tests {
     #[test]
     fn test_respond_when_query_string_present_returns_the_asset_of_the_path() {
         assert_eq!(get("/app.css?v=1").status(), StatusCode::OK);
+    }
+
+    #[test]
+    fn test_webview_data_dir_when_data_root_given_returns_its_webview2_folder() {
+        let root = Path::new("/data/Tempester");
+
+        assert_eq!(webview_data_dir(root), root.join("WebView2"));
+    }
+
+    #[test]
+    fn test_web_context_when_built_returns_the_data_folder_on_windows_only() {
+        let root = Path::new("/data/Tempester");
+
+        let context = web_context(root);
+
+        let folder = context.as_ref().and_then(WebContext::data_directory);
+        let expected = cfg!(target_os = "windows").then(|| webview_data_dir(root));
+        assert_eq!(folder, expected.as_deref());
     }
 }

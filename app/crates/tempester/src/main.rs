@@ -18,6 +18,7 @@ mod json;
 mod json_read;
 mod library;
 mod machine;
+mod startup_error;
 mod storage;
 mod ui;
 
@@ -57,11 +58,9 @@ fn main() -> ExitCode {
     };
     let storage = match storage {
         Ok(storage) => storage,
-        Err(e) => {
-            eprintln!("tempester: {e}");
-            return ExitCode::FAILURE;
-        }
+        Err(e) => return startup_error::fail(None, &e),
     };
+    let data_root = storage.root().to_path_buf();
     let connector: Box<dyn Connector> = if fake {
         if std::env::var(FAKE_PANEL_VAR).is_ok_and(|value| value == "0") {
             Box::new(FakeConnector::without_remote_panel())
@@ -73,10 +72,7 @@ fn main() -> ExitCode {
     };
     match ui::run(connector, storage) {
         Ok(()) => ExitCode::SUCCESS,
-        Err(e) => {
-            eprintln!("tempester: {e}");
-            ExitCode::FAILURE
-        }
+        Err(e) => startup_error::fail(Some(&data_root), &e),
     }
 }
 

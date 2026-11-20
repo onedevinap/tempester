@@ -8,6 +8,26 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ### [Unreleased]
 
+### [0.1.4] - 2026-11-20
+
+Three fixes for Windows, from the first reports of a Windows user (issues #1 and #2). **None of them could be tried
+on Windows**: the project has no Windows machine. macOS sends exactly what it sent before.
+
+#### Fixed
+- **Windows: the installed app showed its window for an instant and quit** (the portable zip worked). WebView2 kept
+  its data beside the executable, under Program Files, where it cannot write. The data now lives in
+  `%APPDATA%\Tempester\WebView2`. A failure at start-up is no longer silent: its message is written to
+  `startup-error.txt` in the data folder (`%APPDATA%\Tempester`), or in the temporary folder when the data folder
+  itself could not be opened.
+- **Windows: an OS update stopped after 128 bytes** with « non-sysex message must not be longer than 3 bytes ». The
+  app sent the file in 128-byte pieces, which the MIDI layer refuses on Windows. An OS file is one SysEx message, so
+  on Windows and Linux it now leaves in one piece: the OS update page shows no progress until the end and offers no
+  cancel (the countdown on the Tempest's screen shows the progress). Not confirmed: that the Windows MIDI driver
+  takes the whole file (about 600 KB) in one go, and an update through a MIDI interface on the DIN input. After a
+  failed attempt, power the Tempest off and on before sending again.
+- **Windows and Linux: parameter edits and the remote panel** sent the four Control Changes of an NRPN in one packet.
+  Windows refused it, and Linux sent only the first of the four. Each message now goes out on its own.
+
 ### [0.1.3] - 2026-11-16
 
 #### Fixed

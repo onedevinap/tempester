@@ -1,6 +1,7 @@
 /* OS update page: get a file ready (build a Tempester version from the user's DSI Main 1.5.0.2 file, or validate any
    .syx, or go back to DSI 1.5.0.2), show what its SHA-256 says (equal to the reference, a known version, or an
-   unknown build that needs an extra confirmation), confirm, send at the cable rate with progress and a cancel, then
+   unknown build that needs an extra confirmation), confirm, send at the cable rate with progress and a cancel (in one piece, with neither,
+   where the MIDI driver takes no part of a message), then
    re-check the identity after the power cycle and read the Main OS back from the machine (os-verify.js). One screen: the four steps are numbered panels, their explanations sit behind
    info badges, the risky actions keep a text and their full confirmation. */
 "use strict";
@@ -99,6 +100,13 @@
     sendingIdle: "Nothing is being sent.",
     sending: (m) =>
       m.label + ": " + formatBytes(m.sent) + " of " + formatBytes(m.total),
+    /* `in_one_piece` (Rust, os_started): the port takes no part of a SysEx message (Windows, Linux), and an OS file is
+       one message, so it leaves in a single send that nothing can follow or stop. */
+    sendingOnePiece: (m) =>
+      m.label +
+      ": " +
+      formatBytes(m.total) +
+      " sent in one piece: on this system the MIDI driver takes no part of a message, so there is no progress until the end and no cancel. The countdown on the Tempest's screen shows the progress.",
     cancel: "Cancel the update",
     cancelTitle: "Cancel the update?",
     cancelLines: [
@@ -144,13 +152,14 @@
     readyInfo = null,
     sending = false,
     sendingVoice = false,
+    onePiece = false,
     versionsLoaded = false;
 
   function refresh(session) {
     els.versions.setReady(!!dsi);
     els.versions.setVoiceReady(!!dsiVoice);
     els.send.disabled = !readyInfo || !session.connected || sending;
-    els.cancel.disabled = !sending;
+    els.cancel.disabled = !sending || onePiece;
     els.identity.disabled = !session.connected || sending;
   }
 
@@ -253,10 +262,11 @@
   function onStarted(m) {
     sending = true;
     sendingVoice = m.chip === "Voice";
+    onePiece = !!m.in_one_piece;
     readyInfo = null;
     showResult(S.noResult, "");
     els.bar.style.width = "0%";
-    els.sendingText.textContent = S.sending({
+    els.sendingText.textContent = (onePiece ? S.sendingOnePiece : S.sending)({
       label: m.label,
       sent: 0,
       total: m.total,

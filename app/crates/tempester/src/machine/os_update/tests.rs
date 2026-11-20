@@ -245,8 +245,10 @@ fn test_os_send_when_ready_returns_exactly_the_file_bytes_in_128_byte_packets() 
     ready(&mut rig, &file);
 
     rig.machine.handle(Command::OsSendUnknown);
+    let started = rig.wait_for("os_started");
     let finished = rig.wait_for("os_finished");
 
+    assert_eq!(started.field("in_one_piece"), Some(&Json::Bool(false)));
     assert_eq!(finished.field("state"), Some(&"done".into()));
     let sent = rig.transport().sent();
     assert_eq!(sent.concat(), file);
@@ -256,6 +258,24 @@ fn test_os_send_when_ready_returns_exactly_the_file_bytes_in_128_byte_packets() 
         "a file is sent once, then must be confirmed again"
     );
     assert!(!rig.machine.os_active.load(Ordering::SeqCst));
+}
+
+#[test]
+fn test_os_send_when_the_port_refuses_sysex_fragments_returns_the_file_in_whole_messages() {
+    let mut rig = TestRig::connected("os-send-whole");
+    rig.transport().refuse_sysex_fragments();
+    fast(&mut rig);
+    let file = sam_file();
+    ready(&mut rig, &file);
+
+    rig.machine.handle(Command::OsSendUnknown);
+    let started = rig.wait_for("os_started");
+    let finished = rig.wait_for("os_finished");
+
+    assert_eq!(started.field("in_one_piece"), Some(&Json::Bool(true)));
+    assert_eq!(finished.field("state"), Some(&"done".into()));
+    // An OS file is one SysEx message: it leaves in one packet.
+    assert_eq!(rig.transport().sent(), vec![file]);
 }
 
 #[test]
