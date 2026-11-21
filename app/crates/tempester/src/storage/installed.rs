@@ -641,6 +641,47 @@ mod tests {
     }
 
     #[test]
+    fn test_features_for_when_the_machine_reports_1_6_9_1_returns_every_feature_and_the_cap_of_1_6_9_0(
+    ) {
+        // 1.6.9.1 = 1.6.9.0 + n°69 (refs/adr/004-1691-correction.md): n°59 in its 1.6.9.1 form, nothing dropped.
+        for voices in [
+            None,
+            Some([0x17_u16; VOICE_CHIPS]),
+            Some([0x15_u16; VOICE_CHIPS]),
+        ] {
+            assert_eq!(
+                features_for(Some("1.6.9.1"), None, voices.as_ref()).render(),
+                features_for(Some("1.6.9.0"), None, voices.as_ref()).render(),
+                "{voices:?}"
+            );
+        }
+        assert_eq!(
+            cap_for(Some("1.6.9.1"), None),
+            ReleaseCap::WithAnyTempesterVoice
+        );
+        assert!(os_known(Some("1.6.9.1"), None));
+        assert_eq!(
+            running_json(Some("1.6.9.1")).render(),
+            r#"{"version":"1.6.9.1","label":"Tempester 1.6.9.1","known":true}"#,
+            "a release of the table: no base to resolve it from"
+        );
+        let v = versions::find_version("1.6.9.1").expect("1.6.9.1 in the table");
+        let record_1691 = InstalledOs {
+            sha256_image: v.sha256_image.into(),
+            ..record()
+        };
+        assert_eq!(
+            features_json(Some(&record_1691)).render(),
+            features_for(Some("1.6.9.0"), None, None).render(),
+            "named from the install record alone"
+        );
+        // Counter-proof: the features come from 1.6.9.1's patch list, not from its number: an unlisted 1.6.9.2 says
+        // nothing, as any number the app has no manifest of.
+        assert_eq!(feature_in_os(Some("1.6.9.2"), None, "full_backup"), None);
+        assert!(!os_known(Some("1.6.9.2"), None));
+    }
+
+    #[test]
     fn test_feature_in_os_when_full_backup_or_release_cap_returns_what_the_manifest_of_each_version_says(
     ) {
         for name in ["full_backup", "release_cap"] {

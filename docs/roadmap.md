@@ -17,8 +17,9 @@ Contents:
 
 ## Where things stand
 
-- **Tempester OS 1.6.9.0** is the latest release, installed on the project's Tempest on 15 November 2026. The 1.6.5.0
-  functions were tried by hand on the machine. What each release brings:
+- **Tempester OS 1.6.9.1** is the latest release: 1.6.9.0 with the pad settings page's knobs in the screen's order
+  (public issue #3), not yet installed on the project's Tempest. 1.6.9.0 was installed there on 15 November 2026; the
+  1.6.5.0 functions were tried by hand on the machine. What each release brings:
   [Everything Tempester OS changes](firmware.md#everything-tempester-os-changes).
 - **Tempester Voice 1.5.1.2**, the first Tempester build of the voice chips' own OS, runs on the project's six voice
   chips (15 November 2026). See [firmware](firmware.md#tempester-voice).

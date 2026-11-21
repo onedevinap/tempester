@@ -1,0 +1,13 @@
+{
+ "format": "tempester-recipe/1",
+ "name": "Tempester n°69: on the pad settings page (n°59) each soft knob edits the value above it, left to right MIDI Note, MIDI Channel, Probability, Level (n°59 had the four knobs mirrored)",
+ "image": "Main 1.5.0.2",
+ "input_sha256": "86aaf7ca41be60140f11dd4fed84bffed2590746dcb267d4e9947128974336be",
+ "explanation": "Why: the pad settings page draws its four values left to right (MIDI Note, MIDI Channel, Probability, Level), but n°59 edited them with encoders 10, 11, 12, 13, which are soft knobs 4, 3, 2, 1 (right to left): the left knob changed the Level on the right, the right knob the MIDI Note on the left (public issue #3). The stock 4-column page that n°59 copies edits its leftmost value with encoder 13 and its rightmost with encoder 10. Now: the four encoder numbers the page's dispatch compares are 13, 12, 11, 10, so soft knob 1 (leftmost) edits MIDI Note, soft knob 2 MIDI Channel, soft knob 3 Probability, soft knob 4 (rightmost) Level; what each value does, its range, the redraw and the save are n°59's, unchanged. Replaces four words of n°59 (patch/pad_settings_1691.json is n°59 without them). Proof: tools/sim_pad_knobs.py and its counter-proofs.",
+ "edits": [
+  {"at": "0x9d067fc8", "word": "0d000924", "why": "li t1,0xd ; encoder 13 = soft knob 1 (leftmost): MIDI Note, column 1 (n°59: encoder 10)"},
+  {"at": "0x9d067fd0", "word": "0c000924", "why": "li t1,0xc ; delay slot: encoder 12 = soft knob 2: MIDI Channel, column 2 (n°59: encoder 11)"},
+  {"at": "0x9d067fd8", "word": "0b000924", "why": "li t1,0xb ; delay slot: encoder 11 = soft knob 3: Probability, column 3 (n°59: encoder 12)"},
+  {"at": "0x9d067fe0", "word": "0a000924", "why": "li t1,0xa ; delay slot: encoder 10 = soft knob 4 (rightmost): Level, column 4 (n°59: encoder 13)"}
+ ]
+}

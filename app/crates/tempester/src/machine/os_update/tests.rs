@@ -566,6 +566,11 @@ fn test_voice_main_warning_when_voice_1_5_1_2_and_main_1_6_8_0_or_unknown_return
 #[test]
 fn test_voice_main_warning_when_main_1_6_9_0_or_a_0x16_voice_or_a_main_file_returns_none() {
     assert_eq!(warning_with(Some([1, 6, 9, 0]), Some("1.5.1.2")), None);
+    assert_eq!(
+        warning_with(Some([1, 6, 9, 1]), Some("1.5.1.2")),
+        None,
+        "1.6.9.1 keeps n°65"
+    );
     for voice in ["1.5.1.0", "1.5.1.1"] {
         assert_eq!(
             warning_with(Some([1, 6, 8, 0]), Some(voice)),

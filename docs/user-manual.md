@@ -1,6 +1,6 @@
 # Tempester user manual
 
-This manual covers the Tempester app 0.1.4, the Tempester Control plugin, and how to install Tempester OS.
+This manual covers the Tempester app 0.1.5, the Tempester Control plugin, and how to install Tempester OS.
 
 What each firmware release changes: [firmware](firmware.md). The exact MIDI messages: [MIDI protocol](midi-protocol.md).
 Screenshots show the app with example data.
@@ -505,8 +505,9 @@ These work on the Tempest itself. The app follows them where it edits the data. 
 ### From Tempester 1.6.5.0
 
 - **Pad settings page.** With Shift on, a pad press only selects the pad, in every mode: no sound, no MIDI, no
-  recording. Press the same pad again to open the page: MIDI note, MIDI channel, play probability and Level, on the
-  four encoders. Any key or another pad leaves the page. Leaving saves the note and the channel when the transport is
+  recording. Press the same pad again to open the page: MIDI note, MIDI channel, play probability and Level, each
+  changed by the knob under it (from Tempester 1.6.9.1; on 1.6.5.0 to 1.6.9.0 the four knobs are mirrored: the left
+  one changes the Level). Any key or another pad leaves the page. Leaving saves the note and the channel when the transport is
   stopped.
 - **A MIDI channel per pad**: Off, 1-16 with the pad's played note, or 1-16 Fix with its fixed note. Used by the
   sequencer and by the pads you play. The Machine page's « Pads » panel (notes on top, channels below) reads, sets and

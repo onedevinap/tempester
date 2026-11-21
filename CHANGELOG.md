@@ -8,6 +8,12 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ### [Unreleased]
 
+### [0.1.5] - 2026-11-21
+
+#### Added
+- **Tempester OS 1.6.9.1**, the release the app now offers: 1.6.9.0 with the pad settings page's knobs in the screen's
+  order (issue #3). A machine that reports 1.6.9.1 gets every feature of 1.6.9.0 in the app.
+
 ### [0.1.4] - 2026-11-20
 
 Three fixes for Windows, from the first reports of a Windows user (issues #1 and #2). **None of them could be tried
@@ -193,6 +199,14 @@ First public version.
 
 Each version is built from the official Main OS 1.5.0.2 by the user; Panel and SAM are unchanged, and the Voice chips
 keep the official Voice 1.5 unless Tempester Voice (below) is installed.
+
+### [1.6.9.1] - 2026-11-21, installed
+
+- n°69: on the pad settings page (Shift + the same pad twice) the four knobs under the screen now change the value
+  above them: the left knob the MIDI note, the second the MIDI channel, the third the play probability, the right one
+  the Level. From 1.6.5.0 to 1.6.9.0 they were mirrored: the left knob changed the Level, the right one the MIDI note
+  (issue #3). Nothing else changes.
+- Proved in simulation; installed on the project's Tempest from the app on 21 November 2026 and tried by hand there.
 
 ### [1.6.9.0] - 2026-11-15, installed
 

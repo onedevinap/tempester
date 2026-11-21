@@ -5,7 +5,7 @@
 - Tempester OS is the official **Main OS 1.5.0.2** of the DSI Tempest with numbered patches (n°1, n°2a...) applied.
 - **Tempester Voice** does the same for the official **Voice OS 1.5** of the six sound chips. It is optional, from
   Tempester 1.6.7.0 on.
-- The latest releases are **Tempester OS 1.6.9.0** and **Tempester Voice 1.5.1.2**. Install the Main first.
+- The latest releases are **Tempester OS 1.6.9.1** and **Tempester Voice 1.5.1.2**. Install the Main first.
 - Every patch is a recipe applied to your own official file, checked by SHA-256.
 
 This page explains each version and each patch: the problem, what changes for you, how it was proved, whether it was
@@ -63,10 +63,12 @@ its own.
 
 **Which one?**
 
-- **1.6.9.0** is the latest release, with everything.
+- **1.6.9.1** is the latest release, with everything: 1.6.9.0 with the pad settings page's knobs in the screen's
+  order.
 - **1.5.6.0** is the corrections-only release: the bug fixes, the sound and beat requests and NRPN, without the 1.6
   additions.
-- For the voice chips, Tempester Voice 1.5.1.2 goes on **after** Main 1.6.9.0 ([Tempester Voice](#tempester-voice)).
+- For the voice chips, Tempester Voice 1.5.1.2 goes on **after** Main 1.6.9.0 or 1.6.9.1
+  ([Tempester Voice](#tempester-voice)).
 
 | Version | Builds on | Adds | Status |
 |---|---|---|---|
@@ -103,6 +105,7 @@ its own.
 | **1.6.8.0** a second full backup no longer stops a voice | 1.6.7.0 | n°62 (never reads a chip past its flash) | **installed** (14 Nov) |
 | 1.6.9.0-a (test) | 1.6.8.0 | n°65: n°62 and n°63 in their 1.6.9.0 forms | not installed |
 | **1.6.9.0** every Tempester Voice recognised | 1.6.8.0 | n°65 | **installed** (15 Nov) |
+| **1.6.9.1** pad settings knobs in order | 1.6.9.0 | n°69 | **installed** (21 Nov) |
 
 What was checked on the machine for the later releases:
 
@@ -164,6 +167,7 @@ The release that brought each change. Each release contains everything of the ea
 | Every Voice OS dump starts at the beginning of the chip | 1.6.6.0 |
 | Pitch, Filter, Aux 1 and Aux 2 Release stop at 123, like Amp Release | 1.6.6.0 |
 | A second full backup in the same power-on no longer stops the voices | 1.6.8.0 |
+| Pad settings page: each knob under the screen changes the value above it (they were mirrored) | 1.6.9.1 |
 
 The Release cap exists because the official voices never end a release at 124-127.
 
@@ -830,6 +834,8 @@ the patch, which must fail. See [How the patches are proved](#how-the-patches-ar
   - its play probability in the edited beat (n°36), 0-100 %;
   - its Mixer Level, 0-127, exactly as the Mixer.
 
+  Before 1.6.9.1 the four knobs were mirrored (the left one changed the Level): see n°69.
+
   Any key or another pad leaves the page. Leaving saves the note and the channel in the System settings when the
   transport is stopped. While playing they stay to save: leave the page again once stopped.
 - **Proof**: simulated with the firmware's own panel, dispatcher and main screen.
@@ -924,6 +930,24 @@ the patch, which must fail. See [How the patches are proved](#how-the-patches-ar
   after Tempester Voice 1.5.1.2, whose six chips it reports as `0017`.
 - **Limits**: a future Tempester Voice must keep what both gates rely on (releases that end, and the voice number that
   brings its stream back to the beginning); every one so far does.
+
+### n°69: the pad settings page's knobs in the screen's order
+
+- **Problem**: the pad settings page of n°59 (1.6.5.0 to 1.6.9.0) shows MIDI Note, MIDI Channel, Probability and Level
+  left to right, but each of the four knobs under the screen changed the mirrored value: the left knob the Level, the
+  second the probability, the third the channel, the right knob the MIDI note (public issue #3).
+- **Effect**: in 1.6.9.1 each knob changes the value drawn above it: left knob MIDI note, second MIDI channel, third
+  play probability, right knob Level, in the order of the official 4-column pages. What each value does, its range and
+  the save on leaving are unchanged.
+  - The Main image differs from 1.6.9.0 by four words (the encoder numbers the page compares) and the version digits.
+- **Proof**: simulated with the firmware's own panel, dispatcher and page:
+  - the page draws MIDI Note on the left; the official 4-column page edits its leftmost value with the left knob;
+  - on the page each knob edits the value above it, and only that value;
+  - every encoder gives what its mirror gave on 1.6.9.0 (memory, screen, MIDI, save), so nothing else changed;
+  - 1.6.9.0, three wrong orders and a wrong channel limit refused.
+- **On a machine**: installed from the app on 21 November 2026; tried by hand on the pad settings page, each knob
+  changes the value above it.
+- **Limits**: none known.
 
 ## Tempester Voice
 

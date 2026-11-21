@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/onedevinap/tempester/actions/workflows/ci.yml"><img src="https://github.com/onedevinap/tempester/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="https://github.com/onedevinap/tempester/releases"><img src="https://img.shields.io/github/v/release/onedevinap/tempester?include_prereleases&sort=semver&label=app" alt="Latest app release"></a>
-  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.6.9.0-e8833a" alt="Tempester OS 1.6.9.0"></a>
+  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.6.9.1-e8833a" alt="Tempester OS 1.6.9.1"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--3.0--or--later-blue" alt="Licence: GPL-3.0-or-later"></a>
   <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-555" alt="Platforms: macOS, Windows, Linux">
 </p>
@@ -88,7 +88,7 @@ Tempester fixes old bugs of the Tempest and opens it up over MIDI. It has three 
 
 You need a Tempest, a USB cable (or a MIDI interface) and a computer.
 
-1. **Install the app** (version 0.1.4). Download it from the
+1. **Install the app** (version 0.1.5). Download it from the
    [Releases](https://github.com/onedevinap/tempester/releases) page.
    - The packages are not signed, so your system blocks the first launch. How to get past it:
      [Installing a release package](docs/building.md#installing-a-release-package).
@@ -119,7 +119,7 @@ Tempester OS replaces the Main OS only. Panel and SAM stay those of the official
 
 | Release | What it is | Choose it if |
 |---|---|---|
-| **1.6.9.0** (latest) | Every fix and every addition | you want everything |
+| **1.6.9.1** (latest) | Every fix and every addition | you want everything |
 | **1.5.6.0** | Bug fixes, requests and NRPN only | you want the fewest changes |
 | **DSI 1.5.0.2** | The official OS, rebuilt unchanged | you want to go back |
 
@@ -135,7 +135,7 @@ Tempester Voice is optional. It updates the six sound chips in one go, built fro
 
 - **1.5.1.2** is the latest. 1.5.1.0 and 1.5.1.1 are superseded.
 - Voices are no longer muted for good, and Release times always end (up to 60 s at 127).
-- **Install Main 1.6.9.0 first**, then Voice 1.5.1.2.
+- **Install Main 1.6.9.0 or later first**, then Voice 1.5.1.2.
 - Make a full backup before and after.
 
 Details: [Tempester Voice](docs/firmware.md#tempester-voice).
