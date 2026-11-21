@@ -88,7 +88,7 @@ Tempester fixes old bugs of the Tempest and opens it up over MIDI. It has three 
 
 You need a Tempest, a USB cable (or a MIDI interface) and a computer.
 
-1. **Install the app** (version 0.1.5). Download it from the
+1. **Install the app** (version 0.1.6). Download it from the
    [Releases](https://github.com/onedevinap/tempester/releases) page.
    - The packages are not signed, so your system blocks the first launch. How to get past it:
      [Installing a release package](docs/building.md#installing-a-release-package).

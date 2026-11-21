@@ -1,6 +1,7 @@
 //! The window: a tao window with a wry web view serving the embedded page through the `tempester` protocol.
 //! Page -> Rust: the IPC handler gets one line per command (`command::parse`). Rust -> page: `evaluate_script` with
-//! the JSON of an `Event`. The window refuses to close while an OS update is being sent.
+//! the JSON of an `Event`. The window refuses to close while an OS update is being sent, unless the user confirms
+//! quitting a send in one piece (which has no cancel) on the page.
 
 mod assets;
 mod script;
@@ -9,11 +10,12 @@ mod window_icon;
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use tao::dpi::LogicalSize;
 use tao::event::{Event as WindowEvent, WindowEvent as Inner};
-use tao::event_loop::{ControlFlow, EventLoopBuilder};
+use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy};
 use tao::window::WindowBuilder;
 use wry::http::{header::CONTENT_TYPE, Request, Response, StatusCode};
 use wry::{WebContext, WebViewBuilder};
@@ -21,7 +23,7 @@ use wry::{WebContext, WebViewBuilder};
 use crate::command::{self, Command};
 use crate::error::AppError;
 use crate::event::{Emitter, Event};
-use crate::machine::{self, connector::Connector};
+use crate::machine::{self, connector::Connector, Worker};
 use crate::storage::Storage;
 use script::script_for;
 
@@ -29,9 +31,69 @@ const SCHEME: &str = "tempester";
 /// The web view's own data (WebView2's profile: cache, local storage), inside the data folder.
 const WEBVIEW_DATA_DIR: &str = "WebView2";
 
-/// What the worker threads ask of the UI thread.
+/// What the worker threads and the page ask of the UI thread.
 enum UserEvent {
     Script(String),
+    /// The user confirmed quitting during an OS send in one piece (`Command::Quit`).
+    Quit,
+}
+
+/// Where a command of the page goes: most to the worker; a script error to stderr; "quit" to the window itself.
+#[derive(Debug, PartialEq)]
+enum Route {
+    PageError(String),
+    Quit,
+    Worker(Command),
+}
+
+fn route(command: Command) -> Route {
+    match command {
+        Command::PageError(message) => Route::PageError(message),
+        Command::Quit => Route::Quit,
+        other => Route::Worker(other),
+    }
+}
+
+/// The page's commands, handled on the UI thread: nothing here waits (the channel and the proxy only queue).
+fn ipc_handler(
+    commands: Sender<Command>,
+    proxy: EventLoopProxy<UserEvent>,
+    parse_errors: Emitter,
+) -> impl Fn(Request<String>) + 'static {
+    move |request: Request<String>| match command::parse(request.body()).map(route) {
+        Ok(Route::PageError(message)) => eprintln!("tempester: page error: {message}"),
+        Ok(Route::Quit) => {
+            // The loop is gone only when the app is closing.
+            let _ = proxy.send_event(UserEvent::Quit);
+        }
+        Ok(Route::Worker(parsed)) => {
+            // The worker is gone only when the app is closing.
+            let _ = commands.send(parsed);
+        }
+        Err(e) => parse_errors(Event::error("command", &AppError::Invalid(e.to_string()))),
+    }
+}
+
+/// Stops the worker and ends the loop. `Worker::stop` returns at once even during an OS send: the send runs on its own
+/// thread and the worker's shutdown never touches the port while it runs (`Machine::shutdown`).
+fn quit(worker: &mut Option<Worker>, flow: &mut ControlFlow) {
+    if let Some(w) = worker.take() {
+        w.stop();
+    }
+    *flow = ControlFlow::Exit;
+}
+
+/// A close during an OS send is refused and told to the page: it asks the user to cancel first (a send in pieces) or
+/// to confirm quitting now (a send in one piece, which has no cancel), then sends `quit`.
+fn close_requested(worker: &mut Option<Worker>, emit: &Emitter, flow: &mut ControlFlow) {
+    let updating = worker
+        .as_ref()
+        .is_some_and(|w| w.os_active.load(Ordering::SeqCst));
+    if updating {
+        emit(Event::new("close_blocked"));
+    } else {
+        quit(worker, flow);
+    }
 }
 
 /// The address of the page: Windows serves custom protocols over http on `<name>.localhost`.
@@ -96,8 +158,11 @@ pub fn run(connector: Box<dyn Connector>, storage: Storage) -> Result<(), AppErr
     // Never dropped: `event_loop.run` does not return, and the web view may need its context as long as it lives.
     let mut context = web_context(storage.root());
     let worker = machine::spawn(connector, storage, Arc::clone(&emit))?;
-    let commands = worker.commands.clone();
-    let parse_errors = Arc::clone(&emit);
+    let on_command = ipc_handler(
+        worker.commands.clone(),
+        event_loop.create_proxy(),
+        Arc::clone(&emit),
+    );
 
     let window = WindowBuilder::new()
         .with_title("Tempester")
@@ -109,16 +174,7 @@ pub fn run(connector: Box<dyn Connector>, storage: Storage) -> Result<(), AppErr
     let builder = new_builder(context.as_mut())
         .with_custom_protocol(SCHEME.to_string(), |_id, request| respond(&request))
         .with_url(start_url())
-        .with_ipc_handler(
-            move |request: Request<String>| match command::parse(request.body()) {
-                Ok(Command::PageError(message)) => eprintln!("tempester: page error: {message}"),
-                Ok(parsed) => {
-                    // The worker is gone only when the app is closing.
-                    let _ = commands.send(parsed);
-                }
-                Err(e) => parse_errors(Event::error("command", &AppError::Invalid(e.to_string()))),
-            },
-        );
+        .with_ipc_handler(on_command);
     let webview = build_webview(builder, &window)?;
 
     let mut worker = Some(worker);
@@ -130,22 +186,11 @@ pub fn run(connector: Box<dyn Connector>, storage: Storage) -> Result<(), AppErr
                     eprintln!("tempester: cannot reach the page: {e}");
                 }
             }
+            WindowEvent::UserEvent(UserEvent::Quit) => quit(&mut worker, flow),
             WindowEvent::WindowEvent {
                 event: Inner::CloseRequested,
                 ..
-            } => {
-                let updating = worker
-                    .as_ref()
-                    .is_some_and(|w| w.os_active.load(Ordering::SeqCst));
-                if updating {
-                    emit(Event::new("close_blocked"));
-                } else {
-                    if let Some(w) = worker.take() {
-                        w.stop();
-                    }
-                    *flow = ControlFlow::Exit;
-                }
-            }
+            } => close_requested(&mut worker, &emit, flow),
             _ => {}
         }
     })
@@ -182,6 +227,16 @@ mod tests {
             .body(Vec::new())
             .unwrap();
         respond(&request)
+    }
+
+    #[test]
+    fn test_route_when_quit_returns_the_window_and_every_other_command_the_worker() {
+        assert_eq!(route(Command::Quit), Route::Quit);
+        assert_eq!(
+            route(Command::PageError("x".into())),
+            Route::PageError("x".into())
+        );
+        assert_eq!(route(Command::OsCancel), Route::Worker(Command::OsCancel));
     }
 
     #[test]

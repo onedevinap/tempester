@@ -233,6 +233,9 @@ pub enum Command {
     MonitorClock(bool),
     /// Sent by the window when it closes; never parsed from the page.
     Shutdown,
+    /// The page's "Quit now", confirmed by the user when the window refused to close during an OS send in one piece
+    /// (no cancel exists then). Taken by the window, never by the worker.
+    Quit,
 }
 
 /// The only control changes the Tempest OS reads (`refs/firmware-main.md` §6.2): Distortion, Compression, revert and
@@ -317,7 +320,8 @@ impl Args<'_> {
             | "fake_project_send_partial"
             | "pad_channel_read"
             | "pad_channel_save"
-            | "fake_perform" => self.simple(),
+            | "fake_perform"
+            | "quit" => self.simple(),
             "connect"
             | "set_channel"
             | "nrpn"
@@ -387,6 +391,7 @@ impl Args<'_> {
             "pad_channel_read" => Command::PadChannelRead,
             "pad_channel_save" => Command::PadChannelSave,
             "fake_perform" => Command::FakePerform,
+            "quit" => Command::Quit,
             _ => return Err(self.unknown()),
         })
     }
@@ -822,6 +827,8 @@ mod tests {
     fn test_parse_when_simple_command_returns_it() {
         assert_eq!(parse("fetch_sound"), Ok(Command::FetchSound));
         assert_eq!(parse("os_cancel"), Ok(Command::OsCancel));
+        assert_eq!(parse("quit"), Ok(Command::Quit));
+        assert!(parse("quit\tnow").is_err());
         assert_eq!(parse("tempester_version"), Ok(Command::TempesterVersion));
         assert!(parse("tempester_version\t1").is_err());
     }

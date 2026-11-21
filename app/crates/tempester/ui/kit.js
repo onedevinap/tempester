@@ -45,8 +45,9 @@ window.Tempester.kit = (function () {
     toastTimer = setTimeout(() => box.classList.remove("visible"), 4200);
   }
 
-  /* Asks the user; resolves true on OK. `lines` are paragraphs (text only). */
-  function confirmDialog({ title, lines, okLabel, danger }) {
+  /* Asks the user; resolves true on OK. `lines` are paragraphs (text only). `cancelLabel` names the other choice when
+     "Cancel" could be misread (it would sound like cancelling the update itself). */
+  function confirmDialog({ title, lines, okLabel, cancelLabel, danger }) {
     const dialog = document.getElementById("confirm");
     document.getElementById("confirm-title").textContent = title;
     const body = document.getElementById("confirm-body");
@@ -54,6 +55,8 @@ window.Tempester.kit = (function () {
     const ok = document.getElementById("confirm-ok");
     ok.textContent = okLabel || STRINGS.ok;
     ok.classList.toggle("danger", !!danger);
+    document.getElementById("confirm-cancel").textContent =
+      cancelLabel || STRINGS.cancel;
     return new Promise((resolve) => {
       dialog.addEventListener(
         "close",

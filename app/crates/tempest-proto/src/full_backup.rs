@@ -8,10 +8,12 @@
 //!
 //! Every message is checked as it arrives (`decode`), and the eight together (`check_set`). A message that fails any
 //! check is refused with the reason: a Voice dump that is misaligned (the Voice's dump pointer is never reset, so the
-//! second dump of a session is shifted), constant, without its boot page or with a blank calibration page is not a
-//! backup, nor is an answer whose messages come out of order. From Tempester 1.6.8.0 a chip the machine cannot read
-//! again from its start in this power-on (DSI's Voice OS, already read) answers the empty `F0 01 28 78+k F7`:
-//! refused as « not read », with the advice to power the machine off and on.
+//! second dump of a session is shifted), constant, without its boot page or with a calibration page that was not read
+//! where the chip keeps it (blank, a foreign or an erased word) is not a backup, nor is an answer whose messages come
+//! out of order. A calibration whose values have an unusual shape is kept, with a warning (`Calibration::warnings`):
+//! the chip uses such a page as it is. From Tempester 1.6.8.0 a chip the machine cannot read again from its start in
+//! this power-on (DSI's Voice OS, already read) answers the empty `F0 01 28 78+k F7`: refused as « not read », with the
+//! advice to power the machine off and on.
 
 use std::fmt;
 
@@ -46,6 +48,8 @@ const BOOT_PAGE_START: usize = CODE_PAGES * PAGE_BYTES;
 const CALIBRATION_START: usize = BOOT_PAGE_START + PAGE_BYTES;
 /// Words of the calibration page (refs/firmware-voice.md §7.1).
 pub const CALIBRATION_WORDS: usize = 35;
+/// An erased instruction word of the flash.
+const ERASED_WORD: u32 = 0xFF_FFFF;
 /// The largest spread of the steps of calibration table C ("equal steps within +-21").
 const LINEAR_SPREAD: i32 = 42;
 
@@ -201,20 +205,26 @@ impl From<OsImageError> for BackupError {
     }
 }
 
-/// Why a calibration page was refused.
+/// Why a calibration page was refused: only what shows the 35 words were not read where the chip keeps them, or a page
+/// the chip itself would not use. The shape of the values is not a reason (`CalibrationWarning`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalibrationError {
     /// The 35 words are all `0xFFFFFF`: the page was never written (or was not read).
     Blank,
-    /// A word whose upper byte is not `0xFF`: not a calibration page.
-    UpperByte {
-        word: usize,
-    },
+    /// A word whose upper byte is not `0xFF`: the chip writes every calibration word with an upper byte `0xFF`, so this
+    /// is not its calibration page as written (a dump shifted by one or two bytes lands here on every real page the app
+    /// was checked against).
+    UpperByte { word: usize },
     /// The chip's own test (`cal_load`) would not accept it: A[1] or B[0] is `0xFFFF`.
     HalfWritten,
-    NotIncreasing(&'static str),
-    NotLinear,
+    /// Another word reads as the erased `0xFFFF`. The chip writes its 35 words in one row, so a dump shifted by whole
+    /// instructions lands here: one instruction late, word 0 is the erased end of the boot page; one early, word 34 is
+    /// the erased filler after the scalars. A Tempester Voice OS uses its defaults in place of such a page.
+    Erased { word: usize },
 }
+
+/// What the user can do about a dump that did not read the page where the chip keeps it.
+const READ_AGAIN: &str = "power the machine off and on, then ask again";
 
 impl fmt::Display for CalibrationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -225,9 +235,34 @@ impl fmt::Display for CalibrationError {
             ),
             Self::UpperByte { word } => write!(
                 f,
-                "word {word} does not have the upper byte 0xFF of a calibration word"
+                "word {word} does not have the upper byte 0xFF of a calibration word: the page was not read \
+                 where the chip keeps it (a shifted dump); {READ_AGAIN}"
             ),
             Self::HalfWritten => write!(f, "half written (the chip itself would use its defaults)"),
+            Self::Erased { word } => write!(
+                f,
+                "word {word} reads as erased (0xFFFF), which the chip's calibration never writes: the dump is \
+                 shifted by whole instructions, or the page was only partly written; {READ_AGAIN}"
+            ),
+        }
+    }
+}
+
+/// A calibration shape the app has not seen on the machines it was checked against. The chip loads such a page as it
+/// is (DSI's Voice OS tests two words only, a Tempester Voice OS tests that the 35 words were written), and its own
+/// calibration searches each point separately without bounding the result: so an unusual shape is reported, never a
+/// reason to refuse the backup.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CalibrationWarning {
+    /// Table A (oscillator 1) or B (oscillator 2) has a run of measured codes that does not increase.
+    NotIncreasing(&'static str),
+    /// Table C does not have equal steps in one direction.
+    NotLinear,
+}
+
+impl fmt::Display for CalibrationWarning {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
             Self::NotIncreasing(table) => write!(f, "table {table} does not increase"),
             Self::NotLinear => write!(f, "table C is not linear"),
         }
@@ -241,7 +276,8 @@ pub struct Calibration {
 }
 
 impl Calibration {
-    /// Table A, oscillator 1: 6 + 4 values, each run increasing.
+    /// Table A, oscillator 1: the codes measured at 6 + 4 reference pitches (two runs, increasing on the voices measured
+    /// so far).
     pub fn osc1(&self) -> &[u16] {
         &self.words[0..10]
     }
@@ -257,54 +293,69 @@ impl Calibration {
     pub fn scalars(&self) -> &[u16] {
         &self.words[32..35]
     }
+
+    /// The shapes found on the author's machine (refs/firmware-voice.md §7.1, §7.6) that this page does not have. They
+    /// are reported, never refused: the chip's calibration does not enforce them (each point is searched on its own,
+    /// unbounded) and the chip loads the page whatever its shape.
+    pub fn warnings(&self) -> Vec<CalibrationWarning> {
+        let mut found: Vec<CalibrationWarning> = [("A", self.osc1()), ("B", self.osc2())]
+            .into_iter()
+            .filter(|(_, table)| !(increasing(&table[..6]) && increasing(&table[6..])))
+            .map(|(name, _)| CalibrationWarning::NotIncreasing(name))
+            .collect();
+        if !is_linear(self.linear()) {
+            found.push(CalibrationWarning::NotLinear);
+        }
+        found
+    }
 }
 
 fn increasing(values: &[u16]) -> bool {
     values.windows(2).all(|pair| pair[0] < pair[1])
 }
 
-/// Reads the calibration page of a Voice image (at `0xFC00`, as `tools/voice_compare.py --calibration` does).
-pub fn read_calibration(image: &[u8]) -> Result<Calibration, CalibrationError> {
-    let raw = image
-        .get(CALIBRATION_START..CALIBRATION_START + 3 * CALIBRATION_WORDS)
-        .ok_or(CalibrationError::Blank)?;
-    if raw.iter().all(|b| *b == 0xFF) {
-        return Err(CalibrationError::Blank);
-    }
-    let mut words = [0u16; CALIBRATION_WORDS];
-    for (at, (word, bytes)) in words.iter_mut().zip(raw.chunks(3)).enumerate() {
-        if bytes[2] != 0xFF {
-            return Err(CalibrationError::UpperByte { word: at });
-        }
-        *word = u16::from(bytes[0]) | u16::from(bytes[1]) << 8;
-    }
-    let calibration = Calibration { words };
-    check_tables(&calibration)?;
-    Ok(calibration)
-}
-
-fn check_tables(c: &Calibration) -> Result<(), CalibrationError> {
-    if c.osc1()[1] == 0xFFFF || c.osc2()[0] == 0xFFFF {
-        return Err(CalibrationError::HalfWritten);
-    }
-    for (name, table) in [("A", c.osc1()), ("B", c.osc2())] {
-        if !(increasing(&table[..6]) && increasing(&table[6..])) {
-            return Err(CalibrationError::NotIncreasing(name));
-        }
-    }
-    let steps: Vec<i32> = c
-        .linear()
+/// Equal steps (within `LINEAR_SPREAD`) all in one direction.
+fn is_linear(values: &[u16]) -> bool {
+    let steps: Vec<i32> = values
         .windows(2)
         .map(|pair| i32::from(pair[0]) - i32::from(pair[1]))
         .collect();
     let (low, high) = steps
         .iter()
         .fold((i32::MAX, i32::MIN), |(l, h), s| (l.min(*s), h.max(*s)));
-    let one_direction = low > 0 || high < 0;
-    if !one_direction || high - low > LINEAR_SPREAD {
-        return Err(CalibrationError::NotLinear);
+    (low > 0 || high < 0) && high - low <= LINEAR_SPREAD
+}
+
+/// The 35 instruction words (24 bits) at the start of the calibration page, whatever they hold: what the page and the
+/// report show, so a user can quote them. `None` when the image is too short to reach them.
+pub fn calibration_raw(image: &[u8]) -> Option<[u32; CALIBRATION_WORDS]> {
+    let raw = image.get(CALIBRATION_START..CALIBRATION_START + 3 * CALIBRATION_WORDS)?;
+    let mut words = [0u32; CALIBRATION_WORDS];
+    for (word, bytes) in words.iter_mut().zip(raw.chunks(3)) {
+        *word = u32::from(bytes[0]) | u32::from(bytes[1]) << 8 | u32::from(bytes[2]) << 16;
     }
-    Ok(())
+    Some(words)
+}
+
+/// Reads the calibration page of a Voice image (at `0xFC00`, as `tools/voice_compare.py --calibration` does). Refuses
+/// only a page that was not read where the chip keeps it, or that the chip would not use (`CalibrationError`).
+pub fn read_calibration(image: &[u8]) -> Result<Calibration, CalibrationError> {
+    let raw = calibration_raw(image).ok_or(CalibrationError::Blank)?;
+    if raw.iter().all(|w| *w == ERASED_WORD) {
+        return Err(CalibrationError::Blank);
+    }
+    if let Some(word) = raw.iter().position(|w| w >> 16 != 0xFF) {
+        return Err(CalibrationError::UpperByte { word });
+    }
+    let words = raw.map(|w| (w & 0xFFFF) as u16);
+    let calibration = Calibration { words };
+    if calibration.osc1()[1] == 0xFFFF || calibration.osc2()[0] == 0xFFFF {
+        return Err(CalibrationError::HalfWritten);
+    }
+    if let Some(word) = words.iter().position(|w| *w == 0xFFFF) {
+        return Err(CalibrationError::Erased { word });
+    }
+    Ok(calibration)
 }
 
 /// The Main boot flash and its configuration words (little-endian words, `0xBFC00000`...).
@@ -407,6 +458,42 @@ fn decode_image(message: &[u8], chip: Chip) -> Result<Backup, BackupError> {
         image,
         content,
     })
+}
+
+/// The decoded image of a Voice message whose framing, blocks and checksum are sound, whatever the checks of its content
+/// say: a refused chip's calibration words and pages can still be shown, never saved.
+pub fn voice_image_of(message: &[u8]) -> Option<Vec<u8>> {
+    let Ok(Chip::Voice(_)) = frame_chip(message) else {
+        return None;
+    };
+    let blocks = VOICE_IMAGE_BYTES / BLOCK_SIZE;
+    let checked = |found: usize| {
+        if found == blocks {
+            Ok(())
+        } else {
+            Err(BackupError::BlockCount {
+                expected: blocks,
+                found,
+            })
+        }
+    };
+    decode_body::<BackupError>(message, checked)
+        .ok()
+        .map(|(image, _)| image)
+}
+
+/// Bytes of pages 0-41 (the code and the boot page, everything a dump reads before the calibration) in which two Voice
+/// images differ: zero says the two chips' streams were read in step up to their calibration pages.
+pub fn differences_before_calibration(first: &[u8], other: &[u8]) -> usize {
+    let end = CALIBRATION_START.min(first.len()).min(other.len());
+    first[..end]
+        .iter()
+        .zip(&other[..end])
+        .filter(|(a, b)| a != b)
+        .count()
+        + CALIBRATION_START
+            .min(first.len())
+            .abs_diff(CALIBRATION_START.min(other.len()))
 }
 
 fn check_voice(image: &[u8]) -> Result<Calibration, BackupError> {

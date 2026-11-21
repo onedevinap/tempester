@@ -196,8 +196,12 @@ Be aware of these before relying on them.
 
 - **Never loaded in a real DAW.** It is built, unit-tested (with counter-proofs, including a check that the audio
   thread never allocates) and driven by a headless CLAP host.
-- Whether a given DAW routes the MIDI output of a MIDI effect is not known yet. The VST3 build was never loaded by a
-  host. Nothing was sent to a Tempest through it.
+- Its stereo audio input and output, added so that Ableton Live loads it (Live on Windows refused the plugin of app
+  0.1.4, which had none), were checked through the plugin framework's VST3 code and the headless CLAP host: the buses,
+  the stereo arrangement and the audio passing through untouched. **Not tried in Live, on Windows or elsewhere**: the
+  project has no Windows machine, and no DAW was run.
+- Whether a given DAW routes the plugin's MIDI output is not known yet. The VST3 build was never loaded by a host.
+  Nothing was sent to a Tempest through it.
 - No editor window: a learned controller does not move the DAW's own knob.
 
 **Firmware**

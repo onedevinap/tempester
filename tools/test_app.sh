@@ -226,6 +226,15 @@ if type -P node > /dev/null; then
   node "$P/app/crates/tempester/ui-tests/os-voice-counter-proof.js" "$UI" "$T" > "$T/osvoice-counter.log" 2>&1 \
     || { cat "$T/osvoice-counter.log"; exit 1; }
   ok "Tempester Voice OS page with one behaviour broken refused ($(tail -n 1 "$T/osvoice-counter.log"))"
+  # An OS send in one piece (Windows, Linux): the elapsed time counted by the page against the least the send takes,
+  # longer than that without any failure called by the page, the end; a close asks to quit now or keep sending (the
+  # Main or the Voice warning), only "Quit now" sends `quit`; a send in pieces keeps its toast. Then 16 broken copies.
+  node "$P/app/crates/tempester/ui-tests/os-one-piece.test.js" "$UI" > "$T/osonepiece.log" 2>&1 \
+    || { cat "$T/osonepiece.log"; exit 1; }
+  ok "OS send in one piece ($(cat "$T/osonepiece.log"))"
+  node "$P/app/crates/tempester/ui-tests/os-one-piece-counter-proof.js" "$UI" "$T" > "$T/osonepiece-counter.log" 2>&1 \
+    || { cat "$T/osonepiece-counter.log"; exit 1; }
+  ok "OS send in one piece with one behaviour broken refused ($(tail -n 1 "$T/osonepiece-counter.log"))"
   # The Panel page's logic (Pad Function mode from the LEDs, Machine-view controls, view and zoom), then its counter-proof.
   node "$P/app/crates/tempester/ui-tests/panel-machine.test.js" "$UI" "$P/refs/panel_controls.tsv" \
     || { echo "  ✘ panel page logic"; exit 1; }

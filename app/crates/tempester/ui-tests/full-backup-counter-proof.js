@@ -111,6 +111,46 @@ const variants = {
     'bridge.send("full_backup_power_cycled")',
     "undefined",
   ],
+  "a calibration warning shown in the refusal colour": [
+    "full-backup.js",
+    'badges: { ok: "ok", warning: "constant", waiting: "" },',
+    'badges: { ok: "ok", waiting: "" },',
+  ],
+  "a calibration warning shown as OK": [
+    "full-backup.js",
+    "verdicts: { ok: \"OK\", warning: \"warning\",",
+    "verdicts: { ok: \"OK\", warning: \"OK\",",
+  ],
+  "the warned pages not counted in the status": [
+    "full-backup.js",
+    'const warn = state === "ready" && warned > 0;',
+    "const warn = false;",
+  ],
+  "the calibration words never shown": [
+    "full-backup.js",
+    "if (!r.calibration) return [line];",
+    "return [line];",
+  ],
+  "the calibration words hidden for a refused chip": [
+    "full-backup.js",
+    "if (!r.calibration) return [line];",
+    'if (!r.calibration || r.verdict === "refused") return [line];',
+  ],
+  "a calibration table left out of the words": [
+    "full-backup.js",
+    '" | C " + c.c.join(" ")',
+    '""',
+  ],
+  "the note on what may be posted dropped": [
+    "full-backup.js",
+    "      els.calibrationNote,\n",
+    "",
+  ],
+  "the note no longer forbids posting the Voice files": [
+    "full-backup.js",
+    "Never post the Voice .syx files: they hold DSI's Voice OS.",
+    "Post them with the report.",
+  ],
   "the gate without the version name": [
     "panel-perform.js",
     'LABELS[name] + " Tempester " + since + " or later"',

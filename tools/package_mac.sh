@@ -8,7 +8,8 @@
 # TEMPESTER_PLUGIN_BUNDLES=<folder> uses plugin bundles already built (tools/package_common.sh).
 # Unsigned (ADR 001): the first launch needs right-click > Open, the .pkg opens the same way (tools/macos/readme.txt
 # says so). Both are checked: file, size, version in the name; dmg: `hdiutil verify`, the mounted app carries the same
-# version in its Info.plist and answers `--version`; pkg: payload paths, install locations, no relocation.
+# version in its Info.plist and answers `--version`; the plugin bundles carry the same version; pkg: payload paths,
+# install locations, no relocation.
 #
 # Why the dmg stays: it is the only package that needs no password and no choice (drag, drop), and removing a working
 # deliverable was not asked. Why the plugins are not in the dmg: a dmg cannot install into /Library.
@@ -31,10 +32,16 @@ WORK=$(mktemp -d)
 trap 'hdiutil detach "$MOUNT" -quiet 2> /dev/null || true; rm -rf "$STAGE" "$MOUNT" "$WORK"' EXIT
 
 BUNDLES=$(plugin_bundles)
-# Both plugin bundles carry the plugin's own identifier (set by its xtask), never nih-plug's default one.
+# Both plugin bundles carry the plugin's own identifier and the app's version (set by its xtask), never nih-plug's
+# defaults (com.nih-plug.<package>, 1.0.0).
 for format in clap vst3; do
-  id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$BUNDLES/$PLUGIN_NAME.$format/Contents/Info.plist")
+  plist="$BUNDLES/$PLUGIN_NAME.$format/Contents/Info.plist"
+  id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")
   [ "$id" = "$PLUGIN_BUNDLE_ID" ] || { echo "$PLUGIN_NAME.$format: bundle identifier $id, $PLUGIN_BUNDLE_ID expected"; exit 1; }
+  for key in CFBundleShortVersionString CFBundleVersion; do
+    inside=$(/usr/libexec/PlistBuddy -c "Print :$key" "$plist")
+    [ "$inside" = "$VERSION" ] || { echo "$PLUGIN_NAME.$format: $key $inside, $VERSION expected"; exit 1; }
+  done
 done
 "$P/tools/app_mac.sh" "$STAGE" > /dev/null
 
@@ -65,8 +72,8 @@ component() {
   pkgbuild --analyze --root "$root" "$plist" > /dev/null
   # Relocation off and version check off, whatever the analysis wrote (a key may be absent, hence Add after Set).
   # Relocatable would update a copy found anywhere (a plugin installed by hand under ~/Library) instead of installing
-  # to the location; version-checked would keep an older build when the plugin crate version did not change between
-  # two releases.
+  # to the location; version-checked would keep an older build when the version did not change (a rebuild of the same
+  # release).
   while /usr/libexec/PlistBuddy -c "Print :$i" "$plist" > /dev/null 2>&1; do
     for key in BundleIsRelocatable BundleIsVersionChecked; do
       /usr/libexec/PlistBuddy -c "Set :$i:$key false" "$plist" 2> /dev/null \

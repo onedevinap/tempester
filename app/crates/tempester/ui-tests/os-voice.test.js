@@ -311,6 +311,7 @@ async function checkOnePiece(env) {
     label: "Tempester 1.6.7.0",
     chip: "Main",
     total: 599559,
+    seconds: 192,
     in_one_piece: true,
   });
   const text = textOf(root);

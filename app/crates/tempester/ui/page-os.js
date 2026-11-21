@@ -1,7 +1,8 @@
 /* OS update page: get a file ready (build a Tempester version from the user's DSI Main 1.5.0.2 file, or validate any
    .syx, or go back to DSI 1.5.0.2), show what its SHA-256 says (equal to the reference, a known version, or an
    unknown build that needs an extra confirmation), confirm, send at the cable rate with progress and a cancel (in one piece, with neither,
-   where the MIDI driver takes no part of a message), then
+   where the MIDI driver takes no part of a message: the page then counts the time itself, never calls the send failed
+   on its own, and a close of the window asks whether to quit now and interrupt the update), then
    re-check the identity after the power cycle and read the Main OS back from the machine (os-verify.js). One screen: the four steps are numbered panels, their explanations sit behind
    info badges, the risky actions keep a text and their full confirmation. */
 "use strict";
@@ -101,12 +102,26 @@
     sending: (m) =>
       m.label + ": " + formatBytes(m.sent) + " of " + formatBytes(m.total),
     /* `in_one_piece` (Rust, os_started): the port takes no part of a SysEx message (Windows, Linux), and an OS file is
-       one message, so it leaves in a single send that nothing can follow or stop. */
+       one message, so it leaves in a single send that nothing can follow or stop. `seconds` (Rust): the least it takes,
+       length over the cable rate; the driver may keep it longer. */
     sendingOnePiece: (m) =>
       m.label +
       ": " +
       formatBytes(m.total) +
-      " sent in one piece: on this system the MIDI driver takes no part of a message, so there is no progress until the end and no cancel. The countdown on the Tempest's screen shows the progress.",
+      " being sent in one piece: on this system the MIDI driver takes no part of a message, so there is no progress until the end and no cancel. " +
+      clockText(m.elapsed) +
+      " elapsed; it takes at least " +
+      clockText(m.seconds) +
+      ". The countdown on the Tempest's screen shows the progress.",
+    onePieceLonger: (m) =>
+      m.label +
+      ": still being sent in one piece, " +
+      clockText(m.elapsed) +
+      " elapsed, longer than the " +
+      clockText(m.seconds) +
+      " the cable rate needs. The MIDI driver has not finished: keep the Tempest powered and connected, the end will be shown here.",
+    onePieceEnded: (m) =>
+      m.label + ": the send in one piece ended after " + clockText(m.elapsed) + ".",
     cancel: "Cancel the update",
     cancelTitle: "Cancel the update?",
     cancelLines: [
@@ -144,7 +159,24 @@
       (m.tempester ? " (Tempester OS)." : " (DSI original or unknown)."),
     closeBlocked:
       "An OS update is being sent: cancel it first, or wait until it ends, before closing.",
+    quitTitle: "Quit while the update is being sent?",
+    quitLines: [
+      "The file is being sent in one piece and cannot be cancelled. Quitting now interrupts it: the machine receives only part of the file and the update stays incomplete.",
+      "The Tempest then waits for the rest: power it off and on, and send the file again. The flasher page is never touched, so a new update is always possible.",
+    ],
+    quitVoiceLines: [
+      "The file is being sent to the six Voice chips in one piece and cannot be cancelled. Quitting now interrupts it: their software stays incomplete, all six at once.",
+      "If the transfer stops in the first 29 of the 41 pages, a chip may not start again: only a programmer (PICkit) on its ICSP header repairs it. Keep sending unless you must stop.",
+    ],
+    quitOk: "Quit now",
   };
+
+  /* Elapsed time as the page counts it: "45 s", "3 min 07 s". */
+  function clockText(seconds) {
+    if (seconds < 60) return seconds + " s";
+    const rest = String(seconds % 60).padStart(2, "0");
+    return Math.floor(seconds / 60) + " min " + rest + " s";
+  }
 
   const els = {};
   let dsi = null,
@@ -153,6 +185,9 @@
     sending = false,
     sendingVoice = false,
     onePiece = false,
+    onePieceSend = null,
+    onePieceTimer = null,
+    quitAsked = false,
     versionsLoaded = false;
 
   function refresh(session) {
@@ -244,6 +279,24 @@
     if (ok) bridge.send("os_send");
   }
 
+  /* The window refused to close during a send. In pieces the user can cancel first; in one piece there is no cancel,
+     so the page offers to quit now (with what an interrupted update means) or to keep sending: never an unclosable
+     window, never a silent quit. */
+  async function onCloseBlocked() {
+    if (!(sending && onePiece)) return toast(S.closeBlocked);
+    if (quitAsked) return;
+    quitAsked = true;
+    const ok = await confirmDialog({
+      title: S.quitTitle,
+      lines: sendingVoice ? S.quitVoiceLines : S.quitLines,
+      okLabel: S.quitOk,
+      cancelLabel: S.keepSending,
+      danger: true,
+    });
+    quitAsked = false;
+    if (ok) bridge.send("quit");
+  }
+
   async function confirmCancel() {
     const ok = await confirmDialog({
       title: S.cancelTitle,
@@ -259,6 +312,24 @@
     els.result.setAttribute("class", "statusbox" + (tone ? " " + tone : ""));
   }
 
+  /* A send in one piece reports nothing until it ends: the page counts its time once a second, so that it visibly
+     lives, against the least the send takes. No time-out here: only Rust's `os_finished` ends a send, however long
+     the driver keeps it. */
+  function onePieceElapsed() {
+    return Math.floor((Date.now() - onePieceSend.since) / 1000);
+  }
+
+  function showOnePiece() {
+    const m = { ...onePieceSend, elapsed: onePieceElapsed() };
+    els.sendingText.textContent = (m.elapsed > m.seconds ? S.onePieceLonger : S.sendingOnePiece)(m);
+    onePieceTimer = setTimeout(showOnePiece, 1000);
+  }
+
+  function stopOnePiece() {
+    clearTimeout(onePieceTimer);
+    onePieceTimer = null;
+  }
+
   function onStarted(m) {
     sending = true;
     sendingVoice = m.chip === "Voice";
@@ -266,18 +337,21 @@
     readyInfo = null;
     showResult(S.noResult, "");
     els.bar.style.width = "0%";
-    els.sendingText.textContent = (onePiece ? S.sendingOnePiece : S.sending)({
-      label: m.label,
-      sent: 0,
-      total: m.total,
-    });
+    stopOnePiece();
+    if (onePiece) {
+      onePieceSend = { label: m.label, total: m.total, seconds: m.seconds, since: Date.now() };
+      showOnePiece();
+    } else
+      els.sendingText.textContent = S.sending({ label: m.label, sent: 0, total: m.total });
     els.ready.textContent = S.nothingReady;
     els.evidence.show({});
     refresh(kit.session);
   }
 
+  /* In one piece the only progress comes with the end: the counted time keeps the line until `os_finished`. */
   function onProgress(m) {
     els.bar.style.width = ((m.sent * 100) / m.total).toFixed(1) + "%";
+    if (onePieceTimer !== null) return;
     els.sendingText.textContent = S.sending({
       label: els.label || "",
       sent: m.sent,
@@ -287,6 +361,11 @@
 
   function onFinished(m) {
     sending = false;
+    if (onePieceTimer !== null) {
+      const elapsed = onePieceElapsed();
+      stopOnePiece();
+      els.sendingText.textContent = S.onePieceEnded({ label: onePieceSend.label, elapsed });
+    }
     els.bar.style.width = ((m.sent * 100) / m.total).toFixed(1) + "%";
     showResult(
       m.state === "done"
@@ -458,7 +537,7 @@
     bridge.on("identity", (m) => {
       els.identityResult.textContent = S.identityResult(m);
     });
-    bridge.on("close_blocked", () => toast(S.closeBlocked));
+    bridge.on("close_blocked", onCloseBlocked);
     bridge.on("error", (m) => {
       if (m.during === "os_verify") return;
       if (m.during && m.during.startsWith("os_")) toast(errorText(m));

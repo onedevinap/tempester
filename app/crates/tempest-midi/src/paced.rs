@@ -185,19 +185,26 @@ fn wait_until_due(clock: &dyn Clock, sent: usize, rate: u32) {
 mod tests {
     use super::*;
     use crate::fake::FakeTransport;
-    use std::cell::Cell;
+    use crate::transport::Receiver;
+    use std::sync::Mutex;
 
-    /// A clock that only moves when asked to sleep.
+    /// A clock that only moves when asked to sleep (or when a test driver says time went by).
     #[derive(Default)]
-    struct ManualClock(Cell<Duration>);
+    struct ManualClock(Mutex<Duration>);
+
+    impl ManualClock {
+        fn advance(&self, duration: Duration) {
+            *crate::transport::lock(&self.0) += duration;
+        }
+    }
 
     impl Clock for ManualClock {
         fn elapsed(&self) -> Duration {
-            self.0.get()
+            *crate::transport::lock(&self.0)
         }
 
         fn sleep(&self, duration: Duration) {
-            self.0.set(self.0.get() + duration);
+            self.advance(duration);
         }
     }
 
@@ -510,5 +517,56 @@ mod tests {
             vec![128],
             "the user saw \"128 B of …\" before the error"
         );
+    }
+
+    /// A whole-message port whose driver keeps the call for `takes` (WinMM returns once the buffer is played).
+    struct SlowDriver<'a> {
+        inner: FakeTransport,
+        clock: &'a ManualClock,
+        takes: Duration,
+    }
+
+    impl Transport for SlowDriver<'_> {
+        fn send(&self, bytes: &[u8]) -> Result<(), MidiError> {
+            self.clock.advance(self.takes);
+            self.inner.send(bytes)
+        }
+
+        fn accepts_sysex_fragments(&self) -> bool {
+            false
+        }
+
+        fn set_receiver(&self, receiver: Option<Receiver>) {
+            self.inner.set_receiver(receiver);
+        }
+    }
+
+    /// No time-out ends a send in one piece: a driver that keeps the Main file ten times as long as the cable rate
+    /// needs (a slow interface, a machine that reads USB slowly) still ends in success, with no extra wait after it.
+    #[test]
+    fn test_send_paced_when_the_driver_takes_ten_times_the_cable_time_returns_ok_without_a_time_out(
+    ) {
+        let clock = ManualClock::default();
+        let data = sysex(600_000);
+        let driver = SlowDriver {
+            inner: FakeTransport::new(),
+            clock: &clock,
+            takes: Duration::from_secs(1920),
+        };
+        let mut seen = Vec::new();
+
+        let result = send_paced_with(
+            &clock,
+            &driver,
+            &data,
+            DEFAULT_RATE,
+            &CancelToken::new(),
+            &mut |p| seen.push(p),
+        );
+
+        assert_eq!(result, Ok(()));
+        assert_eq!(driver.inner.sent(), vec![data]);
+        assert_eq!(seen.len(), 1);
+        assert_eq!(clock.elapsed(), Duration::from_secs(1920));
     }
 }

@@ -8,6 +8,38 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ### [Unreleased]
 
+### [0.1.6] - 2026-11-21
+
+#### Fixed
+- **Tempester Control: Ableton Live refused the VST3** (« plugin has an effect category, but no valid audio input
+  bus », issue #5). The plugin had no audio input or output. It now has a stereo input and output and passes the audio
+  through untouched; its MIDI output is unchanged. The CLAP build gets the same audio ports and is also listed as an
+  audio effect. **Not tried in Live, on Windows or elsewhere**: the project has no Windows machine. The buses, the
+  stereo arrangement and the untouched audio were checked through the plugin framework's VST3 code and a test CLAP
+  host, without a DAW.
+- **Tempester Control announced version 0.1.0** to the DAW whatever the app's version. It now announces the app's
+  version, also written in the macOS plugin bundles (they said 1.0.0).
+- **Windows and Linux: during an OS update the app looked frozen and could not be closed.** The file leaves in one
+  piece, and the MIDI driver reports nothing until it ends (at least about 3 minutes for the Main). The OS update page
+  now counts the elapsed time against the least the send takes, says so when it runs longer, and never calls the
+  send failed on its own: only the end of the send decides. Closing the window during such a send now asks whether
+  to quit now, which interrupts the update (power the Tempest off and on, then send the file again), or to keep
+  sending. macOS is unchanged: its send has a progress bar and a Cancel button. **Not tried on Windows or Linux**: the
+  project has no such machine.
+#### Changed
+- **Full backup: an unusual calibration shape is a warning, no longer a refusal** (issue #4). Four Voice chips of
+  another machine were refused with « table A does not increase », so no full backup could be saved there. The shape
+  rules came from one machine only, and the chip uses such a page as it is: the row now says « warning », the backup
+  can be saved, and the manifest and the report name the warning. A page that was not read where the chip keeps it
+  (blank, a word without the calibration's marker byte, an erased word: what a dump shifted by one to three bytes
+  gives) is still refused.
+
+#### Added
+- **Full backup: the 35 calibration words of each Voice chip on the page**, under its row, accepted, warned or
+  refused, and in the report, so they can be quoted in a bug report (they are the machine's own measurements; the
+  Voice `.syx` files hold DSI's Voice OS and must not be posted). A refused or warned chip's row also says whether its
+  pages before the calibration are identical to another chip's.
+
 ### [0.1.5] - 2026-11-21
 
 #### Added

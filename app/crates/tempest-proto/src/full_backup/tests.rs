@@ -427,33 +427,205 @@ fn test_decode_when_the_calibration_page_is_blank_returns_the_calibration_error(
     assert!(result.unwrap_err().to_string().contains("blank"));
 }
 
+/// Writes the 16-bit value of calibration word `word` (its upper byte stays `0xFF`).
+fn write_word(image: &mut [u8], word: usize, value: u16) {
+    let at = CALIBRATION_START + 3 * word;
+    image[at] = (value & 0xFF) as u8;
+    image[at + 1] = (value >> 8) as u8;
+}
+
+fn word_of(image: &[u8], word: usize) -> u16 {
+    let at = CALIBRATION_START + 3 * word;
+    u16::from(image[at]) | u16::from(image[at + 1]) << 8
+}
+
+/// The image with Voice `k`'s calibration page changed by `change`, decoded as the answer's message.
+fn decode_changed(k: u8, change: impl Fn(&mut Vec<u8>)) -> Result<Backup, BackupError> {
+    let mut image = voice_image(k);
+    change(&mut image);
+    decode(&voice_message(k, &image))
+}
+
+fn warnings_of(result: Result<Backup, BackupError>) -> Vec<CalibrationWarning> {
+    match result.expect("an unusual shape is not refused").content {
+        Content::Voice(c) => c.warnings(),
+        other => panic!("a Voice calibration expected, got {other:?}"),
+    }
+}
+
 #[test]
-fn test_decode_when_the_calibration_is_half_written_or_not_increasing_returns_the_error() {
-    let write = |image: &mut Vec<u8>, word: usize, value: u16| {
-        let at = CALIBRATION_START + 3 * word;
-        image[at] = (value & 0xFF) as u8;
-        image[at + 1] = (value >> 8) as u8;
-    };
-    let mut half = voice_image(0);
-    write(&mut half, 1, 0xFFFF);
-    let mut backwards = voice_image(0);
-    write(&mut backwards, 3, 0x8001);
-    let mut crooked = voice_image(0);
-    write(&mut crooked, 25, 0x1234);
-
-    let error = |image: &[u8]| decode(&voice_message(0, image)).unwrap_err();
+fn test_decode_when_the_calibration_is_half_written_returns_the_error_the_chip_itself_makes() {
+    let result = decode_changed(0, |image| write_word(image, 1, 0xFFFF));
 
     assert_eq!(
-        error(&half),
-        BackupError::Calibration(CalibrationError::HalfWritten)
+        result,
+        Err(BackupError::Calibration(CalibrationError::HalfWritten))
+    );
+}
+
+#[test]
+fn test_decode_when_a_table_has_an_unusual_shape_returns_the_backup_with_that_warning_only() {
+    // Each case of issue #4's kind: the shape the author's machine shows is missing, the page is still the chip's own.
+    let backwards_a = decode_changed(0, |image| write_word(image, 3, 0x8001));
+    let bottom_above_next = decode_changed(2, |image| {
+        let above = word_of(image, 1) + 0x100;
+        write_word(image, 0, above);
+    });
+    let top_wrapped_low = decode_changed(3, |image| write_word(image, 9, 0x0040));
+    let backwards_b = decode_changed(4, |image| write_word(image, 17, 0x8001));
+    let crooked_c = decode_changed(5, |image| write_word(image, 25, 0x1234));
+    let both = decode_changed(1, |image| {
+        write_word(image, 3, 0x8001);
+        write_word(image, 25, 0x1234);
+    });
+
+    assert_eq!(
+        warnings_of(backwards_a),
+        vec![CalibrationWarning::NotIncreasing("A")]
     );
     assert_eq!(
-        error(&backwards),
-        BackupError::Calibration(CalibrationError::NotIncreasing("A"))
+        warnings_of(bottom_above_next),
+        vec![CalibrationWarning::NotIncreasing("A")]
     );
     assert_eq!(
-        error(&crooked),
-        BackupError::Calibration(CalibrationError::NotLinear)
+        warnings_of(top_wrapped_low),
+        vec![CalibrationWarning::NotIncreasing("A")]
+    );
+    assert_eq!(
+        warnings_of(backwards_b),
+        vec![CalibrationWarning::NotIncreasing("B")]
+    );
+    assert_eq!(warnings_of(crooked_c), vec![CalibrationWarning::NotLinear]);
+    assert_eq!(
+        warnings_of(both),
+        vec![
+            CalibrationWarning::NotIncreasing("A"),
+            CalibrationWarning::NotLinear
+        ]
+    );
+}
+
+#[test]
+fn test_warnings_when_the_calibration_has_the_usual_shape_returns_none() {
+    for item in decoded_answer().iter().take(VOICES) {
+        let Content::Voice(c) = &item.content else {
+            panic!("a Voice calibration");
+        };
+        assert!(c.warnings().is_empty(), "{:?}", item.chip);
+    }
+}
+
+#[test]
+fn test_decode_when_an_erased_word_is_in_the_page_returns_refused_naming_it() {
+    for word in [0, 5, 25, 34] {
+        let result = decode_changed(1, |image| write_word(image, word, 0xFFFF));
+
+        assert_eq!(
+            result,
+            Err(BackupError::Calibration(CalibrationError::Erased { word })),
+            "word {word}"
+        );
+    }
+    let text = BackupError::Calibration(CalibrationError::Erased { word: 0 }).to_string();
+    assert!(text.contains("shifted by whole instructions"), "{text}");
+    assert!(text.contains("power the machine off and on"), "{text}");
+}
+
+#[test]
+fn test_decode_when_the_dump_is_shifted_before_the_calibration_page_returns_refused_never_warned() {
+    // What a byte or an instruction lost (or read twice) before page 42 makes of the page: on the author's six real
+    // pages a shift of 3 bytes gives "table A does not increase" under the old shape rule, so relaxing that rule must not
+    // let a shifted read through. The boot page ends with erased instructions, as on the real chips.
+    let mut image = voice_image(2);
+    image[CALIBRATION_START - 3 * 8..CALIBRATION_START].fill(0xFF);
+    assert!(
+        decode(&voice_message(2, &image)).is_ok(),
+        "the unshifted read passes"
+    );
+    // The stream goes wrong in the erased end of the boot page: from there on, byte i of the dump is byte i + shift of
+    // the chip (erased bytes past the end).
+    let slip = CALIBRATION_START - 30;
+    for shift in [-30isize, -6, -3, -2, -1, 1, 2, 3, 6, 30] {
+        let mut shifted = image.clone();
+        let source = slip.saturating_add_signed(shift);
+        let moved: Vec<u8> = image[source..]
+            .iter()
+            .copied()
+            .chain(std::iter::repeat(0xFF))
+            .take(image.len() - slip)
+            .collect();
+        shifted[slip..].copy_from_slice(&moved);
+
+        let result = decode(&voice_message(2, &shifted));
+
+        // Refused (an upper byte, a half page or an erased word), never accepted with a warning.
+        assert!(
+            matches!(result, Err(BackupError::Calibration(_))),
+            "shift {shift}: {result:?}"
+        );
+        // One whole instruction either way keeps every upper byte: the erased word is what refuses it.
+        let erased = match shift {
+            -3 => Some(0),
+            3 => Some(34),
+            _ => None,
+        };
+        if let Some(word) = erased {
+            assert_eq!(
+                result,
+                Err(BackupError::Calibration(CalibrationError::Erased { word })),
+                "shift {shift}"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_calibration_raw_when_the_image_reaches_the_page_returns_the_35_words_else_none() {
+    let image = voice_image(4);
+
+    let raw = calibration_raw(&image).expect("the words");
+
+    let expected: Vec<u32> = synthetic::calibration_words(4)
+        .iter()
+        .map(|w| 0xFF_0000 | u32::from(*w))
+        .collect();
+    assert_eq!(raw.to_vec(), expected);
+    assert_eq!(calibration_raw(&image[..CALIBRATION_START + 100]), None);
+}
+
+#[test]
+fn test_voice_image_of_when_the_calibration_is_refused_returns_the_image_and_none_for_a_broken_message(
+) {
+    let mut image = voice_image(3);
+    write_word(&mut image, 7, 0xFFFF);
+    let refused = voice_message(3, &image);
+    assert!(decode(&refused).is_err());
+
+    assert_eq!(voice_image_of(&refused), Some(image.clone()));
+    assert_eq!(
+        voice_image_of(&voice_message(3, &image[..63 * BLOCK_SIZE])),
+        None
+    );
+    let mut corrupt = refused.clone();
+    corrupt[4 + 1171 * 2 + 9] ^= 0x01;
+    assert_eq!(voice_image_of(&corrupt), None, "a wrong checksum");
+    assert_eq!(voice_image_of(&answer()[6]), None, "not a Voice message");
+}
+
+#[test]
+fn test_differences_before_calibration_when_only_calibrations_differ_returns_zero() {
+    let first = voice_image(0);
+    let other = voice_image(5);
+    let mut boot_changed = other.clone();
+    boot_changed[CALIBRATION_START - 10] ^= 0x01;
+    boot_changed[CALIBRATION_START - 400] ^= 0x01;
+
+    assert_ne!(calibration_page(&first), calibration_page(&other));
+    assert_eq!(differences_before_calibration(&first, &other), 0);
+    assert_eq!(differences_before_calibration(&first, &boot_changed), 2);
+    assert_eq!(
+        differences_before_calibration(&first, &other[..PAGE_BYTES]),
+        CALIBRATION_START - PAGE_BYTES
     );
 }
 

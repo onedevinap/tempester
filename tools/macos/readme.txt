@@ -11,7 +11,8 @@ NOT SIGNED. This installer and its contents are not signed with an Apple Develop
   - Open the .pkg with Control-click > Open (or System Settings > Privacy & Security > Open Anyway).
   - The first launch of the app also needs Control-click > Open; a DAW may ask you to approve the plugin the same way.
 
-Tempester Control is a MIDI effect: it opens no MIDI port. Route its MIDI output to the Tempest in your DAW. It needs a
+Tempester Control sends MIDI and opens no MIDI port: route its MIDI output to the Tempest in your DAW. Its stereo
+audio input passes to its output untouched, so a DAW that takes it only as an audio effect can load it. It needs a
 Tempester Main OS that applies NRPN (1.5.3.0 or later); the original DSI OS ignores them. Nothing is sent to the machine
 unless you route it.
 

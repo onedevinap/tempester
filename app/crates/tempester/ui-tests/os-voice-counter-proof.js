@@ -137,8 +137,8 @@ const variants = {
   ],
   "one piece: shown as a progress": [
     "page-os.js",
-    "(onePiece ? S.sendingOnePiece : S.sending)(",
-    "S.sending(",
+    "    if (onePiece) {\n      onePieceSend =",
+    "    if (false) {\n      onePieceSend =",
   ],
   "one piece: the flag kept from the last send": [
     "page-os.js",

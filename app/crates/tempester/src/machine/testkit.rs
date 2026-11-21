@@ -7,16 +7,54 @@ use std::time::{Duration, Instant};
 use tempest_midi::FakeTransport;
 
 use super::connector::FakeConnector;
-use super::Machine;
+use super::{Machine, Worker};
 use crate::command::Command;
 use crate::event::Event;
 use crate::storage::temp_storage;
 
 const WAIT: Duration = Duration::from_secs(10);
 
+/// The events a machine emits, from any of its threads.
+pub struct Events(Receiver<Event>);
+
+impl Events {
+    /// Waits (up to 10 s) for an event that `last` accepts, and returns it with every event before it; fails the test
+    /// on timeout.
+    pub fn wait_until(&self, last: impl Fn(&Event) -> bool) -> Vec<Event> {
+        let deadline = Instant::now() + WAIT;
+        let mut seen = Vec::new();
+        loop {
+            let left = deadline.saturating_duration_since(Instant::now());
+            match self.0.recv_timeout(left) {
+                Ok(event) => {
+                    let done = last(&event);
+                    seen.push(event);
+                    if done {
+                        return seen;
+                    }
+                }
+                Err(_) => panic!("the awaited event did not come within {WAIT:?}"),
+            }
+        }
+    }
+
+    /// Waits (up to 10 s) for an event named `name` from another thread; fails the test on timeout.
+    pub fn wait_for(&self, name: &str) -> Event {
+        let deadline = Instant::now() + WAIT;
+        loop {
+            let left = deadline.saturating_duration_since(Instant::now());
+            match self.0.recv_timeout(left) {
+                Ok(event) if event.name == name => return event,
+                Ok(_) => continue,
+                Err(_) => panic!("no \"{name}\" event within {WAIT:?}"),
+            }
+        }
+    }
+}
+
 pub struct TestRig {
     pub machine: Machine,
-    events: Receiver<Event>,
+    events: Events,
 }
 
 impl TestRig {
@@ -33,7 +71,10 @@ impl TestRig {
             let _ = sender.send(event);
         });
         let machine = Machine::new(Box::new(connector), temp_storage(label), emit);
-        Self { machine, events }
+        Self {
+            machine,
+            events: Events(events),
+        }
     }
 
     /// A machine already connected to the fake port, with the connection event consumed.
@@ -52,9 +93,15 @@ impl TestRig {
             .expect("connected to the fake machine")
     }
 
+    /// Moves the machine onto the worker thread, as the app runs it: commands then go through `Worker::commands`.
+    pub fn into_worker(self) -> (Worker, Events) {
+        let worker = super::start(self.machine).expect("the worker thread starts");
+        (worker, self.events)
+    }
+
     /// Everything emitted so far.
     pub fn events(&mut self) -> Vec<Event> {
-        self.events.try_iter().collect()
+        self.events.0.try_iter().collect()
     }
 
     /// The first event named `name` among those emitted so far; fails the test when there is none.
@@ -70,33 +117,11 @@ impl TestRig {
     /// Waits (up to 10 s) for an event that `last` accepts, and returns it with every event before it; fails the test
     /// on timeout.
     pub fn wait_until(&mut self, last: impl Fn(&Event) -> bool) -> Vec<Event> {
-        let deadline = Instant::now() + WAIT;
-        let mut seen = Vec::new();
-        loop {
-            let left = deadline.saturating_duration_since(Instant::now());
-            match self.events.recv_timeout(left) {
-                Ok(event) => {
-                    let done = last(&event);
-                    seen.push(event);
-                    if done {
-                        return seen;
-                    }
-                }
-                Err(_) => panic!("the awaited event did not come within {WAIT:?}"),
-            }
-        }
+        self.events.wait_until(last)
     }
 
     /// Waits (up to 10 s) for an event named `name` from another thread; fails the test on timeout.
     pub fn wait_for(&mut self, name: &str) -> Event {
-        let deadline = Instant::now() + WAIT;
-        loop {
-            let left = deadline.saturating_duration_since(Instant::now());
-            match self.events.recv_timeout(left) {
-                Ok(event) if event.name == name => return event,
-                Ok(_) => continue,
-                Err(_) => panic!("no \"{name}\" event within {WAIT:?}"),
-            }
-        }
+        self.events.wait_for(name)
     }
 }

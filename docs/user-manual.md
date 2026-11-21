@@ -1,6 +1,6 @@
 # Tempester user manual
 
-This manual covers the Tempester app 0.1.5, the Tempester Control plugin, and how to install Tempester OS.
+This manual covers the Tempester app 0.1.6, the Tempester Control plugin, and how to install Tempester OS.
 
 What each firmware release changes: [firmware](firmware.md). The exact MIDI messages: [MIDI protocol](midi-protocol.md).
 Screenshots show the app with example data.
@@ -299,10 +299,24 @@ Needs Tempester 1.6.6.0 or later.
    - the whole flash of each of the six Voice chips, with their own calibration;
    - the Main boot flash with its configuration words;
    - the System settings, with the MIDI channel of each pad.
-3. Each message is checked as it arrives: order, alignment, pages present, calibration page.
-4. Press **Save full backup**. This works only when all eight passed. It writes a dated folder: every message as
-   received, the System settings file, the pad channels, a manifest and a report. Debug-menu dumps sent right after
-   join the same folder.
+3. Each message is checked as it arrives: order, alignment, pages present, calibration page read where the chip
+   keeps it.
+4. Press **Save full backup**. This works only when all eight passed (a **warning** passes). It writes a dated folder:
+   every message as received, the System settings file, the pad channels, a manifest and a report. Debug-menu dumps
+   sent right after join the same folder.
+
+Calibration words:
+
+- Under each Voice row, the page shows that chip's 35 calibration words (A oscillator 1, B oscillator 2, C lowpass,
+  then three scalars), even when the message is refused. The report lists them too.
+- They are your machine's own measurements: you may copy them into a bug report. **Never post the Voice `.syx`
+  files**: they hold DSI's Voice OS.
+- A row marked **warning** has a calibration whose values have a shape the app had not seen before (for example a
+  table that does not increase). The chip uses its page as it is, so the backup is saved exactly as read and the
+  report says so.
+- A calibration page is refused only when it was not read where the chip keeps it (blank, a word without the
+  calibration's marker byte, an erased word) or when the chip itself would not use it. Power the machine off and on,
+  then request again.
 
 Good to know:
 
@@ -362,7 +376,10 @@ The page has four numbered panels.
 - **Send to the machine...** asks for a confirmation, then sends at the MIDI cable rate (about 3 minutes for the Main),
   with a progress bar and a **Cancel** button. On Windows and Linux the MIDI driver takes no part of a message, and
   an OS file is one message: it leaves in one piece, with no progress until the end and no **Cancel**; the countdown
-  on the Tempest's screen shows the progress.
+  on the Tempest's screen shows the progress. The page counts the elapsed time against the least the send takes
+  (about 3 minutes for the Main) and says when it takes longer; only the end of the send shows success or failure.
+  Closing the window during such a send asks first: **Quit now** interrupts the update (power the Tempest off and on,
+  then send the file again), **Keep sending** lets it finish.
 
 **4. After the update**: see [Installing a version](#installing-a-version-with-the-app), steps 4-6.
 
@@ -567,8 +584,10 @@ Nothing reaches a MIDI port. Files go to a separate `fake-midi` folder. A banner
 
 ## Tempester Control (DAW plugin)
 
-Tempester Control is a CLAP and VST3 MIDI effect for your DAW. It is **experimental**: it has no window of its own
-yet, and it has not been tried in a real DAW ([testing](testing.md#not-verified)).
+Tempester Control is a CLAP and VST3 plugin for your DAW. It makes no sound: it sends MIDI. It also has a stereo
+audio input and output, and passes the audio through untouched, so that DAWs that only take audio effects (such as
+Ableton Live) can load it. It is **experimental**: it has no window of its own yet, and it has not been tried in a real
+DAW ([testing](testing.md#not-verified)).
 
 Its 146 parameters:
 
@@ -586,7 +605,7 @@ Automate them, or move them with a controller. The plugin sends the matching MID
 
 **Set up**
 
-1. Put the plugin on a MIDI track.
+1. Put the plugin on a track: a MIDI track, or, in a DAW that only takes it as an audio effect, on any track.
 2. Route its MIDI output to the Tempest's port. It opens no MIDI port itself.
 3. Set its **MIDI Channel** parameter to the Tempest's *Remote Pad IN Channel*.
 
@@ -601,4 +620,6 @@ It needs Tempester 1.5.3.0 or later (the official OS ignores NRPN). Volume needs
 - **Send All** sends every value now. **Send All On Load** does it when the project opens.
 - Notes and other messages pass through unchanged. Changes are sent at most 100 per second.
 - The DAW's generic parameter view is used. A learned controller does not move the DAW's own knob.
-- Whether a given DAW routes a MIDI effect's output is still to be checked.
+- Whether a given DAW routes the plugin's MIDI output is still to be checked. Ableton Live on Windows refused the
+  plugin of app 0.1.4 (it had no audio input); the version with audio input and output was not tried in Live, on
+  Windows or elsewhere.

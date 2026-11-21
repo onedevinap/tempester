@@ -7,7 +7,8 @@ members = ["xtask", "atty-std"]
 [package]
 name = "tempester-plugin"
 description = "Tempester Control: CLAP and VST3 plugin driving the DSI Tempest sound parameters from a DAW (nih-plug)."
-version = "0.1.0"
+# No version of its own: this separate workspace cannot inherit the app's, so the plugin announces the app's version
+# through `tempest_proto::APP_VERSION` (src/lib.rs) and the bundler writes it in the macOS bundles (xtask).
 edition = "2021"
 # The project's licence; GPL-3.0 is required here anyway: nih-plug's VST3 wrapper links the GPL-3.0 `vst3-sys`.
 license = "GPL-3.0-or-later"

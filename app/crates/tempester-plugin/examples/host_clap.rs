@@ -3,12 +3,15 @@
 //! No dependency (the few CLAP structures needed are declared here, `dlopen` comes from libc). It opens no MIDI port
 //! and no window, and writes nothing to disk. Checks, each with its expected bytes:
 //!
-//! 1. the factory, the descriptor and the parameter list (names, ranges, count);
-//! 2. a block without events sends nothing (the baseline);
-//! 3. an automated parameter change goes out as the 4 NRPN Control Changes at the sample of the change;
+//! 1. the factory, the descriptor (the app's version, the note-effect and audio-effect features) and the parameter
+//!    list (names, ranges, count);
+//! 2. the audio ports: one stereo main input and one stereo main output; every block below gives the plugin a stereo
+//!    input and a separate output buffer, and checks that the input came out untouched;
+//! 3. a block without events sends nothing (the baseline);
+//! 4. an automated parameter change goes out as the 4 NRPN Control Changes at the sample of the change;
 //!    an unmapped CC passes through;
-//! 4. MIDI learn: touch a parameter, move a CC, then the CC drives the parameter and is not passed through;
-//! 5. the saved state (real `state` extension) holds the mapping, and a second instance that loads it behaves the same.
+//! 5. MIDI learn: touch a parameter, move a CC, then the CC drives the parameter and is not passed through;
+//! 6. the saved state (real `state` extension) holds the mapping, and a second instance that loads it behaves the same.
 //!
 //! `cargo run --release --example host_clap -- "target/bundled/Tempester Control.clap"` (macOS and Linux; on Windows
 //! the example only says so).
@@ -112,6 +115,32 @@ mod unix_host {
     }
 
     #[repr(C)]
+    struct AudioPortInfo {
+        id: u32,
+        name: [c_char; 256],
+        flags: u32,
+        channel_count: u32,
+        port_type: *const c_char,
+        in_place_pair: u32,
+    }
+    const AUDIO_PORT_IS_MAIN: u32 = 1;
+
+    #[repr(C)]
+    struct AudioPortsExt {
+        count: unsafe extern "C" fn(*const Plugin, bool) -> u32,
+        get: unsafe extern "C" fn(*const Plugin, u32, bool, *mut AudioPortInfo) -> bool,
+    }
+
+    #[repr(C)]
+    struct AudioBuffer {
+        data32: *mut *mut f32,
+        data64: *mut *mut f64,
+        channel_count: u32,
+        latency: u32,
+        constant_mask: u64,
+    }
+
+    #[repr(C)]
     struct OutStream {
         ctx: *mut c_void,
         write: unsafe extern "C" fn(*const OutStream, *const c_void, u64) -> i64,
@@ -147,8 +176,8 @@ mod unix_host {
         steady_time: i64,
         frames_count: u32,
         transport: *const c_void,
-        audio_inputs: *const c_void,
-        audio_outputs: *mut c_void,
+        audio_inputs: *const AudioBuffer,
+        audio_outputs: *mut AudioBuffer,
         audio_inputs_count: u32,
         audio_outputs_count: u32,
         in_events: *const InEvents,
@@ -193,6 +222,8 @@ mod unix_host {
         fn dlsym(module: *mut c_void, name: *const c_char) -> *mut c_void;
     }
     const RTLD_NOW: i32 = 2;
+    /// Samples per block; `activate` announces it as the largest block.
+    const FRAMES: usize = 256;
 
     unsafe extern "C" fn host_extension(_h: *const Host, _id: *const c_char) -> *const c_void {
         std::ptr::null()
@@ -376,7 +407,7 @@ mod unix_host {
                 .ok_or_else(|| format!("no parameter named {name:?}"))
         }
 
-        /// Runs one block of 256 samples and returns what the plugin sent.
+        /// Runs one block of `FRAMES` samples and returns what the plugin sent.
         fn run(&self, inputs: &[Input]) -> Result<Vec<Sent>, String> {
             let header = |time: u32, size: usize, kind: u16| EventHeader {
                 size: u32::try_from(size).unwrap_or(0),
@@ -437,24 +468,80 @@ mod unix_host {
                 ctx: &mut sent as *mut Vec<Sent> as *mut c_void,
                 try_push: events_push,
             };
+            // Stereo audio, out of place: a ramp in, a value no ramp sample has in the output buffer.
+            let mut input: [Vec<f32>; 2] = [0.5, -0.25].map(|gain| {
+                (0..FRAMES)
+                    .map(|i| (i as f32 + 1.0) / FRAMES as f32 * gain)
+                    .collect()
+            });
+            let expected = input.clone();
+            let mut output = [vec![9.0f32; FRAMES], vec![9.0f32; FRAMES]];
+            let mut input_channels = [input[0].as_mut_ptr(), input[1].as_mut_ptr()];
+            let mut output_channels = [output[0].as_mut_ptr(), output[1].as_mut_ptr()];
+            let audio_buffer = |channels: &mut [*mut f32; 2]| AudioBuffer {
+                data32: channels.as_mut_ptr(),
+                data64: std::ptr::null_mut(),
+                channel_count: 2,
+                latency: 0,
+                constant_mask: 0,
+            };
+            let audio_input = audio_buffer(&mut input_channels);
+            let mut audio_output = audio_buffer(&mut output_channels);
             let process = Process {
                 steady_time: -1,
-                frames_count: 256,
+                frames_count: FRAMES as u32,
                 transport: std::ptr::null(),
-                audio_inputs: std::ptr::null(),
-                audio_outputs: std::ptr::null_mut(),
-                audio_inputs_count: 0,
-                audio_outputs_count: 0,
+                audio_inputs: &audio_input,
+                audio_outputs: &mut audio_output,
+                audio_inputs_count: 1,
+                audio_outputs_count: 1,
                 in_events: &in_events,
                 out_events: &out_events,
             };
-            // SAFETY: the plugin is processing; every pointer in `process` outlives the call.
+            // SAFETY: the plugin is processing; every pointer in `process` outlives the call, each channel holds
+            // `FRAMES` samples.
             let status = unsafe { ((*self.plugin).process)(self.plugin, &process) };
             check(
                 status != 0,
                 format!("process returned the error status {status}"),
             )?;
+            check(
+                output == expected && input == expected,
+                "the stereo input must reach the output untouched",
+            )?;
             Ok(sent)
+        }
+
+        /// Exactly one audio port on each side, main and stereo.
+        fn check_audio_ports(&self) -> Result<(), String> {
+            // SAFETY: extension lookups and calls on a live plugin; `info` outlives each call.
+            unsafe {
+                let ext = self.extension::<AudioPortsExt>(c"clap.audio-ports")?;
+                for is_input in [true, false] {
+                    let side = if is_input { "input" } else { "output" };
+                    check(
+                        ((*ext).count)(self.plugin, is_input) == 1,
+                        format!("expected one audio {side} port"),
+                    )?;
+                    let mut info: AudioPortInfo = std::mem::zeroed();
+                    check(
+                        ((*ext).get)(self.plugin, 0, is_input, &mut info),
+                        format!("audio {side} port: get failed"),
+                    )?;
+                    check(
+                        info.flags & AUDIO_PORT_IS_MAIN != 0
+                            && info.channel_count == 2
+                            && text(info.port_type) == "stereo",
+                        format!(
+                            "audio {side} port: flags {}, {} channels, type {:?}",
+                            info.flags,
+                            info.channel_count,
+                            text(info.port_type)
+                        ),
+                    )?;
+                }
+            }
+            Ok(())
         }
 
         fn save_state(&self) -> Result<Vec<u8>, String> {
@@ -537,16 +624,40 @@ mod unix_host {
             (entry, factory)
         };
         // SAFETY: `factory` was just checked.
-        let (id, name) = unsafe {
+        let (id, name, version, features) = unsafe {
             check(
                 ((*factory).get_plugin_count)(factory) == 1,
                 "expected one plugin",
             )?;
             let descriptor = ((*factory).get_plugin_descriptor)(factory, 0);
             check(!descriptor.is_null(), "no descriptor")?;
-            (text((*descriptor).id), text((*descriptor).name))
+            let mut features = Vec::new();
+            let mut feature = (*descriptor).features;
+            while !feature.is_null() && !(*feature).is_null() {
+                features.push(text(*feature));
+                feature = feature.add(1);
+            }
+            (
+                text((*descriptor).id),
+                text((*descriptor).name),
+                text((*descriptor).version_text),
+                features,
+            )
         };
-        println!("plugin {name:?} ({id})");
+        println!("plugin {name:?} ({id}) version {version}, features {features:?}");
+        check(
+            version == tempest_proto::APP_VERSION,
+            format!(
+                "the plugin announces {version}, the app is {}",
+                tempest_proto::APP_VERSION
+            ),
+        )?;
+        check(
+            ["note-effect", "audio-effect"]
+                .iter()
+                .all(|f| features.iter().any(|g| g == f)),
+            "features: note-effect and audio-effect expected",
+        )?;
         let c_id = CString::new(id).map_err(|e| e.to_string())?;
 
         // SAFETY: `factory` is valid for the whole run.
@@ -558,14 +669,16 @@ mod unix_host {
             (lp_min, lp_max, lp_default) == (0.0, 164.0, 164.0),
             "LP Freq range or default",
         )?;
+        a.check_audio_ports()?;
+        println!("  audio ports: one stereo main input, one stereo main output");
 
         check(
             a.run(&[])?.is_empty(),
             "a block without events must send nothing",
         )?;
-        println!("  baseline block: nothing sent");
+        println!("  baseline block: nothing sent, stereo audio passed through untouched");
 
-        // 3. an automated change at sample 100 and an unmapped CC at sample 10
+        // 4. an automated change at sample 100 and an unmapped CC at sample 10
         let sent = a.run(&[
             Input::Cc {
                 controller: 1,
@@ -592,7 +705,7 @@ mod unix_host {
         );
         check(a.run(&[])?.is_empty(), "no repeat on the next block")?;
 
-        // 4. learn: switch learn on, touch Resonance (n35), move CC 74, then drive it
+        // 5. learn: switch learn on, touch Resonance (n35), move CC 74, then drive it
         let (learn, ..) = a.param("MIDI Learn")?;
         let (resonance, ..) = a.param("Low-pass filter Resonance #35")?;
         a.run(&[Input::Param {
@@ -629,7 +742,7 @@ mod unix_host {
         )?;
         println!("  learn: CC 74 -> NRPN 35, 127 at sample 20 (CC consumed)");
 
-        // 5. state through the real extension, then a second instance
+        // 6. state through the real extension, then a second instance
         let state = a.save_state()?;
         let readable = String::from_utf8_lossy(&state);
         check(

@@ -996,9 +996,10 @@ mod tests {
 }
 
 #[cfg(test)]
-mod realtime {
+pub(crate) mod realtime {
     //! Proof that `process_block` does not allocate: a counting global allocator armed around the calls of this
-    //! thread only (other tests run on other threads and are not counted).
+    //! thread only (other tests run on other threads and are not counted). `host_contract` uses the same counter
+    //! around a whole VST3 `process` call.
 
     use super::tests::{cc, Rig, BLOCK};
     use super::*;
@@ -1041,7 +1042,7 @@ mod realtime {
     #[global_allocator]
     static COUNTING: Counting = Counting;
 
-    fn count_allocations(work: impl FnOnce()) -> usize {
+    pub(crate) fn count_allocations(work: impl FnOnce()) -> usize {
         ARMED.with(|a| a.set(true));
         let before = ALLOCATIONS.with(Cell::get);
         work();

@@ -599,11 +599,11 @@ dependencies = [
 
 [[package]]
 name = "tempest-proto"
-version = "0.1.5"
+version = "0.1.6"
 
 [[package]]
 name = "tempester-plugin"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "nih_plug",
  "tempest-proto",
@@ -880,6 +880,7 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "nih_plug_xtask",
+ "tempest-proto",
 ]
 
 [[package]]

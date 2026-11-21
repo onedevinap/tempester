@@ -425,6 +425,7 @@ impl Machine {
         };
         let cancel = CancelToken::new();
         self.os_cancel = Some(cancel.clone());
+        self.os_chip = Some(pending.id);
         let job = OsJob {
             transport,
             pending,
@@ -451,6 +452,23 @@ impl Machine {
                 Ok(())
             }
             _ => Err(AppError::Precondition("no update is running")),
+        }
+    }
+
+    /// The app quits while an OS is being sent (a send in one piece, after the page's confirmation: it has no
+    /// cancel): the chip now holds part of a file, so its record goes, as after a send that stopped half way
+    /// (`OsJob::remember`). A send that ends in the same instant may lose a true record: "unknown" is the safe side.
+    pub(super) fn forget_interrupted_os(&mut self) {
+        if !self.os_active.load(Ordering::SeqCst) {
+            return;
+        }
+        let forgotten = match self.os_chip {
+            Some(OsId::Main) => self.storage.set_installed_os(None),
+            Some(OsId::Voice) => self.storage.set_voice_installed(None),
+            _ => Ok(()),
+        };
+        if let Err(error) = forgotten {
+            self.emit(Event::error("os_installed", &error));
         }
     }
 }
@@ -483,6 +501,9 @@ impl OsJob {
                 .with("label", label.clone())
                 .with("chip", chip_name(self.pending.id))
                 .with("total", total)
+                // The least the send takes: `send_paced` never ends before length / rate. A send in one piece has no
+                // progress to show, so the page counts its time against this, and never calls it late or failed.
+                .with("seconds", seconds_for(total, self.rate))
                 // An OS file is one SysEx message: where the port takes no part of a message, it leaves in one
                 // piece, so the page has no progress until the end and no cancel to offer.
                 .with("in_one_piece", !self.transport.accepts_sysex_fragments()),
@@ -594,6 +615,8 @@ fn finished_event(label: &str, total: usize, result: Result<(), MidiError>) -> E
     }
 }
 
+#[cfg(test)]
+mod one_piece_tests;
 #[cfg(test)]
 mod reference_tests;
 #[cfg(test)]

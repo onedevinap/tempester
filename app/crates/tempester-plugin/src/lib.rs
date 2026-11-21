@@ -1,8 +1,9 @@
-//! Tempester Control: a CLAP and VST3 MIDI effect that drives the DSI Tempest from a music application.
+//! Tempester Control: a CLAP and VST3 plugin that drives the DSI Tempest from a music application.
 //!
 //! The host parameters are the Tempest's sound parameters; a change (automation, the DAW's own parameter UI, a learned
 //! controller) goes out on the plugin's MIDI output as NRPN, beat-wide CCs or plain CCs, for the DAW to route to the
-//! Tempest's MIDI port. The plugin never opens a MIDI port itself.
+//! Tempest's MIDI port. The plugin never opens a MIDI port itself. Its stereo audio input reaches its output untouched
+//! (see [`TempesterControl::AUDIO_IO_LAYOUTS`]).
 //!
 //! - [`catalogue`]: the parameters and their bytes (from `tempest-proto`);
 //! - [`mapping`]: MIDI learn table, saved in the plugin state;
@@ -18,6 +19,10 @@ pub mod engine;
 pub mod mapping;
 pub mod params;
 
+#[cfg(test)]
+mod host_contract;
+
+use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use nih_plug::prelude::*;
@@ -77,10 +82,17 @@ impl Plugin for TempesterControl {
     const VENDOR: &'static str = "Tempester";
     const URL: &'static str = "https://github.com/onedevinap/tempester";
     const EMAIL: &'static str = "";
-    const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+    const VERSION: &'static str = tempest_proto::APP_VERSION;
 
-    // A MIDI effect: no audio ports.
-    const AUDIO_IO_LAYOUTS: &'static [AudioIOLayout] = &[];
+    // A stereo input and output although the plugin makes no sound: a host such as Ableton Live refuses a VST3 of the
+    // effect category without an audio input bus (public issue #5), and the MIDI output does not depend on the audio
+    // ports in either format. The wrapper copies the input to the output before `process`, which leaves the buffer
+    // alone: the audio passes untouched, with no work and no allocation on the audio thread.
+    const AUDIO_IO_LAYOUTS: &'static [AudioIOLayout] = &[AudioIOLayout {
+        main_input_channels: NonZeroU32::new(2),
+        main_output_channels: NonZeroU32::new(2),
+        ..AudioIOLayout::const_default()
+    }];
     const MIDI_INPUT: MidiConfig = MidiConfig::MidiCCs;
     const MIDI_OUTPUT: MidiConfig = MidiConfig::MidiCCs;
     // The host cuts blocks at automation points, so a change is sent at its own sample.
@@ -162,7 +174,12 @@ impl ClapPlugin for TempesterControl {
         Some("Drives the DSI Tempest sound parameters from the host (NRPN over MIDI).");
     const CLAP_MANUAL_URL: Option<&'static str> = None;
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
-    const CLAP_FEATURES: &'static [ClapFeature] = &[ClapFeature::NoteEffect, ClapFeature::Utility];
+    // Note effect first, its main role; audio effect as well, like the VST3 `Fx`, since it has the audio ports of one.
+    const CLAP_FEATURES: &'static [ClapFeature] = &[
+        ClapFeature::NoteEffect,
+        ClapFeature::AudioEffect,
+        ClapFeature::Utility,
+    ];
 }
 
 impl Vst3Plugin for TempesterControl {

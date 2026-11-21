@@ -1,13 +1,67 @@
 //! In-memory transport for tests: records what is sent, lets a test (or a scripted "machine") answer.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant};
 
 use crate::error::MidiError;
 use crate::transport::{lock, InputPort, Receiver, Transport};
 
 /// Scripted answers: called with each sent packet, returns the chunks the fake machine sends back.
 pub type Responder = Box<dyn FnMut(&[u8]) -> Vec<Vec<u8>> + Send>;
+
+/// Keeps every `send` of a `FakeTransport` waiting until `release`. It stands for a MIDI driver that returns only once
+/// a long message has been played (midir 0.11 on WinMM waits until `midiOutUnprepareHeader` stops answering
+/// "still playing": about 190 s for a Main OS at the cable rate), and for the output lock of `MidirTransport`, behind
+/// which any other send of the app waits meanwhile.
+#[derive(Debug, Clone, Default)]
+pub struct SendHold(Arc<(Mutex<HoldState>, Condvar)>);
+
+#[derive(Debug, Default)]
+struct HoldState {
+    released: bool,
+    waiting: usize,
+}
+
+impl SendHold {
+    /// Lets every waiting and later send go.
+    pub fn release(&self) {
+        let (state, changed) = &*self.0;
+        lock(state).released = true;
+        changed.notify_all();
+    }
+
+    /// True once at least one send waits on the hold, false if none did within `timeout`.
+    pub fn wait_for_a_blocked_send(&self, timeout: Duration) -> bool {
+        let deadline = Instant::now() + timeout;
+        let (state, changed) = &*self.0;
+        let mut guard = lock(state);
+        while guard.waiting == 0 {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() {
+                return false;
+            }
+            guard = changed
+                .wait_timeout(guard, left)
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .0;
+        }
+        true
+    }
+
+    fn wait(&self) {
+        let (state, changed) = &*self.0;
+        let mut guard = lock(state);
+        guard.waiting += 1;
+        changed.notify_all();
+        while !guard.released {
+            guard = changed
+                .wait(guard)
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+        }
+        guard.waiting -= 1;
+    }
+}
 
 /// A `Transport` that never touches a MIDI port.
 #[derive(Default)]
@@ -17,6 +71,7 @@ pub struct FakeTransport {
     responder: Mutex<Option<Responder>>,
     failing: AtomicBool,
     refusing_fragments: AtomicBool,
+    hold: Mutex<Option<SendHold>>,
 }
 
 impl FakeTransport {
@@ -61,10 +116,22 @@ impl FakeTransport {
     pub fn has_receiver(&self) -> bool {
         lock(&self.receiver).is_some()
     }
+
+    /// Makes every following `send` wait, before anything is recorded, until the returned hold is released.
+    pub fn hold_sends(&self) -> SendHold {
+        let hold = SendHold::default();
+        *lock(&self.hold) = Some(hold.clone());
+        hold
+    }
 }
 
 impl Transport for FakeTransport {
     fn send(&self, bytes: &[u8]) -> Result<(), MidiError> {
+        // Cloned out first: the lock of `hold` must not be kept while the send waits.
+        let hold = lock(&self.hold).clone();
+        if let Some(hold) = hold {
+            hold.wait();
+        }
         if self.failing.load(Ordering::SeqCst) {
             return Err(MidiError::Send("fake transport set to fail".into()));
         }
@@ -193,6 +260,30 @@ mod tests {
             ))
         );
         assert!(fake.sent().is_empty());
+    }
+
+    #[test]
+    fn test_send_when_held_returns_only_after_release_and_records_nothing_before() {
+        let fake = Arc::new(FakeTransport::new());
+        let hold = fake.hold_sends();
+        let sender = Arc::clone(&fake);
+
+        let send = std::thread::spawn(move || sender.send(&[0xF0, 0x01, 0xF7]));
+
+        assert!(hold.wait_for_a_blocked_send(Duration::from_secs(10)));
+        assert!(!send.is_finished());
+        assert!(fake.sent().is_empty());
+        hold.release();
+        assert_eq!(send.join().expect("the send thread ends"), Ok(()));
+        assert_eq!(fake.sent(), vec![vec![0xF0, 0x01, 0xF7]]);
+    }
+
+    #[test]
+    fn test_wait_for_a_blocked_send_when_nothing_sends_returns_false() {
+        let fake = FakeTransport::new();
+        let hold = fake.hold_sends();
+
+        assert!(!hold.wait_for_a_blocked_send(Duration::from_millis(10)));
     }
 
     #[test]

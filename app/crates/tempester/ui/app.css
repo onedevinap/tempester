@@ -90,6 +90,8 @@ table.list { width: 100%; border-collapse: collapse; }
 table.list th, table.list td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 table.list th { color: var(--mid); font-weight: 500; }
 table.list tr.group th { padding-top: 18px; color: var(--text); }
+/* The calibration words under a Voice row of the full backup: long, quoted by users, so they wrap and stay selectable. */
+table.list td.calwords { font-family: var(--mono); font-size: 17px; color: var(--mid); overflow-wrap: anywhere; }
 .badge { display: inline-block; padding: 1px 10px; border-radius: 99px; font-size: 14px; border: 1px solid; }
 .badge.ok { color: var(--ok); border-color: var(--ok); }
 .badge.constant { color: var(--warn); border-color: var(--warn); }

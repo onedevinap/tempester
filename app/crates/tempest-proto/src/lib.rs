@@ -4,6 +4,7 @@
 //! remain the reference: `pack7` (7-bit packing), `os_image` (OS SysEx files), `sound` and `sound_message`
 //! (128-byte sounds and their messages), `beat` (beat dump: summary and sounds), `beat_sequence` (tempo, swing, time signature and events of a beat), `midi_file` (a beat as a Standard MIDI File), `project` (Send Project), `nrpn`, `remote` (keys, LEDs and controls of the Tempester 1.6.0.0 remote panel), `quantize` (the project Quantize, with the fine values of 1.6.5.0), `performance` (beat-wide positions, FX ribbons and play probability over control changes), `mixer_report` (the mixer, delay and main values the machine reports as NRPN 230-239), `pad_channel` (the MIDI channel of each pad, n°58), `pad_notes` (the machine's note of each pad), `release_cap` (the Release maxima of n°63), `identity`, `describe` (readable labels for a MIDI monitor), `sha256`, `recipe` (patch
 //! edits as operations on the user's image), `versions` (Tempester versions built from generated recipe tables).
+//! [`APP_VERSION`] is the release version shared by the app and the plugin.
 
 pub mod beat;
 pub mod beat_sequence;
@@ -40,3 +41,8 @@ mod generated {
 
 /// SysEx prefix of every DSI message: SysEx start, Sequential/DSI manufacturer id, Tempest product id.
 pub const DSI_PREFIX: [u8; 3] = [0xF0, 0x01, 0x28];
+
+/// The Tempester release version: `[workspace.package] version` of `app/Cargo.toml`, which this crate inherits.
+/// The plugin crate builds in a workspace of its own and cannot inherit that version: it announces this constant, so
+/// the app and the plugin of a release always carry the same number.
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -10,14 +10,19 @@
 //! Each Voice row also says which Voice OS the chip holds (`voice_checks`: Tempester Voice 1.5.1.0 when pages 0-40 equal
 //! the image the app builds, DSI's Voice 1.5 when the user's file was seen, else an unknown build), whether pages 0-40
 //! equal the Voice update the app last sent, and whether page 42 (the chip's calibration) is unchanged since the
-//! previous full backup; the manifest and the report carry the same findings.
+//! previous full backup; the manifest and the report carry the same findings. Every Voice row whose message decoded
+//! carries its 35 calibration words (`calibration`), refused or not. A calibration of unusual shape gives the row the
+//! verdict `warning`: it can be saved, and the row, the manifest and the report say so. Neither the Voice OS update nor
+//! anything else of the app relies on that shape: the comparisons with the previous backup and with the update sent
+//! are made on the bytes of the pages, whatever their values.
 //!
 //! These files are backups for a programmer (PICkit) restore: no command of the app sends one back to the machine.
 
 use std::time::{Duration, Instant};
 
 use tempest_proto::full_backup::{
-    self, Backup, BackupError, Chip, Content, SystemSettings, REQUEST_FULL_BACKUP,
+    self, calibration_raw, Backup, BackupError, CalibrationWarning, Chip, Content, SystemSettings,
+    CALIBRATION_WORDS, REQUEST_FULL_BACKUP,
 };
 use tempest_proto::sha256::sha256_hex;
 
@@ -61,6 +66,45 @@ struct Received {
     chip: Chip,
     message: Vec<u8>,
     outcome: Result<Backup, BackupError>,
+    /// The image of a refused Voice message that still decoded: shown (its calibration words, its pages compared with
+    /// another chip's), never saved.
+    refused_image: Option<Vec<u8>>,
+}
+
+impl Received {
+    fn new(chip: Chip, message: &[u8]) -> Self {
+        let outcome = full_backup::decode(message);
+        let refused_image = outcome
+            .is_err()
+            .then(|| full_backup::voice_image_of(message))
+            .flatten();
+        Self {
+            chip,
+            message: message.to_vec(),
+            outcome,
+            refused_image,
+        }
+    }
+
+    /// The Voice image the row can show, accepted or refused.
+    fn voice_image(&self) -> Option<&[u8]> {
+        match (&self.outcome, self.chip) {
+            (Ok(backup), Chip::Voice(_)) => Some(&backup.image),
+            (Ok(_), _) => None,
+            (Err(_), _) => self.refused_image.as_deref(),
+        }
+    }
+
+    /// The calibration shapes the row warns of (none for a refused message or another chip).
+    fn warnings(&self) -> Vec<CalibrationWarning> {
+        match &self.outcome {
+            Ok(Backup {
+                content: Content::Voice(c),
+                ..
+            }) => c.warnings(),
+            _ => Vec::new(),
+        }
+    }
 }
 
 /// The backup in progress.
@@ -79,9 +123,16 @@ pub(super) struct FullBackup {
 struct Row {
     chip: Chip,
     size: usize,
-    /// `ok`, `refused`, `waiting` or `missing`.
+    /// `ok`, `warning` (saved, with what is unusual in `detail`), `refused`, `waiting` or `missing`.
     verdict: &'static str,
     detail: String,
+    /// The 35 calibration words of a Voice chip whose message decoded.
+    calibration: Option<[u32; CALIBRATION_WORDS]>,
+}
+
+/// The verdicts a set can be saved with.
+fn passes(verdict: &str) -> bool {
+    matches!(verdict, "ok" | "warning")
 }
 
 impl FullBackup {
@@ -145,20 +196,16 @@ impl FullBackup {
                 let problem = problems
                     .iter()
                     .find(|p| p.chip == chip && !matches!(p.error, BackupError::Missing(_)));
-                match (found, problem) {
-                    (Some(r), _) if r.outcome.is_err() => refused(chip, r, &r.outcome),
+                let mut row = match (found, problem) {
+                    (Some(r), _) if r.outcome.is_err() => self.refused_row(r),
                     (Some(r), Some(p)) => Row {
                         chip,
                         size: r.message.len(),
                         verdict: "refused",
                         detail: p.error.to_string(),
+                        calibration: None,
                     },
-                    (Some(r), None) => Row {
-                        chip,
-                        size: r.message.len(),
-                        verdict: "ok",
-                        detail: self.ok_detail(&r.outcome),
-                    },
+                    (Some(r), None) => self.passed_row(r),
                     (None, _) => Row {
                         chip,
                         size: 0,
@@ -168,27 +215,89 @@ impl FullBackup {
                         } else {
                             String::new()
                         },
+                        calibration: None,
                     },
-                }
+                };
+                row.calibration = found
+                    .and_then(Received::voice_image)
+                    .and_then(calibration_raw);
+                row
             })
             .collect()
     }
 
-    /// What a passed message says for its row; a Voice row adds what the chip holds (`voice_checks`).
-    fn ok_detail(&self, outcome: &Result<Backup, BackupError>) -> String {
-        let base = ok_detail(outcome);
-        match outcome {
-            Ok(Backup {
-                chip: Chip::Voice(k),
-                image,
-                ..
-            }) => format!("{base}; {}", self.reference.check(*k, image).sentence()),
-            _ => base,
+    /// A message that passed: `ok`, or `warning` when its calibration has an unusual shape. A Voice row adds what the
+    /// chip holds (`voice_checks`) and, when it warns, whether its stream was in step with another chip's.
+    fn passed_row(&self, r: &Received) -> Row {
+        let warnings = r.warnings();
+        let mut parts = vec![ok_detail(&r.outcome)];
+        parts.extend(calibration::warning_text(&warnings));
+        if let (Ok(backup), Chip::Voice(k)) = (&r.outcome, r.chip) {
+            parts.push(self.reference.check(k, &backup.image).sentence());
+            if !warnings.is_empty() {
+                parts.extend(self.in_step(k, &backup.image));
+            }
+        }
+        Row {
+            chip: r.chip,
+            size: r.message.len(),
+            verdict: if warnings.is_empty() { "ok" } else { "warning" },
+            detail: parts.join("; "),
+            calibration: None,
         }
     }
 
+    /// A refused message, with its reason. A Voice chip refused for its calibration page, after its alignment, code
+    /// pages and boot page passed, also says what its pages 0-41 are: equal to another chip's, they were read in step.
+    fn refused_row(&self, r: &Received) -> Row {
+        let mut parts = vec![r
+            .outcome
+            .as_ref()
+            .err()
+            .map(ToString::to_string)
+            .unwrap_or_default()];
+        if let (Err(BackupError::Calibration(_)), Chip::Voice(k), Some(image)) =
+            (&r.outcome, r.chip, r.voice_image())
+        {
+            parts.push(self.reference.check(k, image).sentence());
+            parts.extend(self.in_step(k, image));
+        }
+        Row {
+            chip: r.chip,
+            size: r.message.len(),
+            verdict: "refused",
+            detail: parts.join("; "),
+            calibration: None,
+        }
+    }
+
+    /// Whether Voice `k`'s pages 0-41 equal those of the first other chip whose message decoded (the six chips run the
+    /// same code and boot page, so equal pages say the two streams were read in step up to the calibration page).
+    fn in_step(&self, k: u8, image: &[u8]) -> Option<String> {
+        let (other, theirs) = self.received.iter().find_map(|r| match r.chip {
+            Chip::Voice(j) if j != k => r.voice_image().map(|i| (j, i)),
+            _ => None,
+        })?;
+        Some(
+            match full_backup::differences_before_calibration(theirs, image) {
+                0 => format!(
+                    "pages 0-41 identical to Voice {other}'s: read in step up to the calibration page"
+                ),
+                n => format!("{n} byte(s) of pages 0-41 differ from Voice {other}'s"),
+            },
+        )
+    }
+
     fn all_ok(&self) -> bool {
-        self.complete() && self.rows().iter().all(|row| row.verdict == "ok")
+        self.complete() && self.rows().iter().all(|row| passes(row.verdict))
+    }
+
+    /// The Voice chips that passed with a calibration warning.
+    fn warned(&self) -> usize {
+        self.received
+            .iter()
+            .filter(|r| !r.warnings().is_empty())
+            .count()
     }
 
     /// `waiting`, `receiving`, `ready` (every check passed: it can be saved) or `refused`.
@@ -202,19 +311,6 @@ impl FullBackup {
         } else {
             "receiving"
         }
-    }
-}
-
-fn refused(chip: Chip, r: &Received, outcome: &Result<Backup, BackupError>) -> Row {
-    Row {
-        chip,
-        size: r.message.len(),
-        verdict: "refused",
-        detail: outcome
-            .as_ref()
-            .err()
-            .map(ToString::to_string)
-            .unwrap_or_default(),
     }
 }
 
@@ -242,6 +338,12 @@ fn row_json(row: &Row) -> Json {
         ("size", row.size.into()),
         ("verdict", row.verdict.into()),
         ("detail", row.detail.clone().into()),
+        (
+            "calibration",
+            row.calibration
+                .as_ref()
+                .map_or(Json::Null, calibration::json),
+        ),
     ])
 }
 
@@ -331,11 +433,7 @@ impl Machine {
             .and_then(|id| Chip::from_id(*id));
         match chip {
             Some(chip) => {
-                backup.add(Received {
-                    chip,
-                    message: message.to_vec(),
-                    outcome: full_backup::decode(message),
-                });
+                backup.add(Received::new(chip, message));
                 backup.deadline = Instant::now() + GAP_WAIT;
             }
             None => match classify(message) {
@@ -494,6 +592,14 @@ fn hex_words(words: &[u16]) -> Json {
         .into()
 }
 
+fn texts(items: &[CalibrationWarning]) -> Json {
+    items
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .into()
+}
+
 fn voice_json(backup: &Backup, reference: &Reference) -> Option<Json> {
     let (Chip::Voice(k), Content::Voice(c)) = (backup.chip, &backup.content) else {
         return None;
@@ -512,6 +618,7 @@ fn voice_json(backup: &Backup, reference: &Reference) -> Option<Json> {
         ("osc2", hex_words(c.osc2())),
         ("linear", hex_words(c.linear())),
         ("scalars", hex_words(c.scalars())),
+        ("calibration_warnings", texts(&c.warnings())),
     ]))
 }
 
@@ -570,24 +677,6 @@ fn manifest(stamp: &str, announced: Option<&str>, files: Vec<Json>, backup: &Ful
     ])
 }
 
-/// The 35 calibration words of a Voice, by table, as `tools/voice_compare.py --calibration` prints them.
-fn calibration_lines(c: &full_backup::Calibration) -> String {
-    let hex = |words: &[u16]| {
-        words
-            .iter()
-            .map(|w| format!("{w:04x}"))
-            .collect::<Vec<_>>()
-            .join(" ")
-    };
-    format!(
-        "  calibration A (osc 1): {}\n  calibration B (osc 2): {}\n  calibration C (linear): {}\n  scalars: {}\n",
-        hex(c.osc1()),
-        hex(c.osc2()),
-        hex(c.linear()),
-        hex(c.scalars())
-    )
-}
-
 fn report(stamp: &str, announced: Option<&str>, backup: &FullBackup) -> String {
     let mut out = format!("Tempester full backup of the machine, {stamp} (UTC)\n");
     out.push_str(&format!(
@@ -595,8 +684,19 @@ fn report(stamp: &str, announced: Option<&str>, backup: &FullBackup) -> String {
         announced.unwrap_or("not reported")
     ));
     out.push_str(
-        "These files are for a programmer (PICkit) restore. Never send them to the machine.\n\n",
+        "These files are for a programmer (PICkit) restore. Never send them to the machine.\n",
     );
+    out.push_str(
+        "The calibration words below are this machine's own measurements: you may quote them in a bug report. Never \
+         post the Voice .syx files: they hold DSI's Voice OS.\n",
+    );
+    if backup.warned() > 0 {
+        out.push_str(&format!(
+            "WARNING: {} Voice calibration page(s) with an unusual shape, saved exactly as read (see their lines)\n",
+            backup.warned()
+        ));
+    }
+    out.push('\n');
     for row in backup.rows() {
         out.push_str(&format!(
             "{} (id {:#04x}): {} bytes of SysEx, {}\n",
@@ -622,7 +722,10 @@ fn report(stamp: &str, announced: Option<&str>, backup: &FullBackup) -> String {
                 "  {}\n",
                 backup.reference.check(k, &voice.image).sentence()
             ));
-            out.push_str(&calibration_lines(c));
+            if let Some(warning) = calibration::warning_text(&c.warnings()) {
+                out.push_str(&format!("  {warning}\n"));
+            }
+            out.extend(calibration_raw(&voice.image).map(|raw| calibration::lines(&raw)));
         }
         let first = decoded.iter().find(|b| b.chip == Chip::Voice(0));
         if let (Some(first), Chip::Voice(k)) = (first, voice.chip) {
@@ -646,6 +749,7 @@ fn report(stamp: &str, announced: Option<&str>, backup: &FullBackup) -> String {
     out
 }
 
+mod calibration;
 mod voice_checks;
 
 #[cfg(test)]

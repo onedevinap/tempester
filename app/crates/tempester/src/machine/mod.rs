@@ -36,7 +36,7 @@ mod sound;
 pub mod testkit;
 
 use std::collections::BTreeSet;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::Arc;
 use std::thread;
@@ -48,6 +48,7 @@ use tempest_midi::CancelToken;
 use tempest_proto::beat::BeatSummary;
 use tempest_proto::identity::{TempesterVersion, VOICE_CHIPS};
 use tempest_proto::nrpn::{self, NrpnDecoder};
+use tempest_proto::os_image::OsId;
 use tempest_proto::pad_notes::PadNotes;
 use tempest_proto::performance::BeatWideReader;
 use tempest_proto::remote;
@@ -118,6 +119,8 @@ pub struct Machine {
     verify: Option<VerifyWatch>,
     os_active: Arc<AtomicBool>,
     os_cancel: Option<CancelToken>,
+    /// The chip of the last OS send: whose record goes if the app quits during it (`forget_interrupted_os`).
+    os_chip: Option<OsId>,
     clock: Option<ClockHandle>,
     /// The Euclidean sequencer's settings, shared with the clock thread.
     sequencer: sequencer::Shared,
@@ -177,6 +180,7 @@ impl Machine {
             verify: None,
             os_active: Arc::new(AtomicBool::new(false)),
             os_cancel: None,
+            os_chip: None,
             clock: None,
             sequencer: sequencer::Shared::default(),
             rate: DEFAULT_RATE,
@@ -331,11 +335,16 @@ impl Machine {
         self.shutdown();
     }
 
-    /// Stops what runs on other threads; nothing stays half-sent by our choice.
+    /// Stops what runs on other threads; nothing stays half-sent by our choice. The window waits for this to return,
+    /// so it never waits on the port while an OS is being sent: a send in one piece holds the port for the whole file
+    /// (about 190 s for a Main), and a key or ribbon release would queue behind it.
     fn shutdown(&mut self) {
-        self.release_held_keys();
-        self.release_touched_ribbons();
+        if !self.os_active.load(Ordering::SeqCst) {
+            self.release_held_keys();
+            self.release_touched_ribbons();
+        }
         self.stop_clock();
+        self.forget_interrupted_os();
         if let Some(cancel) = &self.os_cancel {
             cancel.cancel();
         }
@@ -417,8 +426,12 @@ pub fn spawn(
     storage: Storage,
     emit: Emitter,
 ) -> Result<Worker, AppError> {
+    start(Machine::new(connector, storage, emit))
+}
+
+/// Runs `machine` on the worker thread (tests start a machine they have already set up).
+fn start(machine: Machine) -> Result<Worker, AppError> {
     let (commands, receiver) = mpsc::channel();
-    let machine = Machine::new(connector, storage, emit);
     let os_active = Arc::clone(&machine.os_active);
     let thread = thread::Builder::new()
         .name("tempester-midi".into())

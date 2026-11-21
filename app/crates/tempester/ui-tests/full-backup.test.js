@@ -128,6 +128,67 @@ check("a clean answer can be saved, and the Debug-menu dumps are listed with it"
   assert.ok(control(root, SAVE).disabled);
 });
 
+const CALIBRATION = {
+  a: ["8340", "8240", "8600", "8a00", "9200", "a200", "8b00", "a100", "c700", "f300"],
+  b: ["8210", "8410", "8810", "9010", "a010", "c010", "8b10", "a110", "c710", "f310"],
+  c: ["d300", "c6c0", "ba80", "ae40", "a200", "95c0", "8980", "7d40", "7100", "64c0", "5880", "4c40"],
+  scalars: ["0344", "7ea3", "7b90"],
+};
+const withWords = (r, words) => Object.assign({}, r, { calibration: words || CALIBRATION });
+const lineOf = (chip) =>
+  all(section()).filter((n) => n.tagName === "TR").find((n) => textOf(n).startsWith(chip));
+const wordsOf = (chip) =>
+  all(section())
+    .filter((n) => n.tagName === "TR")
+    .find((n) => textOf(n).startsWith("Calibration of " + chip + ":"));
+const badgeOf = (chip) => all(lineOf(chip)).find((n) => n.tagName === "SPAN" && /\bbadge\b/.test(n.attrs.class || ""));
+
+check("a chip with a calibration warning can be saved, its row and the status say so", () => {
+  const list = rows("ok", "aligned").map((r) => withWords(r));
+  list[2] = withWords(
+    row("Voice 2", "warning", "aligned; WARNING: table A does not increase: an unusual calibration shape, saved exactly as read"),
+  );
+  list[3] = withWords(row("Voice 3", "warning", "aligned; WARNING: table A does not increase"));
+  env.receive({ event: "full_backup", state: "ready", rows: list, extras: [] });
+  assert.ok(!control(root, SAVE).disabled, "a warning passes: the set can be saved");
+  assert.ok(textOf(lineOf("Voice 2")).includes("warning"), "the row says warning");
+  assert.ok(!textOf(lineOf("Voice 2")).includes("OK"), "a warned row is not shown as OK");
+  assert.ok(textOf(lineOf("Voice 2")).includes("table A does not increase"), "the reason is shown");
+  assert.ok(/\bconstant\b/.test(badgeOf("Voice 2").attrs.class), "the warning colour, not the refusal's");
+  assert.ok(!/\binvalid\b/.test(badgeOf("Voice 2").attrs.class));
+  assert.ok(/\bok\b/.test(badgeOf("Voice 0").attrs.class));
+  const status = all(section()).find((n) => n.attrs.role === "status" && textOf(n).startsWith("You can save"));
+  assert.ok(status, "the status says the set can be saved");
+  assert.ok(textOf(status).includes("2 calibration page(s) with a warning"), textOf(status));
+  assert.ok(/\bwarn\b/.test(status.attrs.class), "in the warning colour");
+});
+
+check("every Voice row shows its 35 calibration words, a refused one included, with what may be posted", () => {
+  const refusedWords = Object.assign({}, CALIBRATION, { a: ["ffff"].concat(CALIBRATION.a.slice(1)) });
+  const list = rows("ok", "aligned").map((r, k) => (k < 6 ? withWords(r) : r));
+  list[4] = withWords(
+    row("Voice 4", "refused", "calibration page: word 0 reads as erased (0xFFFF)"),
+    refusedWords,
+  );
+  list[5] = row("Voice 5", "refused", "refused: checksum");
+  env.receive({ event: "full_backup", state: "refused", rows: list, extras: [] });
+  const words = textOf(wordsOf("Voice 0"));
+  assert.ok(words.includes("A " + CALIBRATION.a.join(" ")), words);
+  assert.ok(words.includes("B " + CALIBRATION.b.join(" ")), words);
+  assert.ok(words.includes("C " + CALIBRATION.c.join(" ")), words);
+  assert.ok(words.includes("scalars 0344 7ea3 7b90"), words);
+  assert.ok(wordsOf("Voice 4"), "the refused chip's words are shown");
+  assert.ok(textOf(wordsOf("Voice 4")).includes("A ffff 8240"), textOf(wordsOf("Voice 4")));
+  assert.ok(!wordsOf("Voice 5"), "no words when the message did not decode");
+  assert.ok(!wordsOf("Main boot flash"));
+  const text = textOf(section());
+  assert.ok(text.includes("you may copy them into a bug report"), "the words may be posted");
+  assert.ok(text.includes("Never post the Voice .syx files: they hold DSI's Voice OS."), "the image never");
+  env.receive({ event: "full_backup", state: "idle", rows: [], extras: [] });
+  const note = all(section()).find((n) => textOf(n).startsWith("Below each Voice row"));
+  assert.ok(!isShown(note), "no words, no note");
+});
+
 check("cancel sends its command", () => {
   env.receive({ event: "full_backup", state: "receiving", rows: rows("waiting"), extras: [] });
   const before = env.sent.length;

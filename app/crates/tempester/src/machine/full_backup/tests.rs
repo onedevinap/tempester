@@ -879,3 +879,191 @@ fn test_start_when_the_chips_hold_the_built_voice_1_5_1_0_returns_rows_naming_it
         "{dsi_rows:?}"
     );
 }
+
+// ---- Calibration pages of unusual shape (public issue #4) and the words shown in every case ----
+
+/// Writes the 16-bit value of calibration word `word` of a synthetic Voice image (the upper byte stays `0xFF`).
+fn write_calibration_word(image: &mut [u8], word: usize, value: u16) {
+    let at = 42 * PAGE_BYTES + 3 * word;
+    image[at] = (value & 0xFF) as u8;
+    image[at + 1] = (value >> 8) as u8;
+}
+
+/// The bottom point of oscillator 1 above the next one: table A does not increase, as on the four chips of issue #4.
+fn bottom_point_above_the_next(image: &mut [u8]) {
+    let next = synthetic::calibration_words(2)[1];
+    write_calibration_word(image, 0, next + 0x100);
+}
+
+fn row_of(event: &Event, chip: &str) -> String {
+    voice_details(event)
+        .into_iter()
+        .find(|row| row.contains(&format!(r#""chip":"{chip}""#)))
+        .expect("the row")
+}
+
+#[test]
+fn test_start_when_a_calibration_table_does_not_increase_returns_ready_with_that_row_warned_and_its_words(
+) {
+    let mut rig = started(
+        "full-warn",
+        answer_changing(2, |image| bottom_point_above_the_next(image)),
+    );
+
+    let event = last_state(&mut rig);
+
+    assert_eq!(event.field("state"), Some(&"ready".into()));
+    for (chip, verdict) in rows(&event) {
+        let expected = if chip == "Voice 2" { "warning" } else { "ok" };
+        assert_eq!(verdict, expected, "{chip}");
+    }
+    let row = row_of(&event, "Voice 2");
+    assert!(row.contains("WARNING: table A does not increase"), "{row}");
+    assert!(row.contains("saved exactly as read"), "{row}");
+    assert!(
+        row.contains("pages 0-41 identical to Voice 0's: read in step up to the calibration page"),
+        "{row}"
+    );
+    let words = synthetic::calibration_words(2);
+    let shown = format!(
+        r#""calibration":{{"a":["{:04x}","{:04x}","#,
+        words[1] + 0x100,
+        words[1]
+    );
+    assert!(row.contains(&shown), "the warned chip's own words: {row}");
+    let scalars = format!(
+        r#""scalars":["{:04x}","{:04x}","{:04x}"]"#,
+        words[32], words[33], words[34]
+    );
+    assert!(row.contains(&scalars), "{row}");
+    let usual = row_of(&event, "Voice 0");
+    assert!(
+        !usual.contains("WARNING"),
+        "a usual page warns of nothing: {usual}"
+    );
+    assert!(
+        usual.contains(r#""calibration":{"a":["#),
+        "every Voice row carries its words: {usual}"
+    );
+}
+
+#[test]
+fn test_save_when_a_chip_warned_returns_its_words_and_the_warning_in_the_report_and_the_manifest() {
+    let mut rig = started(
+        "full-warn-save",
+        answer_changing(2, |image| bottom_point_above_the_next(image)),
+    );
+    rig.events();
+
+    rig.machine.full_save(STAMP).expect("a warned set is saved");
+
+    let dir = backup_dir(&rig);
+    let report = std::fs::read_to_string(dir.join("report.txt")).expect("report");
+    assert!(
+        report.contains(
+            "WARNING: 1 Voice calibration page(s) with an unusual shape, saved exactly as read"
+        ),
+        "{report}"
+    );
+    let words = synthetic::calibration_words(2);
+    let first = format!(
+        "  calibration A (osc 1): {:04x} {:04x} ",
+        words[1] + 0x100,
+        words[1]
+    );
+    assert!(report.contains(&first), "the warned chip's words: {report}");
+    assert!(
+        report.contains("  WARNING: table A does not increase"),
+        "{report}"
+    );
+    assert!(
+        report.contains("you may quote them in a bug report"),
+        "{report}"
+    );
+    assert!(
+        report.contains("Never post the Voice .syx files"),
+        "{report}"
+    );
+    let manifest = std::fs::read_to_string(dir.join("manifest.json")).expect("manifest");
+    assert_eq!(
+        manifest
+            .matches(r#""calibration_warnings":["table A does not increase"]"#)
+            .count(),
+        1,
+        "{manifest}"
+    );
+    assert_eq!(manifest.matches(r#""calibration_warnings":[]"#).count(), 5);
+    let mut warned = synthetic::voice_image(2);
+    bottom_point_above_the_next(&mut warned);
+    assert_eq!(
+        rig.machine
+            .storage
+            .last_calibration()
+            .map(|all| all[2].clone()),
+        Some(sha256_hex(calibration_page(&warned))),
+        "the next backup compares the warned page byte for byte, as any other"
+    );
+}
+
+#[test]
+fn test_start_when_a_calibration_word_is_erased_returns_refused_with_the_words_and_the_pages_compared(
+) {
+    let mut rig = started(
+        "full-erased",
+        answer_changing(3, |image| write_calibration_word(image, 0, 0xFFFF)),
+    );
+
+    let event = last_state(&mut rig);
+
+    assert_eq!(event.field("state"), Some(&"refused".into()));
+    assert!(rows(&event).contains(&("Voice 3".into(), "refused".into())));
+    let row = row_of(&event, "Voice 3");
+    assert!(
+        row.contains("calibration page: word 0 reads as erased (0xFFFF)"),
+        "{row}"
+    );
+    assert!(
+        row.contains("power the machine off and on, then ask again"),
+        "{row}"
+    );
+    assert!(row.contains("pages 0-41 identical to Voice 0's"), "{row}");
+    assert!(row.contains("Voice OS: unknown build"), "{row}");
+    assert!(
+        row.contains(r#""calibration":{"a":["ffff","#),
+        "a refused chip still shows its words: {row}"
+    );
+    assert!(rig.machine.full_save(STAMP).is_err());
+    assert!(no_backup_folder(&rig));
+}
+
+#[test]
+fn test_start_when_a_refused_chip_was_read_out_of_step_returns_how_many_bytes_of_pages_0_41_differ()
+{
+    let mut rig = started(
+        "full-out-of-step",
+        answer_changing(4, |image| {
+            image[42 * PAGE_BYTES - 7] ^= 0x10;
+            write_calibration_word(image, 34, 0xFFFF);
+        }),
+    );
+
+    let row = row_of(&last_state(&mut rig), "Voice 4");
+
+    assert!(row.contains("word 34 reads as erased"), "{row}");
+    assert!(
+        row.contains("1 byte(s) of pages 0-41 differ from Voice 0's"),
+        "{row}"
+    );
+}
+
+#[test]
+fn test_start_when_a_message_does_not_decode_returns_no_words_for_its_row() {
+    let mut messages = synthetic::answer();
+    messages[1][4 + 1171 * 9 + 5] ^= 0x01;
+    let mut rig = started("full-no-words", messages);
+
+    let row = row_of(&last_state(&mut rig), "Voice 1");
+
+    assert!(row.contains("checksum"), "{row}");
+    assert!(row.contains(r#""calibration":null"#), "{row}");
+}

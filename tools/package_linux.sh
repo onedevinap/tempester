@@ -147,10 +147,10 @@ PLUGIN_DEPENDS=$(shlib_depends tempester-plugins "libc6, libgcc-s1" "${PLUGIN_LI
 echo "tempester-plugins Depends: $PLUGIN_DEPENDS"
 write_control "$PLUGIN_STAGE" tempester-plugins "$PLUGIN_DEPENDS" tempester \
   "Tempester Control, DAW plugin (CLAP and VST3) for the DSI Tempest" \
-  " A MIDI effect whose parameters are the Tempest sound parameters: automation or a
+  " A MIDI plugin whose parameters are the Tempest sound parameters: automation or a
  learned controller goes out on the plugin MIDI output, for the DAW to route to the
- machine. It opens no MIDI port. Needs a Tempester Main OS that applies NRPN (1.5.3.0
- or later)."
+ machine. It opens no MIDI port, and passes its stereo audio input to its output
+ untouched. Needs a Tempester Main OS that applies NRPN (1.5.3.0 or later)."
 
 rm -f "$DEB"
 dpkg-deb --root-owner-group --build "$STAGE" "$DEB" > /dev/null
