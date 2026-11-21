@@ -5,7 +5,7 @@
 - Tempester OS is the official **Main OS 1.5.0.2** of the DSI Tempest with numbered patches (n°1, n°2a...) applied.
 - **Tempester Voice** does the same for the official **Voice OS 1.5** of the six sound chips. It is optional, from
   Tempester 1.6.7.0 on.
-- The latest releases are **Tempester OS 1.6.9.1** and **Tempester Voice 1.5.1.2**. Install the Main first.
+- The latest releases are **Tempester OS 1.7.0.0** and **Tempester Voice 1.5.1.2**. Install the Main first.
 - Every patch is a recipe applied to your own official file, checked by SHA-256.
 
 This page explains each version and each patch: the problem, what changes for you, how it was proved, whether it was
@@ -63,11 +63,11 @@ its own.
 
 **Which one?**
 
-- **1.6.9.1** is the latest release, with everything: 1.6.9.0 with the pad settings page's knobs in the screen's
-  order.
+- **1.7.0.0** is the latest release, with everything: 1.6.9.1 plus the Sound of any beat and pad read or written over
+  SysEx (requests `46` and `47`).
 - **1.5.6.0** is the corrections-only release: the bug fixes, the sound and beat requests and NRPN, without the 1.6
   additions.
-- For the voice chips, Tempester Voice 1.5.1.2 goes on **after** Main 1.6.9.0 or 1.6.9.1
+- For the voice chips, Tempester Voice 1.5.1.2 goes on **after** Main 1.6.9.0 or later
   ([Tempester Voice](#tempester-voice)).
 
 | Version | Builds on | Adds | Status |
@@ -106,6 +106,8 @@ its own.
 | 1.6.9.0-a (test) | 1.6.8.0 | n°65: n°62 and n°63 in their 1.6.9.0 forms | not installed |
 | **1.6.9.0** every Tempester Voice recognised | 1.6.8.0 | n°65 | **installed** (15 Nov) |
 | **1.6.9.1** pad settings knobs in order | 1.6.9.0 | n°69 | **installed** (21 Nov) |
+| 1.7.0.0-a (test) | 1.6.9.1 | n°74, 75 (its screens and request `43` show 1.6.9.1) | **installed** (21 Nov) |
+| **1.7.0.0** a Sound by beat and pad over SysEx | 1.6.9.1 | n°74, 75 | **installed** (21 Nov) |
 
 What was checked on the machine for the later releases:
 
@@ -119,6 +121,17 @@ What was checked on the machine for the later releases:
 - **1.6.7.0** (14 Nov), with Tempester Voice 1.5.1.0: six chips reported, Release 127 heard.
 - **1.6.8.0** (14 Nov), with Tempester Voice 1.5.1.1: two full backups in a row, identical.
 - **1.6.9.0** (15 Nov): it answers 1.6.9.0; two full backups in a row identical; then Tempester Voice 1.5.1.2.
+- **1.6.9.1** (21 Nov): installed from the app's OS update page; on the pad settings page each knob changes the value
+  above it, tried by hand.
+- **1.7.0.0-a** (21 Nov), over USB with the sequencer stopped: request `46` on the selected slot answered `47` and the
+  same Sound bytes as request `40`; two more slots answered in full; beat 16 and pad 32 refused; a Sound stored with
+  `47` into another slot read back equal, the slot then restored and read back equal; a slot stored onto itself
+  unchanged; the selected Sound and request `40` unchanged afterwards. 1.7.0.0 is the same image with its own number.
+- **1.7.0.0** (21 Nov): installed from the app's OS update page. It answers 1.7.0.0, then six `0017`. The same requests
+  and stores as on 1.7.0.0-a, also with the sequencer playing (the same bytes; the playback was not disturbed, by the
+  author's ear); a Sound stored into the selected pad on screen: the screen and the pad had the new Sound; listened to
+  on the project's Tempest. One try of Revert Snd after a store did not bring the previous Sound back (not
+  investigated). Not tried: the LEDs after a store into the pad on screen, DIN.
 
 The test versions are kept so that each patch can be checked on its own.
 
@@ -200,6 +213,7 @@ The Release cap exists because the official voices never end a release at 124-12
 | The five Release parameters up to 127 when the six voice chips run Tempester Voice | 1.6.7.0 |
 | The Voice OS of each chip reported (SysEx `45` after `43`) | 1.6.7.0 |
 | Every Tempester Voice version recognised, 1.5.1.2 included | 1.6.9.0 |
+| The Sound of any beat and pad requested (SysEx `46`) or stored (SysEx `47`), the selection untouched | 1.7.0.0 |
 
 Notes:
 
@@ -949,6 +963,61 @@ the patch, which must fail. See [How the patches are proved](#how-the-patches-ar
   changes the value above it.
 - **Limits**: none known.
 
+### n°74: the Sound of any beat and pad on request (SysEx `46`)
+
+- **Problem**: the official OS sends only the selected Sound (from its menu, and with n°1 on request `40`). A program
+  that manages Sounds, such as a librarian, had to change the selection on the machine to read another pad, or fetch
+  the whole beat or project (public issue #6).
+- **Effect**: `F0 01 28 46 bb pp F7` (beat bb 0-15, pad pp 0-31) returns `F0 01 28 47 bb pp <Sound> F7` on the cable
+  chosen in System. The Sound bytes are exactly those of the `60` message the machine sends for that Sound. Nothing on
+  the machine changes: not the selection, not the screen, not the Sound read. A beat or pad out of range is answered by
+  the status message `F0 01 28 4F 46 01 F7`. Byte layouts: [MIDI protocol](midi-protocol.md#one-sound-by-beat-and-pad).
+  - The official Sound sender writes one internal value (a format number) into the Sound it reads; the request puts it
+    back as it was, so a read leaves the stored Sound unchanged byte for byte.
+  - The new messages use command bytes the official OS and earlier Tempester versions ignore.
+- **Proof**: simulated with the firmware's own MIDI input, SysEx handling, Sound sender and Sound memory:
+  - every beat and pad, over DIN and USB: the answer is `47 bb pp` followed by exactly the Sound bytes request `40`
+    returns when that slot is the selection; memory, selection and the stored Sound unchanged;
+  - out-of-range, cut, too long and back-to-back requests; with the sequencer running;
+  - every other SysEx command, the identity request, a received Sound and notes behave exactly as on 1.6.9.1;
+  - 17 deliberately wrong variants of n°74 and n°75 refused (missing range checks, beat and pad swapped, wrong byte
+    counts, the answer on the wrong cable, the stored Sound left changed, and more).
+- **On a machine**: tried with 1.7.0.0-a (21 Nov, USB, sequencer stopped): the selected slot answered the same Sound
+  bytes as request `40`; two other slots answered in full; beat 16 and pad 32 refused. Then on 1.7.0.0 installed (21
+  Nov, USB): the same answers, also with the sequencer playing (the same bytes as stopped; the playback was not
+  disturbed, by the author's ear).
+- **Limits**: one answer at a time: wait for each answer before the next request (an answer is 159 bytes, about 51 ms
+  on DIN). Not tried on the machine over DIN.
+
+### n°75: a Sound sent into any beat and pad (SysEx `47`)
+
+- **Problem**: the official OS loads a received Sound (`60`) only into the selected pad of the current beat.
+- **Effect**: `F0 01 28 47 bb pp <Sound> F7` stores the Sound into beat bb, pad pp of the project in memory and answers
+  `F0 01 28 4F 47 00 F7`; out of range, nothing is written and the answer is `F0 01 28 4F 47 01 F7`. The message has
+  the same layout as the answer to `46`: a Sound fetched with `46` can be sent back unchanged.
+  - The Sound goes through the same checks as a received `60`: a value above a parameter's maximum becomes that
+    parameter's default.
+  - The machine then does what it does after a received `60`, for that slot: the pad's play state; for the beat and pad
+    on screen, the knob values and LEDs. The selection does not change.
+  - **Memory only**: the project in memory changes, as after an edit on the machine. It is kept only when you save the
+    beat or the project on the machine.
+  - **Keep the previous Sound yourself**: read it with `46` before storing, to put it back with `47`. On the
+    project's Tempest one try of Revert Snd after a store did not bring the previous Sound back (not investigated; it
+    is not known whether Revert was carried out to its end).
+- **Proof**: simulated as n°74: storing into every beat and pad gives exactly the memory a received `60` gives with
+  that slot selected, followed by the machine's own after-load steps; LEDs and on-screen values change only for the slot
+  on screen; a Sound stored then requested comes back identical; short, long, cut and out-of-range messages write
+  nothing; every other message unchanged.
+- **On a machine**: tried with 1.7.0.0-a (21 Nov, USB, sequencer stopped): a Sound stored into another slot read back
+  equal, the slot restored and read back equal to its original; a slot stored onto itself unchanged; beat 16 and pad
+  32 refused, nothing written. Then on 1.7.0.0 installed (21 Nov, USB): the same, stopped and with the sequencer
+  playing (the playback was not disturbed, by the author's ear); a Sound stored into the selected pad shown on screen
+  read back equal, request `40` then gave it, and the screen and the pad had the new Sound (the author); listened to
+  on the project's Tempest. The original Sound was put back with `47` and read back equal.
+- **Limits**: not tried on the machine for the LEDs after a store into the pad on screen, or over DIN. A Sound stored
+  into a pad that is sounding applies from its next note: a voice takes its Sound when a note starts (read from the
+  code).
+
 ## Tempester Voice
 
 Tempester Voice is a Tempester build of the official **Voice OS 1.5**, the program of the six sound chips.
@@ -963,7 +1032,7 @@ Tempester Voice is a Tempester build of the official **Voice OS 1.5**, the progr
 |---|---|---|---|
 | 1.5.1.0 (superseded) | official Voice 1.5 | the first Tempester Voice (below); version word `0016` | installed (14 Nov, six chips, with Main 1.6.6.0, then 1.6.7.0) |
 | 1.5.1.1 (superseded) | 1.5.1.0 | the dump stream goes back to the beginning at the end of the flash; version word `0016` | installed (14 Nov, with Main 1.6.8.0) |
-| **1.5.1.2** | 1.5.1.1 | a version word of its own, `0017` (n°66); **needs Main 1.6.9.0 first** | **installed** (15 Nov, six chips, after Main 1.6.9.0) |
+| **1.5.1.2** | 1.5.1.1 | a version word of its own, `0017` (n°66); **needs Main 1.6.9.0 or later first** | **installed** (15 Nov, six chips, after Main 1.6.9.0) |
 
 The app offers 1.5.1.2 only; the superseded versions stay in its History (1.5.1.2 holds all their fixes).
 
@@ -995,7 +1064,7 @@ What Tempester Voice changes (all in 1.5.1.2):
   1.5.1.2 differs from 1.5.1.1 by one instruction's value.
 - **On a machine**: each version installed on the six chips of the project's Tempest, with a full backup (n°62) right
   before and right after. Each chip's program pages equal the built image; its calibration page is unchanged.
-- **Install order**: Main 1.6.9.0 first, then Tempester Voice 1.5.1.2.
+- **Install order**: Main 1.6.9.0 or later first, then Tempester Voice 1.5.1.2.
   - On Main 1.6.7.0 or 1.6.8.0, a 1.5.1.2 chip keeps the Release knobs at 123 and is read once per power-on by the full
     backup. Nothing is damaged.
   - The app warns at send time when the machine reported an older Main, or none.

@@ -200,7 +200,7 @@ pub const FEATURES: [(&str, &str, &str, Option<&str>); 17] = [
 
 /// The fourth field of a `FEATURES` row is the version a feature is known to start with, for a release whose patch list
 /// the app does not hold yet (a release not built here): the feature is on for an announced version of the same
-/// `major.minor` line from it on (`1.6.6.0`, `1.6.10.0`), and `since` says it. A number of another line (`1.7.0.0`,
+/// `major.minor` line from it on (`1.6.6.0`, `1.6.10.0`), and `since` says it. A number of another line (`1.8.0.0`,
 /// `9.9.9.9`) says nothing the app can rely on: as for any unknown number, the record decides. Once the release is in
 /// `versions/`, the patch file decides as for every other row and the fourth field goes back to `None`.
 fn at_least(version: &str, minimum: &str) -> bool {
@@ -682,6 +682,46 @@ mod tests {
     }
 
     #[test]
+    fn test_features_for_when_the_machine_reports_1_7_0_0_returns_every_feature_and_the_cap_of_1_6_9_1(
+    ) {
+        // 1.7.0.0 = 1.6.9.1 + n°74 / n°75 (refs/adr/005-1700-indexed-sysex.md): every recipe of 1.6.9.1 kept.
+        for voices in [
+            None,
+            Some([0x17_u16; VOICE_CHIPS]),
+            Some([0x15_u16; VOICE_CHIPS]),
+        ] {
+            assert_eq!(
+                features_for(Some("1.7.0.0"), None, voices.as_ref()).render(),
+                features_for(Some("1.6.9.1"), None, voices.as_ref()).render(),
+                "{voices:?}"
+            );
+        }
+        assert_eq!(
+            cap_for(Some("1.7.0.0"), None),
+            ReleaseCap::WithAnyTempesterVoice
+        );
+        assert!(os_known(Some("1.7.0.0"), None));
+        assert_eq!(
+            running_json(Some("1.7.0.0")).render(),
+            r#"{"version":"1.7.0.0","label":"Tempester 1.7.0.0","known":true}"#,
+            "a release of the table: no base to resolve it from"
+        );
+        let v = versions::find_version("1.7.0.0").expect("1.7.0.0 in the table");
+        let record_1700 = InstalledOs {
+            sha256_image: v.sha256_image.into(),
+            ..record()
+        };
+        assert_eq!(
+            features_json(Some(&record_1700)).render(),
+            features_for(Some("1.6.9.1"), None, None).render(),
+            "named from the install record alone"
+        );
+        // Counter-proof: a 1.7 number the app has no manifest of says nothing.
+        assert_eq!(feature_in_os(Some("1.7.0.1"), None, "full_backup"), None);
+        assert!(!os_known(Some("1.7.0.1"), None));
+    }
+
+    #[test]
     fn test_feature_in_os_when_full_backup_or_release_cap_returns_what_the_manifest_of_each_version_says(
     ) {
         for name in ["full_backup", "release_cap"] {
@@ -694,7 +734,7 @@ mod tests {
                 None,
                 "{name}: a number the app has no manifest of says nothing"
             );
-            assert_eq!(on(Some("1.7.0.0")), None, "{name}");
+            assert_eq!(on(Some("1.8.0.0")), None, "{name}");
             assert_eq!(on(None), None, "{name}: nothing announced, no record");
         }
         let record_1660 = InstalledOs {
@@ -718,7 +758,7 @@ mod tests {
         assert!(at_least("1.6.6.0", "1.6.6.0"));
         assert!(at_least("1.6.10.0", "1.6.6.0"), "numbers, not text");
         assert!(!at_least("1.6.5.0", "1.6.6.0"));
-        assert!(!at_least("1.7.0.0", "1.6.6.0"), "another line");
+        assert!(!at_least("1.8.0.0", "1.6.6.0"), "another line");
         assert!(!at_least("1.6.x.0", "1.6.6.0"), "not a number");
         assert!(!at_least("1.6.6", "1.6.6.0"), "not the same length");
     }

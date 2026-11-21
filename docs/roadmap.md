@@ -17,16 +17,20 @@ Contents:
 
 ## Where things stand
 
-- **Tempester OS 1.6.9.1** is the latest release: 1.6.9.0 with the pad settings page's knobs in the screen's order
-  (public issue #3), not yet installed on the project's Tempest. 1.6.9.0 was installed there on 15 November 2026; the
-  1.6.5.0 functions were tried by hand on the machine. What each release brings:
+- **Tempester OS 1.7.0.0** is the latest release: 1.6.9.1 with the Sound of any beat and pad read or stored over
+  SysEx (requests `46` and `47`, public issue #6), installed on the project's Tempest from the app on 21 November 2026
+  and tried there over USB, also with the sequencer playing. The 1.6.5.0 functions were tried by hand on the machine.
+  What each release brings:
   [Everything Tempester OS changes](firmware.md#everything-tempester-os-changes).
 - **Tempester Voice 1.5.1.2**, the first Tempester build of the voice chips' own OS, runs on the project's six voice
   chips (15 November 2026). See [firmware](firmware.md#tempester-voice).
-- **The Tempester app** is used daily on macOS. The Windows build is checked to compile; neither Windows nor Linux has
-  been tried by a user yet.
+- **The Tempester app** is used daily on macOS. On Windows 10 one user reported that the installed app 0.1.4 starts
+  and that an OS update over USB worked (issues #1 and #2); nothing else has been tried on Windows. Linux has not been
+  tried by a user yet.
 - **Tempester Control** (CLAP and VST3) has its 146 parameters and MIDI learn, but no window of its own yet. The DAW
-  shows its generic parameter list.
+  shows its generic parameter list. From 0.1.6 it has a stereo audio input and output that pass the audio through
+  untouched, because Ableton Live refused the 0.1.4 VST3 without them (issue #5); the corrected plugin has not been
+  tried in any DAW yet.
 
 ## Firmware: making room
 
@@ -137,7 +141,8 @@ Which one, and in what order, will be decided once dead code is reclaimed (each 
 
 ## The app
 
-- **Windows and Linux**: first real use, fixes from the first CI and release runs, then signed packages if possible.
+- **Windows and Linux**: more real use (on Windows only the app's start and an OS update over USB have been reported
+  working), then signed packages if possible.
 - **Library**: the sound type and the oscillator and sample names shown in plain words.
 - **Panel**: learn on the Machine view too, and a channel filter for MIDI learn.
 - **More languages**: the app is in English; other languages may come later.

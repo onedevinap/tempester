@@ -8,6 +8,13 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ### [Unreleased]
 
+### [0.1.7] - 2026-11-21
+
+#### Added
+- **Tempester OS 1.7.0.0**, the release the app now offers: 1.6.9.1 with the Sound of any beat and pad read or stored
+  over SysEx (requests `46` and `47`, issue #6). A machine that reports 1.7.0.0 gets every feature of 1.6.9.1 in the
+  app; the app itself does not use `46` / `47` yet.
+
 ### [0.1.6] - 2026-11-21
 
 #### Fixed
@@ -50,6 +57,9 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 Three fixes for Windows, from the first reports of a Windows user (issues #1 and #2). **None of them could be tried
 on Windows**: the project has no Windows machine. macOS sends exactly what it sent before.
+
+*Note added later*: on 20 November 2026 the Windows user confirmed, on Windows 10, that the installed app 0.1.4 starts
+and that an OS update over USB works (issues #1 and #2).
 
 #### Fixed
 - **Windows: the installed app showed its window for an instant and quit** (the portable zip worked). WebView2 kept
@@ -232,6 +242,20 @@ First public version.
 Each version is built from the official Main OS 1.5.0.2 by the user; Panel and SAM are unchanged, and the Voice chips
 keep the official Voice 1.5 unless Tempester Voice (below) is installed.
 
+### [1.7.0.0] - 2026-11-21, installed
+
+- n°74: SysEx request `46` returns the Sound of any beat and pad (`F0 01 28 46 bb pp F7` → `F0 01 28 47 bb pp <152
+  bytes> F7`, the same Sound bytes as a Sound dump), without changing the selection or the Sound read (issue #6).
+- n°75: SysEx message `47` stores a Sound into any beat and pad of the project in memory, answered by a status message
+  (`F0 01 28 4F 47 00 F7`, or `01` when the beat or pad is out of range). Save the beat or the project on the machine
+  to keep it, and keep the previous Sound yourself (read it with `46` first): on the project's Tempest one try of
+  Revert Snd after a store did not bring it back (not investigated).
+- Details and byte layouts: [MIDI protocol](docs/midi-protocol.md#one-sound-by-beat-and-pad).
+- Proved in simulation. Installed on the project's Tempest from the app on 21 November 2026 and tried there over USB:
+  reads, out-of-range answers, stores read back and restored, also with the sequencer playing (the playback was not
+  disturbed, by the author's ear); a Sound stored into the pad on screen showed and played as the new Sound; listened
+  to on the project's Tempest. Not tried on the machine: the LEDs after a store into the pad on screen, over DIN.
+
 ### [1.6.9.1] - 2026-11-21, installed
 
 - n°69: on the pad settings page (Shift + the same pad twice) the four knobs under the screen now change the value
@@ -309,8 +333,8 @@ For a player:
 - Test versions 1.6.5.0-f, -g, -h, -i and -j hold n°48-n°51, n°52-n°53, n°54 and n°61, n°55-n°56, and n°58-n°59, to
   prove each group alone.
 - Installed with the author's go on 12 November 2026: the machine answers 1.6.5.0 to the exact-version request, and the
-  Main OS read back equals the built image on the written range. Hand tests of each new function are still to do
-  (n°52 listened to).
+  Main OS read back equals the built image on the written range. n°52 listened to then; the new functions were tried by
+  hand on 15 November 2026.
 
 ### [1.6.4.0] - 2026-11-10, installed and verified
 

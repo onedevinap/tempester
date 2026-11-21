@@ -8,8 +8,10 @@ The plugins go to the system folders, so every DAW and every user account finds 
 administrator password. Plugins you installed by hand under ~/Library/Audio/Plug-Ins are not touched.
 
 NOT SIGNED. This installer and its contents are not signed with an Apple Developer ID and not notarised.
-  - Open the .pkg with Control-click > Open (or System Settings > Privacy & Security > Open Anyway).
-  - The first launch of the app also needs Control-click > Open; a DAW may ask you to approve the plugin the same way.
+  - Double-click the .pkg once (macOS refuses it), then click Open Anyway in System Settings > Privacy & Security.
+  - The first launch of the app needs the same: open it once, then Open Anyway in Privacy & Security. Control-click >
+    Open no longer works for unsigned software on macOS 15 (Sequoia) and later. A DAW may ask you to approve the
+    plugin the same way.
 
 Tempester Control sends MIDI and opens no MIDI port: route its MIDI output to the Tempest in your DAW. Its stereo
 audio input passes to its output untouched, so a DAW that takes it only as an audio effect can load it. It needs a

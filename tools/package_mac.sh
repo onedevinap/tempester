@@ -6,8 +6,8 @@
 #
 # usage: tools/package_mac.sh        (macOS only; hdiutil, pkgbuild, productbuild: no dependency)
 # TEMPESTER_PLUGIN_BUNDLES=<folder> uses plugin bundles already built (tools/package_common.sh).
-# Unsigned (ADR 001): the first launch needs right-click > Open, the .pkg opens the same way (tools/macos/readme.txt
-# says so). Both are checked: file, size, version in the name; dmg: `hdiutil verify`, the mounted app carries the same
+# Unsigned (ADR 001): the first launch and the .pkg each need Open Anyway in System Settings > Privacy & Security
+# (tools/macos/readme.txt says so; right-click > Open no longer works from macOS 15). Both are checked: file, size, version in the name; dmg: `hdiutil verify`, the mounted app carries the same
 # version in its Info.plist and answers `--version`; the plugin bundles carry the same version; pkg: payload paths,
 # install locations, no relocation.
 #

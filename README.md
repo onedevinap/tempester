@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/onedevinap/tempester/actions/workflows/ci.yml"><img src="https://github.com/onedevinap/tempester/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="https://github.com/onedevinap/tempester/releases"><img src="https://img.shields.io/github/v/release/onedevinap/tempester?include_prereleases&sort=semver&label=app" alt="Latest app release"></a>
-  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.6.9.1-e8833a" alt="Tempester OS 1.6.9.1"></a>
+  <a href="#tempester-os-releases"><img src="https://img.shields.io/badge/Tempester%20OS-1.7.0.0-e8833a" alt="Tempester OS 1.7.0.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--3.0--or--later-blue" alt="Licence: GPL-3.0-or-later"></a>
   <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-555" alt="Platforms: macOS, Windows, Linux">
 </p>
@@ -88,7 +88,7 @@ Tempester fixes old bugs of the Tempest and opens it up over MIDI. It has three 
 
 You need a Tempest, a USB cable (or a MIDI interface) and a computer.
 
-1. **Install the app** (version 0.1.6). Download it from the
+1. **Install the app** (version 0.1.7). Download it from the
    [Releases](https://github.com/onedevinap/tempester/releases) page.
    - The packages are not signed, so your system blocks the first launch. How to get past it:
      [Installing a release package](docs/building.md#installing-a-release-package).
@@ -119,7 +119,7 @@ Tempester OS replaces the Main OS only. Panel and SAM stay those of the official
 
 | Release | What it is | Choose it if |
 |---|---|---|
-| **1.6.9.1** (latest) | Every fix and every addition | you want everything |
+| **1.7.0.0** (latest) | Every fix and every addition | you want everything |
 | **1.5.6.0** | Bug fixes, requests and NRPN only | you want the fewest changes |
 | **DSI 1.5.0.2** | The official OS, rebuilt unchanged | you want to go back |
 
@@ -153,11 +153,11 @@ everyone gets exactly the same image. See the [recipe format](docs/patch-recipe-
 
 ## What is tested
 
-All hardware tests were made on one Tempest, over USB. It now runs Main 1.6.9.0 and Voice 1.5.1.2.
+All hardware tests were made on one Tempest, over USB. It now runs Main 1.7.0.0 and Voice 1.5.1.2.
 
 **Tested on the machine**
 
-- Every Tempester OS release from 1.5.1.0 to 1.6.9.0, installed one after the other, without a programmer.
+- Every Tempester OS release from 1.5.1.0 to 1.7.0.0, installed one after the other, without a programmer.
 - Every Tempester Voice release, each with a full backup before and after.
 - The new functions, including the 1.6.5.0 ones, tried by hand.
 - The app on macOS: Main and Voice installs, the full backup page and the identity card.
@@ -170,8 +170,11 @@ All hardware tests were made on one Tempest, over USB. It now runs Main 1.6.9.0 
 
 **Not tested yet**
 
-- Windows and Linux: they pass the automatic tests, but nobody has used them with a Tempest.
-- The plugin in a real DAW. It has no window of its own yet.
+- Windows: one user reported that the installed app 0.1.4 starts and that an OS update over USB worked on Windows 10
+  (issues #1 and #2). Nothing else has been tried on Windows; the project has no Windows machine.
+- Linux: it passes the automatic tests, but nobody has used it with a Tempest.
+- The plugin in a real DAW: Ableton Live 12 on Windows scanned and refused the 0.1.4 VST3 (issue #5); the corrected
+  plugin (0.1.6) has not been tried in any DAW. It has no window of its own yet.
 - The DIN cable.
 - Going back to DSI 1.5.0.2 on the test machine. It uses the same update path as every install.
 - A few rare paths of the fixes.

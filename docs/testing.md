@@ -4,10 +4,10 @@
 
 - Every firmware change is proved before any install: static checks, and for most changes a simulation of the
   machine's own code, with counter-proofs.
-- Every Tempester OS and Tempester Voice release was installed on one real Tempest, over USB. It now runs Main 1.6.9.0
+- Every Tempester OS and Tempester Voice release was installed on one real Tempest, over USB. It now runs Main 1.7.0.0
   and Voice 1.5.1.2.
-- Not tested yet: Windows and Linux with a machine, the plugin in a real DAW, the DIN cable, and going back to the
-  official OS. The full list is [below](#not-verified).
+- Not tested yet: Linux with a machine, Windows beyond the app's start and one OS update reported by a user, the
+  plugin loaded in a DAW, the DIN cable, and going back to the official OS. The full list is [below](#not-verified).
 
 Dates are in 2026.
 
@@ -91,6 +91,9 @@ Each patch is described with its proof in [firmware](firmware.md). In short:
 - n°33 to n°35 (on the real user-interface code), n°36;
 - n°37 to n°46, n°48 to n°56, n°58, n°59, n°61;
 - n°62 to n°65 (full backup against models of the voice chips, Release cap and lift, Voice versions);
+- n°69 (the pad settings page's knobs, on the real page code);
+- n°74 and n°75 (one Sound by beat and pad: every beat and pad, both cables, against the official Sound sender and
+  receiver);
 - every release from 1.6.2.0 on, as combined images;
 - Tempester Voice, on a simulator of the Voice processor: the chip's own code, the Main's reads, the release curve,
   the update.
@@ -107,13 +110,14 @@ app's tests.
 ## Verified on a real machine
 
 One Tempest, over USB, each installation with the author's go. Each version replaced the previous one. The machine now
-runs Tempester 1.6.9.0, with Tempester Voice 1.5.1.2 on its six voice chips.
+runs Tempester 1.7.0.0, with Tempester Voice 1.5.1.2 on its six voice chips.
 
 How the installs were sent:
 
 - Up to 1.6.2.0, and some later ones (Main 1.6.9.0 and Tempester Voice 1.5.1.2 among them): with a SysEx sender of
   this repository (`tools/tempest_midi.swift`).
-- Main and Voice OS installs from the app's OS update page were also used, as were its full backup and identity card.
+- Main and Voice OS installs from the app's OS update page were also used (Main 1.6.9.1 and 1.7.0.0 among them), as
+  were its full backup and identity card.
 
 Release by release:
 
@@ -154,6 +158,22 @@ Release by release:
   playing.
 - **1.6.9.0, then Tempester Voice 1.5.1.2** (15 Nov): request `43` answers 1.6.9.0; `45` reports six `0017`. Two full backups in
   a row identical after each step. Each chip's program pages equal the built image; its calibration page is unchanged.
+- **1.6.9.1** (21 Nov): installed from the app's OS update page; on the pad settings page each knob changes the value
+  above it, tried by hand.
+- **1.7.0.0-a** (21 Nov), the test build of 1.7.0.0: installed over USB. Tried over USB with the sequencer stopped:
+  request `43` answers 1.6.9.1 (a test build keeps its base's number); request `46` on the selected slot answered `47`
+  with the same Sound bytes as request `40`; two other slots answered in full; beat 16 and pad 32 refused (`4F 46 01`);
+  a slot stored onto itself unchanged; a Sound stored with `47` into another slot read back equal, then that slot
+  restored and read back equal to its original; stores to beat 16 and pad 32 refused (`4F 47 01`); the selected Sound
+  and request `40` unchanged afterwards.
+- **1.7.0.0** (21 Nov): installed from the app's OS update page (its install record holds the image's hashes), the
+  machine powered off and on. Request `43` answers 1.7.0.0, then `45` six `0017`; request `46` answers the same Sound
+  bytes as on 1.7.0.0-a; out of range refused. The store round trips of 1.7.0.0-a again, then the same requests and
+  stores with the sequencer playing: the same bytes, and the playback was not disturbed (the author, by ear). A Sound
+  stored into the selected pad on screen: read back equal, request `40` gave it, the screen and the pad had the new
+  Sound (the author); listened to on the project's Tempest. One try of Revert Snd after that store did not bring the
+  previous Sound back (not investigated); the original was put back with `47` and read back equal. Not tried: the
+  LEDs after a store into the pad on screen, DIN.
 
 **Why the last flash page is left out of the comparison**
 
@@ -180,28 +200,33 @@ Be aware of these before relying on them.
 
 **App**
 
-- **Windows and Linux on real hardware**: never run with a Tempest. They compile and pass the tests in CI only. The
-  Windows web view (WebView2) and the Linux one (WebKitGTK) were not looked at by a person.
+- **Windows on real hardware**: one user reported, on Windows 10 with app 0.1.4, that the app installed by the
+  installer starts and that an OS update over USB worked (issues #1 and #2). Nothing else has been tried on Windows; the
+  project has no Windows machine.
+- **Linux on real hardware**: never run with a Tempest. It compiles and passes the tests in CI only; its web view
+  (WebKitGTK) was not looked at by a person.
 - **The app over a DIN cable**: sending an OS, *Verify the installed OS* and the transfers were used over USB only.
 - **A project fetched right after power-on**, before any beat is loaded: whether its 16 beats are all present is not
   proven. The app saves such a project as partial when beats are missing.
 - **The remote panel in the app**, beyond the checks listed above: direction and speed of an encoder step, scaling of
   absolute knobs, which of the two Shift keys is 41 or 47, Pad Function LEDs in 16 Beats / 16 Mutes.
 - **Packages**: none is signed or notarised.
-  - The Linux `.deb` packages and the Windows installer were built by CI scripts but never installed by a person.
+  - The Linux `.deb` packages were built by CI scripts but never installed by a person. The Windows installer was
+    installed by one user (app 0.1.4, above).
   - The macOS `.pkg` was built and its content inspected, never installed.
   - No AppImage, no Intel macOS build.
 
 **Plugin (Tempester Control)**
 
-- **Never loaded in a real DAW.** It is built, unit-tested (with counter-proofs, including a check that the audio
-  thread never allocates) and driven by a headless CLAP host.
+- **Not loaded in a DAW by the project.** It is built, unit-tested (with counter-proofs, including a check that the
+  audio thread never allocates) and driven by a headless CLAP host. A user's Ableton Live 12 on Windows scanned the
+  VST3 of app 0.1.4 and refused it (issue #5); the corrected plugin has not been loaded by any DAW yet.
 - Its stereo audio input and output, added so that Ableton Live loads it (Live on Windows refused the plugin of app
   0.1.4, which had none), were checked through the plugin framework's VST3 code and the headless CLAP host: the buses,
   the stereo arrangement and the audio passing through untouched. **Not tried in Live, on Windows or elsewhere**: the
   project has no Windows machine, and no DAW was run.
-- Whether a given DAW routes the plugin's MIDI output is not known yet. The VST3 build was never loaded by a host.
-  Nothing was sent to a Tempest through it.
+- Whether a given DAW routes the plugin's MIDI output is not known yet. Apart from that refused scan, the VST3 build
+  was never loaded by a host. Nothing was sent to a Tempest through it.
 - No editor window: a learned controller does not move the DAW's own knob.
 
 **Firmware**

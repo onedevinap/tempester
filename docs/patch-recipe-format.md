@@ -176,9 +176,14 @@ treats two words: a pair is commonplace (`recipe.pic24_commonplace`) when it occ
 trivial, it repeats one word, or its 6 bytes hold at most 3 non-zero / 3 distinct values; any other pair of the Voice
 image quoted as two 6-digit words (a Voice recipe's literals, or prose, both byte orders) is refused. Counter-proofs:
 `tools/dsi_content_guard_counter_proofs.py` (a planted Voice pair) and `tools/voice_recipe_counter_proofs.py` (each
-forbidden write).
+forbidden write; not in the public tree).
 
 ## Making a recipe
+
+The assembler chain and the simulators are not in the public tree: `asm_resolve.py`, `Assembler.java`,
+`asm_generate_json.py`, the patch sources (`patch/*.s`, `patch/voice/<name>.s`), `voice_recipe_build.py`,
+`pic24_asm.py` and `pic24_sim.py` below are named to say how the recipes were made. In the public tree, `verify.sh`
+rebuilds every version from its recipes and checks the recorded hashes; it does not rebuild recipes from sources.
 
 - From assembly: `asm_resolve.py` → `Assembler.java` → `asm_generate_json.py <Main.bin> <assembler.out>
   <comments.json> <meta.json> patch/<name>.json [--source <assembler input>] [--fill <start> <end>]`.
@@ -189,7 +194,8 @@ forbidden write).
   `generate_rust_tables.py`, `verify.sh`.
 - Voice, as done for Tempester Voice 1.5.1.0: the source `patch/voice/<name>.s` and `voice_recipe_build.py
   work/Voice_1.5.bin <scratch>` (`asm_resolve.py --voice` → the hand encoder `pic24_asm.py`, each word decoded back →
-  `asm_generate_json.py --voice`); `verify.sh` rebuilds every recipe from its source (`--check`). Or with Ghidra:
+  `asm_generate_json.py --voice`); the private `verify.sh` rebuilds every Voice recipe from its source (`--check`).
+  Or with Ghidra:
   `asm_resolve.py --voice` → `Assembler.java` (`IMG=Voice_1.5.pic24.bin`) → `asm_generate_json.py --voice
   work/Voice_1.5.bin …` → `patch/voice/<name>.json`; `build_version.py versions/voice/<v>.json work/Voice_1.5.bin
   <folder> --record`; the simulation proof on `tools/pic24_sim.py` before any go.

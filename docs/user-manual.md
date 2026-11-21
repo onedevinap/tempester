@@ -1,6 +1,6 @@
 # Tempester user manual
 
-This manual covers the Tempester app 0.1.6, the Tempester Control plugin, and how to install Tempester OS.
+This manual covers the Tempester app 0.1.7, the Tempester Control plugin, and how to install Tempester OS.
 
 What each firmware release changes: [firmware](firmware.md). The exact MIDI messages: [MIDI protocol](midi-protocol.md).
 Screenshots show the app with example data.
@@ -430,8 +430,8 @@ building. It is also your way back.
 ## Installing a version with the app
 
 1. Do everything in [Before you install](#before-you-install-a-tempester-version).
-2. Connect. On the OS update page, choose your `Tempest_Main_1.5.0.2.syx`, select a version and press **Build this
-   version**. Check that *Built image matches the reference ✓* appears.
+2. Connect. On the OS update page, choose your `Tempest_Main_1.5.0.2.syx`, then press **Build** on the card of the
+   version. Check that *Built image matches the reference ✓* appears.
 3. Press **Send to the machine...**, read the confirmation, confirm. Do not touch the machine or the cable. The
    Tempest shows its update screen, then writes its flash.
 4. When the FX1 LEDs stop at the top, power the Tempest off and on.
@@ -457,7 +457,7 @@ cancelled or failed half way is forgotten.
 
 Tempester Voice is optional. It replaces the program of the six sound chips.
 
-1. **Install Main Tempester 1.6.9.0 first.** On an older Main, a 1.5.1.2 chip keeps the Release knobs at 123, and a
+1. **Install Main Tempester 1.6.9.0 or later first.** On an older Main, a 1.5.1.2 chip keeps the Release knobs at 123, and a
    second full backup in the same power-on skips it. The confirmation warns when the Main announced an older version,
    or none.
 2. **Make a full backup** (Tempester 1.6.6.0 or later) right before.
@@ -475,7 +475,7 @@ Tempester Voice is optional. It replaces the program of the six sound chips.
 After the install, the Release knobs (Panel) reach 127 only when the machine reports all six chips on Tempester Voice:
 
 - Tempester 1.6.7.0 and 1.6.8.0: Voice 1.5.1.0 or 1.5.1.1 (they answer the same version word);
-- Tempester 1.6.9.0: any Tempester Voice, 1.5.1.2 included.
+- Tempester 1.6.9.0 or later: any Tempester Voice, 1.5.1.2 included.
 
 Tempester Voice 1.5.1.0 and 1.5.1.1 stay in the Voice history, marked *Superseded*. 1.5.1.2 holds the same fixes with
 its own version word, so the app no longer builds or sends them.
@@ -548,7 +548,7 @@ These work on the Tempest itself. The app follows them where it edits the data. 
 - **Release values** (1.6.6.0). Pitch, Filter, Aux 1 and Aux 2 Release stop at 123, like Amp Release: the official
   voice chips never end a release at 124-127. A sound saved with 124-127 plays and shows as 123.
 - **Release up to 127** (1.6.7.0) with the six chips on Tempester Voice. Their releases always end, up to 60 s at 127.
-  Voice 1.5.1.2 needs Main 1.6.9.0. The Panel page follows the machine.
+  Voice 1.5.1.2 needs Main 1.6.9.0 or later. The Panel page follows the machine.
 - **Full backup over MIDI** (1.6.6.0; repeatable in one power-on from 1.6.8.0): see [Backup](#backup).
 - **The Voice OS of each chip** is reported to the app (1.6.7.0): see [Machine identity](#machine-identity).
 

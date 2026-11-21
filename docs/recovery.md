@@ -19,8 +19,7 @@ Everything happens **over MIDI (USB or DIN)**:
 - **An interrupted or failed update** (cable pulled, computer asleep, checksum error): power the Tempest off and on,
   and send the file again.
 
-On the project's test machine, every Tempester release from 1.5.1.0 to 1.6.9.0 was installed this way over USB, each
-replacing the previous one, with no programmer.
+On the project's test machine, every Tempester release from 1.5.1.0 to 1.7.0.0 was installed this way over USB, each replacing the previous one, with no programmer.
 
 - Each time, the machine started and showed the new version under System > *Main OS Version*.
 - For 1.5.5.0, 1.6.2.0, 1.6.3.0, 1.6.4.0 and 1.6.5.0, the Main OS read back through the Debug menu matched the built

@@ -2,8 +2,10 @@
 
 **In short**
 
-- **SysEx requests** `40`-`44`: fetch the current sound, the current beat, the whole project, the exact version, or a
-  full backup.
+- **SysEx requests** `40`-`44`: fetch the current sound, the current beat, the whole project, the exact version (with
+  each voice chip's version in a `45` message after it), or a full backup.
+- **One Sound by beat and pad** (`46`, answered `47`; `47` to store; status message `4F`, from 1.7.0.0): read or
+  store the Sound of any pad of any beat, without changing the selection.
 - **NRPN** for every sound parameter, both ways.
 - **Remote panel**: keys, LEDs, encoders and knobs as CCs and NRPN.
 - **Reports** from the machine: beat-wide positions, FX ribbons, mixer and tempo values, the Pad Function mode.
@@ -25,6 +27,7 @@ Contents:
 
 - [Versions](#versions)
 - [SysEx requests](#sysex-requests)
+- [One Sound by beat and pad](#one-sound-by-beat-and-pad)
 - [Full backup](#full-backup)
 - [Identity](#identity)
 - [Sound parameters (NRPN)](#sound-parameters-nrpn)
@@ -51,20 +54,24 @@ Contents:
 | FX ribbons over MIDI (CC 108-113); play probability per pad (CC 14) | 1.6.3.0 | n°31, n°36 |
 | Mixer, beat and main values reported (NRPN 230-239) | 1.6.4.0 | n°38 |
 | Request `43` (exact Tempester version); Pad Function mode reported (CC 106) | 1.6.4.0 | n°39, n°40 |
+| MIDI channel per pad (CC 15-17); fine Quantize value in the project header (word 18) | 1.6.5.0 | n°58, n°55 |
 | Request `44` (full backup: six Voice chips, Main boot flash, System settings); every Voice OS dump aligned | 1.6.6.0 | n°62 |
 | Pitch, Filter, Aux 1 and Aux 2 Release capped at 123, as Amp Release | 1.6.6.0 | n°63 |
 | The five Release parameters up to 127 with six Tempester Voice 1.5.1.0 chips (123 otherwise) | 1.6.7.0 | n°63 |
 | Request `43` also answers `45`: the Voice OS version of each chip | 1.6.7.0 | n°64 |
 | A second request `44` (or Debug Voice dump) never reads a Voice chip past its flash | 1.6.8.0 | n°62 |
 | Every Tempester Voice word (`0016`-`0079`) counts for the Release lift and the re-alignment | 1.6.9.0 | n°65 |
+| Request `46` (the Sound of a beat and pad) answered `47`; status message `4F` | 1.7.0.0 | n°74 |
+| Message `47` stores a Sound into a beat and pad | 1.7.0.0 | n°75 |
 
 From 1.6.8.0, at a second dump in the same power-on, Tempester Voice chips are re-aligned, and a DSI Voice chip
 already read answers an empty message ([Full backup](#full-backup)).
 
 ## SysEx requests
 
-The official OS answers no request. Tempester adds five. Each reply leaves on the cable set in System > *MIDI: SysEx
-IN+OUT Cable* (USB or DIN), and is the same message the machine's menu would send.
+The official OS answers no request. Tempester adds five here, and two more for one Sound by beat and pad
+([below](#one-sound-by-beat-and-pad)). Each reply leaves on the cable set in System > *MIDI: SysEx IN+OUT Cable* (USB
+or DIN). The replies of `40`-`42` are the same messages the machine's menu would send.
 
 | Request | Reply | Content |
 |---|---|---|
@@ -119,6 +126,82 @@ The Main itself takes a chip as Tempester Voice (Release up to 127, re-aligned f
   - 1.6.7.0 and 1.6.8.0: 127 when the six words are `0016`, 123 otherwise;
   - from 1.6.9.0: 127 when the six words are `0016`-`0079`.
 - The words are read at power-on only: a Voice OS installed since then counts after the next power-on.
+
+## One Sound by beat and pad
+
+From 1.7.0.0 (n°74, n°75). Read or store the Sound of any pad of any beat of the project in memory, without changing
+the selection on the machine. Accepted on the cable set in System > *MIDI: SysEx IN+OUT Cable*, like every request;
+every answer leaves on that cable.
+
+| Message to the machine | Answer | Meaning |
+|---|---|---|
+| `F0 01 28 46 bb pp F7` | `F0 01 28 47 bb pp <152 bytes> F7` | the Sound of beat `bb`, pad `pp` |
+| `F0 01 28 46 bb pp F7`, `bb` or `pp` out of range | `F0 01 28 4F 46 01 F7` | nothing read |
+| `F0 01 28 47 bb pp <152 bytes> F7` | `F0 01 28 4F 47 00 F7` | the Sound stored into beat `bb`, pad `pp` |
+| `F0 01 28 47 bb pp <152 bytes> F7`, `bb` or `pp` out of range | `F0 01 28 4F 47 01 F7` | nothing written |
+
+**Numbers.**
+
+- `bb` = beat − 1: `00`-`0F` for beats 1-16. `10` and above are out of range.
+- `pp` = pad: `00`-`0F` for A1-A16, `10`-`1F` for B1-B16 (0-31 = A1-B16, as CC 15). `20` and above are out of range.
+
+**The 152 bytes** are exactly the data of a Sound dump `F0 01 28 60 <152 bytes> F7` (request `40`, the menu's
+*Send Sound*), for the same Sound:
+
+- They are the 128 bytes of the Sound, 7-bit packed ([7-bit packing](#7-bit-packing)): 18 groups of 8 bytes (a head
+  byte with the high bit of the next 7 bytes, bit j for byte j, then those 7 bytes with their high bit cleared), then a
+  19th group: its head byte, Sound bytes 126 and 127, and five padding bytes. 18 × 8 + 8 = 152.
+- The machine sends zeros as padding. When you send `47`, send five zeros too; the machine does not read them.
+- The 128 bytes hold the 127 parameters packed bit by bit, lowest bit first, each at the bit position and width of
+  [Sound parameter numbers](#sound-parameter-numbers) (the table in `profile/dsi-tempest/sound_params.json`, fields
+  `bit` and `bits`), then the name: 20 characters of 7 bits from byte 110.
+- So a `60` message becomes a `47` message by replacing the byte `60` with `47 bb pp`, and the answer to `46` becomes a
+  `60` message by replacing `47 bb pp` with `60`. A Sound read with `46` can be sent back with `47` unchanged.
+- Parameter 124 (an internal format number, no knob) always reads 3 in an answer, as in a `60` from the machine. The
+  stored Sound is not changed by a read.
+
+**Status message** `F0 01 28 4F cc ss F7` (7 bytes):
+
+| `cc` | `ss` | Meaning |
+|---|---|---|
+| `46` | `01` | request `46` with a beat or pad out of range: nothing read (a valid `46` is answered by `47`, not by `4F`) |
+| `47` | `00` | the Sound is stored |
+| `47` | `01` | beat or pad out of range: nothing written |
+
+Other values of `ss` are not used by 1.7.0.0. `4F` is not a command of the machine: sent back to it, it is ignored.
+
+**Examples.**
+
+- Beat 1, pad A1: `F0 01 28 46 00 00 F7` → `F0 01 28 47 00 00 <152 bytes> F7` (159 bytes).
+- Beat 3, pad B5: `F0 01 28 46 02 14 F7` → `F0 01 28 47 02 14 <152 bytes> F7`.
+- Store into beat 16, pad B16: `F0 01 28 47 0F 1F <152 bytes> F7` → `F0 01 28 4F 47 00 F7`.
+- Beat 17 does not exist: `F0 01 28 46 10 00 F7` → `F0 01 28 4F 46 01 F7`.
+
+**What a store does.**
+
+- The 152 bytes go through the same checks as a received `60`: a value above a parameter's maximum becomes that
+  parameter's default; a name character below space becomes a space.
+- Only that pad of that beat changes, **in the project in memory**, as after an edit on the machine. It is kept only
+  when the beat or the project is saved on the machine; switching off without saving loses it.
+- The selection does not change. When the stored pad is the one on screen, its knob values and LEDs follow; the play
+  state of the pads of that beat is updated as after a received `60`.
+- A pad that is sounding plays the new Sound from its next note.
+- Sending `60` still loads a Sound into the selected pad of the current beat, as before (an « edit buffer »).
+- Keep the previous Sound yourself: read it with `46` before a store, to put it back with `47`. On the project's
+  Tempest one try of Revert Snd after a store did not bring the previous Sound back (not investigated; it is not known
+  whether Revert was carried out to its end).
+
+**Rules.**
+
+- Send one message and wait for its answer before the next. The answer to `46` is 159 bytes, about 51 ms on DIN; the
+  machine queues what it sends on DIN, and many unanswered requests in a row can overrun that queue.
+- A `47` whose 152 bytes are not complete before `F7` is not executed and gets no answer. Bytes after the 152nd are
+  ignored (one store, one answer).
+- A message cut by another MIDI status byte, or left without `F7`, is abandoned (after about 3 seconds for the latter)
+  and gets no answer.
+- A machine before 1.7.0.0, or with the official OS, ignores `46` and `47` and does not answer. Ask for the version
+  with `43` first.
+- Requests are served from the machine's main loop; the sequencer keeps playing.
 
 ## Full backup
 
