@@ -46,7 +46,7 @@ mod tests {
         let mut rig = TestRig::connected("lib-list");
         rig.machine.handle(Command::FetchSound);
         rig.machine.handle(Command::SaveSound("B".into()));
-        rig.machine.handle(Command::SaveSound("A".into()));
+        rig.machine.handle(Command::SaveSound("B".into()));
         rig.events();
 
         rig.machine.handle(Command::Library(Kind::Sounds));
@@ -140,7 +140,7 @@ mod tests {
         assert_eq!(field(&projects[0], "beats"), &Json::Int(16));
         assert!(sounds
             .iter()
-            .any(|s| field(s, "display") == &Json::from("Fake Kick")));
+            .any(|s| field(s, "display") == &Json::from("Kick")));
         assert!(beats
             .iter()
             .any(|b| field(b, "display") == &Json::from("Groove")

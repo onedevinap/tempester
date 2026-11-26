@@ -69,7 +69,8 @@ fn test_export_midi_when_a_library_beat_is_exported_twice_returns_two_files_and_
 
     assert_eq!(
         export_files(&rig),
-        ["Fake beat 01 (2).mid", "Fake beat 01.mid"]
+        ["Groove (2).mid", "Groove.mid"],
+        "named after the beat's name, the one typed when it was saved"
     );
 }
 

@@ -61,7 +61,14 @@ fn project_name_refusal(name: &str) -> Option<String> {
 
 /// The data of `item` with the internal name `name`, as the file to write.
 fn renamed_bytes(item: &Item, current: &[u8], name: &str) -> Result<Vec<u8>, AppError> {
-    match item.kind {
+    named_data(item.kind, current, name)
+}
+
+/// `current` (a sound file or dump, a beat dump, a project) with the internal name `name`, as the file to write;
+/// a sound's file name follows (its sound-type folder kept). Saving a fetched sound or beat goes through here too,
+/// so that the name typed in the app is the one the machine shows once the item is sent back (public issue #7).
+pub(crate) fn named_data(kind: Kind, current: &[u8], name: &str) -> Result<Vec<u8>, AppError> {
+    match kind {
         Kind::Sounds => {
             let (mut sound, old_file_name): (Sound, String) = match sound_message::decode(current)
                 .map_err(|e| {

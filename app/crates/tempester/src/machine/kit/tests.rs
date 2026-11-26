@@ -170,7 +170,8 @@ fn test_kit_apply_when_the_machines_beat_is_in_the_library_returns_the_kit_sent_
     let mut rig = TestRig::connected("kit-known");
     let a = import_sound(&mut rig, "Kick A", 10);
     rig.machine.handle(Command::FetchBeat);
-    rig.machine.handle(Command::SaveBeat("Mine".into()));
+    // Saved under its own name: the library then holds exactly the machine's beat.
+    rig.machine.handle(Command::SaveBeat("Fake beat 01".into()));
     rig.events();
     let ids = kit_of(&[(5, &a)]);
     lib(

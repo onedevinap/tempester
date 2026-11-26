@@ -61,14 +61,15 @@ fn import_sound(rig: &mut TestRig, name: &str, freq: u16) -> String {
 }
 
 /// Saves the machine's own current sound (the fake's "Fake Kick") as `Kick`.
+/// Saves the fake machine's sound under its own name, so that the library holds exactly what the machine holds.
 fn save_machine_sound(rig: &mut TestRig) -> String {
     rig.machine.handle(Command::FetchSound);
-    rig.machine.handle(Command::SaveSound("Kick".into()));
+    rig.machine.handle(Command::SaveSound("Fake Kick".into()));
     rig.events();
     let (items, _) = rig.machine.library().list(Kind::Sounds).unwrap();
     items
         .into_iter()
-        .find(|i| i.path == "Kick.syx")
+        .find(|i| i.path == "Fake Kick.syx")
         .expect("saved")
         .id
 }
@@ -332,7 +333,7 @@ fn test_save_sound_when_the_same_sound_is_saved_twice_returns_a_review_and_no_se
     let mut rig = TestRig::connected("save-twice");
     save_machine_sound(&mut rig);
 
-    rig.machine.handle(Command::SaveSound("Another".into()));
+    rig.machine.handle(Command::SaveSound("Fake Kick".into()));
 
     let plan = rig.expect("lib_plan");
     assert_eq!(plan.field("identical"), Some(&1usize.into()));
@@ -368,7 +369,7 @@ fn test_save_sound_when_the_name_exists_with_other_content_returns_a_review_with
     rig.machine.handle(Command::FetchSound);
     rig.events();
 
-    rig.machine.handle(Command::SaveSound("Kick".into()));
+    rig.machine.handle(Command::SaveSound("Fake Kick".into()));
 
     let plan = rig.expect("lib_plan");
     assert_eq!(plan.field("modified"), Some(&1usize.into()));
@@ -396,7 +397,7 @@ fn test_save_sound_when_the_name_exists_with_other_content_returns_a_review_with
 fn test_cancel_when_a_review_is_waiting_returns_nothing_written_and_a_message() {
     let mut rig = TestRig::connected("save-cancel");
     save_machine_sound(&mut rig);
-    rig.machine.handle(Command::SaveSound("Again".into()));
+    rig.machine.handle(Command::SaveSound("Fake Kick".into()));
     rig.events();
 
     lib(&mut rig, LibCommand::CancelPlan);
@@ -413,13 +414,28 @@ fn test_cancel_when_a_review_is_waiting_returns_nothing_written_and_a_message() 
 }
 
 #[test]
+fn test_save_sound_when_the_same_sound_is_saved_under_another_name_returns_a_second_item_with_that_name(
+) {
+    // The name typed is the sound's own name (public issue #7), as a rename makes it: another name, another item.
+    let mut rig = TestRig::connected("save-other-name");
+    save_machine_sound(&mut rig);
+
+    rig.machine.handle(Command::SaveSound("Another".into()));
+
+    let (items, _) = rig.machine.library().list(Kind::Sounds).unwrap();
+    let mut names: Vec<_> = items.iter().map(|i| i.name.as_str()).collect();
+    names.sort_unstable();
+    assert_eq!(names, ["Another", "Fake Kick"]);
+}
+
+#[test]
 fn test_save_sound_when_a_review_is_already_waiting_returns_the_old_one_dropped_with_a_message() {
     let mut rig = TestRig::connected("save-replace-review");
     save_machine_sound(&mut rig);
-    rig.machine.handle(Command::SaveSound("First".into()));
+    rig.machine.handle(Command::SaveSound("Fake Kick".into()));
     rig.events();
 
-    rig.machine.handle(Command::SaveSound("Second".into()));
+    rig.machine.handle(Command::SaveSound("Fake Kick".into()));
 
     let events = rig.events();
     let dropped = events
@@ -439,7 +455,7 @@ fn test_save_sound_when_a_review_is_already_waiting_returns_the_old_one_dropped_
 fn test_apply_when_choices_are_copy_and_new_returns_the_files_written() {
     let mut rig = TestRig::connected("save-choices");
     save_machine_sound(&mut rig);
-    rig.machine.handle(Command::SaveSound("Again".into()));
+    rig.machine.handle(Command::SaveSound("Fake Kick".into()));
 
     lib(
         &mut rig,
@@ -535,7 +551,7 @@ fn test_history_when_an_item_was_updated_returns_its_versions_and_the_comparison
     });
     rig.machine.handle(Command::SendSound);
     rig.machine.handle(Command::FetchSound);
-    rig.machine.handle(Command::SaveSound("Kick".into()));
+    rig.machine.handle(Command::SaveSound("Fake Kick".into()));
     lib(&mut rig, LibCommand::Apply(Policy::default()));
     rig.events();
 
@@ -575,7 +591,7 @@ fn test_open_when_an_item_is_asked_returns_the_card_event_and_a_project_is_refus
 
     assert_eq!(
         rig.expect("sound_opened").field("file"),
-        Some(&"Kick.syx".into())
+        Some(&"Fake Kick.syx".into())
     );
 }
 

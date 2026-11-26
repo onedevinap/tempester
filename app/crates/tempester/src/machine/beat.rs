@@ -13,7 +13,7 @@ use super::{BeatData, Machine};
 use crate::command::{Command, Kind};
 use crate::error::AppError;
 use crate::event::Event;
-use crate::library::now_secs;
+use crate::library::{name_refusal, named_data, now_secs};
 
 /// A beat is a few KB to a few tens of KB; on a DIN cable that takes seconds.
 const BEAT_TIMEOUT: Duration = Duration::from_secs(20);
@@ -76,15 +76,20 @@ impl Machine {
         let data = self.fetched_beat.as_ref().ok_or(AppError::Precondition(
             "fetch the beat from the machine first",
         ))?;
+        let name = name.trim();
+        if let Some(why) = name_refusal(name) {
+            return Err(AppError::Invalid(why));
+        }
+        let message = named_data(Kind::Beats, &data.message, name)?;
         let candidate = Self::candidate(
             Kind::Beats,
-            name.trim(),
-            &data.message,
+            name,
+            &message,
             "machine",
             self.fetched_beat_at,
             true,
         )?;
-        let title = format!("Save beat \"{}\"", name.trim());
+        let title = format!("Save beat \"{name}\"");
         self.submit(vec![candidate], &title, "beat", false)
     }
 
@@ -153,12 +158,13 @@ mod tests {
             .storage
             .read(Folder::Beats, "Groove.syx")
             .unwrap();
-        assert_eq!(
-            Some(&bytes),
-            rig.machine.fetched_beat.as_ref().map(|b| &b.message)
-        );
         let data = beat::read_body(&bytes[4..bytes.len() - 1]).unwrap();
         assert!(is_standard_for(&bytes[4..bytes.len() - 1], &data));
+        // Public issue #7: the name typed is written into the beat, the rest is the fetched beat.
+        let fetched = rig.machine.fetched_beat.as_ref().unwrap();
+        let fetched_data = beat::read_body(&fetched.message[4..fetched.message.len() - 1]).unwrap();
+        assert_eq!(beat::summarize(&bytes).unwrap().name, "Groove");
+        assert_eq!(Some(data), beat::with_name(&fetched_data, "Groove"));
         assert!(rig.events().iter().any(|e| e.name == "library"));
     }
 
@@ -183,6 +189,7 @@ mod tests {
 
             let file = rig.machine.storage.read(Folder::Beats, "Tail.syx").unwrap();
             let body = &file[4..file.len() - 1];
+            let data = beat::with_name(&data, "Tail").unwrap();
             assert_eq!(file, beat::standard_dump(&data), "tail {tail}");
             assert!(is_standard_for(body, &data), "tail {tail}");
             // The machine's receiver rule: MSBs of the final bytes included.

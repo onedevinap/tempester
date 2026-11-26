@@ -1,6 +1,6 @@
 # Tempester user manual
 
-This manual covers the Tempester app 0.1.8, the Tempester Control plugin, and how to install Tempester OS.
+This manual covers the Tempester app 0.1.9, the Tempester Control plugin, and how to install Tempester OS.
 
 What each firmware release changes: [firmware](firmware.md). The exact MIDI messages: [MIDI protocol](midi-protocol.md).
 Screenshots show the app with example data.
@@ -169,6 +169,10 @@ Fetching needs Tempester 1.5.2.0 or later.
 
 1. Press the fetch button. The app asks for the sound of the selected pad, or the current beat.
 2. Give it a name and press save. It goes into the library.
+
+The name you give becomes the sound's or the beat's own name, the one the machine shows once you send it back
+(20 characters at most, printable ASCII), as **Rename** in the library does. The same sound saved under two names
+makes two items.
 
 To send a sound or a beat, open a `.syx` file, or use the send button of a library row. The app first fetches what
 the machine holds:

@@ -22,6 +22,7 @@ pub mod scan;
 
 mod items;
 mod rename;
+pub(crate) use rename::{name_refusal, named_data};
 mod trash;
 
 use std::fs;

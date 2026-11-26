@@ -15,7 +15,7 @@
     title: "Library",
     lead: "The sound and the beat on the machine, the whole project, and every file you saved. Fetching needs a Tempester OS (1.5.2.0 or later). Everything that writes or replaces says what, where, older or newer, and how to undo.",
     unnamed: "(unnamed)",
-    nameLabel: "File name",
+    nameLabel: "Name (20 characters, the one the machine shows)",
   };
 
   const SOUND = {
@@ -130,7 +130,7 @@
     els.name = el("input", {
       type: "text",
       id: cfg.kind + "-name",
-      maxlength: "80",
+      maxlength: "20",
       "aria-label": S.nameLabel,
       placeholder: S.nameLabel,
     });

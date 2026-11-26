@@ -8,6 +8,15 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ### [Unreleased]
 
+### [0.1.9] - 2026-11-26
+
+#### Fixed
+- **Library: the name given when saving a sound or a beat did not reach the machine** (issue #7). It went only into
+  the file name; the sound or beat kept the name it had on the machine, so sending it back left the pad with its old
+  name (or none). The name you type when saving is now the sound's or the beat's own name, as Rename already made it:
+  20 characters at most, printable ASCII, and the library and the machine show the same name. The same sound saved
+  under two names makes two items. A sound saved earlier keeps its old inner name: rename it in the library once.
+
 ### [0.1.8] - 2026-11-26
 
 #### Added

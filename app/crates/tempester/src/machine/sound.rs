@@ -11,7 +11,7 @@ use super::Machine;
 use crate::command::{Command, Kind};
 use crate::error::AppError;
 use crate::event::Event;
-use crate::library::now_secs;
+use crate::library::{name_refusal, named_data, now_secs};
 
 const SOUND_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -60,17 +60,22 @@ impl Machine {
         let sound = self.fetched_sound.as_ref().ok_or(AppError::Precondition(
             "fetch the sound from the machine first",
         ))?;
-        let file = sound_message::encode_file(name.trim(), sound)
+        let name = name.trim();
+        if let Some(why) = name_refusal(name) {
+            return Err(AppError::Invalid(why));
+        }
+        let file = sound_message::encode_file(name, sound)
             .map_err(|e| AppError::Invalid(e.to_string()))?;
+        let file = named_data(Kind::Sounds, &file, name)?;
         let candidate = Self::candidate(
             Kind::Sounds,
-            name.trim(),
+            name,
             &file,
             "machine",
             self.fetched_sound_at,
             true,
         )?;
-        let title = format!("Save sound \"{}\"", name.trim());
+        let title = format!("Save sound \"{name}\"");
         self.submit(vec![candidate], &title, "sound", false)
     }
 
@@ -150,13 +155,60 @@ mod tests {
             .storage
             .read(Folder::Sounds, "My Kick.syx")
             .unwrap();
+        let mut expected = rig.machine.fetched_sound.clone().unwrap();
+        expected.set_name("My Kick").unwrap();
         match sound_message::decode(&bytes).unwrap() {
             SoundMessage::File { name, sound } => {
                 assert_eq!(name, "My Kick");
-                assert_eq!(Some(&sound), rig.machine.fetched_sound.as_ref());
+                assert_eq!(sound, expected, "the fetched sound, named as typed");
             }
             other => panic!("unexpected {other:?}"),
         }
+    }
+
+    #[test]
+    fn test_save_then_send_when_the_name_was_typed_in_the_app_returns_that_name_on_the_machine() {
+        // Public issue #7: the name typed when saving went only into the file name, so the sound sent back had the
+        // machine's old name.
+        let mut rig = fetched("sound-save-send");
+        rig.machine.handle(Command::SaveSound("Big Snare".into()));
+        let file = rig
+            .machine
+            .storage
+            .read(Folder::Sounds, "Big Snare.syx")
+            .unwrap();
+
+        rig.machine.handle(Command::OpenSound {
+            name: "Big Snare.syx".into(),
+            data: file,
+        });
+        rig.machine.handle(Command::SendSound);
+        rig.machine.handle(Command::FetchSound);
+
+        assert_eq!(
+            rig.machine
+                .fetched_sound
+                .as_ref()
+                .map(Sound::name)
+                .as_deref(),
+            Some("Big Snare")
+        );
+    }
+
+    #[test]
+    fn test_save_sound_when_the_name_is_longer_than_the_machine_keeps_returns_invalid_and_writes_nothing(
+    ) {
+        let mut rig = fetched("sound-save-long");
+
+        rig.machine
+            .handle(Command::SaveSound("A name of twenty-one!".into()));
+
+        assert_eq!(rig.expect("error").field("code"), Some(&"invalid".into()));
+        assert!(rig.machine.storage.list(Folder::Sounds).unwrap().is_empty());
+        // counter-proof: twenty characters fit
+        rig.machine
+            .handle(Command::SaveSound("A name of twenty one".into()));
+        assert_eq!(rig.machine.storage.list(Folder::Sounds).unwrap().len(), 1);
     }
 
     #[test]
@@ -256,14 +308,25 @@ mod tests {
             .set_responder(Box::new(move |_| vec![reply.clone()]));
         rig.machine.handle(Command::FetchSound);
 
-        rig.machine.handle(Command::SaveSound("Tail".into()));
+        // Twenty characters ending in `~`: the saved name keeps the MSBs of the last two bytes set, the case tested.
+        let name = "Tail~~~~~~~~~~~~~~~~";
+        let mut sound = sound;
+        sound.set_name(name).unwrap();
+        assert!(sound.bytes()[126] >= 0x80 && sound.bytes()[127] >= 0x80);
+        rig.machine.handle(Command::SaveSound(name.into()));
 
         let file = rig
             .machine
             .storage
-            .read(Folder::Sounds, "Tail.syx")
+            .read(
+                Folder::Sounds,
+                &format!(
+                    "{}.syx",
+                    crate::storage::names::sanitize_stem(name).unwrap()
+                ),
+            )
             .unwrap();
-        let mut payload = b"Tail\0".to_vec();
+        let mut payload = format!("{name}\0").into_bytes();
         payload.extend_from_slice(sound.bytes());
         let body = &file[5..file.len() - 1];
         assert!(is_standard_for(body, &payload));
@@ -271,7 +334,7 @@ mod tests {
         assert_eq!(
             sound_message::decode(&file),
             Ok(SoundMessage::File {
-                name: "Tail".into(),
+                name: name.into(),
                 sound
             })
         );
