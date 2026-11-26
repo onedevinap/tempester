@@ -15,7 +15,8 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
   the file name; the sound or beat kept the name it had on the machine, so sending it back left the pad with its old
   name (or none). The name you type when saving is now the sound's or the beat's own name, as Rename already made it:
   20 characters at most, printable ASCII, and the library and the machine show the same name. The same sound saved
-  under two names makes two items. A sound saved earlier keeps its old inner name: rename it in the library once.
+  under two names makes two items. A sound saved earlier keeps its old inner name: rename it in the library once;
+  the name it already shows is accepted, since Rename now compares with the name inside the sound.
 
 ### [0.1.8] - 2026-11-26
 

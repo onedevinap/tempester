@@ -5,7 +5,7 @@ use std::fs;
 use tempest_proto::beat;
 use tempest_proto::sha256::sha256_hex;
 use tempest_proto::sound::Sound;
-use tempest_proto::sound_message;
+use tempest_proto::sound_message::{self, SoundMessage};
 
 use super::inspect::inspect;
 use super::model::Index;
@@ -745,6 +745,32 @@ fn test_rename_when_a_beat_returns_the_name_in_bytes_24_to_43_of_the_data() {
         "the rest of the beat is unchanged"
     );
     assert_eq!(library.item(&id).unwrap().history.len(), 1);
+}
+
+#[test]
+fn test_rename_when_the_data_holds_no_name_returns_the_shown_name_written_into_it() {
+    // A sound saved before 0.1.9: the library shows its file name, its data holds no name (public issue #7).
+    let (storage, library) = rig("rename-unnamed");
+    let mut sound = Sound::with_defaults();
+    sound.set_name("").unwrap();
+    let bytes = sound_message::encode_file("Big Snare", &sound).unwrap();
+    save(&library, &candidate(Kind::Sounds, "Big Snare", &bytes, 100));
+    let item = library.list(Kind::Sounds).unwrap().0[0].clone();
+    assert_eq!(item.name, "Big Snare", "the shown name is the file's");
+
+    library.rename(&item.id, "Big Snare").unwrap();
+
+    let file = storage.read(Folder::Sounds, &item.path).unwrap();
+    let SoundMessage::File { sound, .. } = sound_message::decode(&file).unwrap() else {
+        panic!("not a sound file")
+    };
+    assert_eq!(sound.name().trim(), "Big Snare");
+    // counter-proof: now that the data holds it, the same name is refused as before
+    let error = library
+        .rename(&item.id, "Big Snare")
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("already its name"), "{error}");
 }
 
 #[test]

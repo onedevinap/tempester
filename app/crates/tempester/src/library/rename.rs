@@ -117,9 +117,6 @@ impl Library {
         if let Some(why) = refusal {
             return Err(AppError::Invalid(format!("\"{name}\" is refused: {why}")));
         }
-        if name == item.name {
-            return Err(AppError::Invalid(format!("\"{name}\" is already its name")));
-        }
         let (folder, _) = split_folder_stem(&item.path);
         let stem =
             sanitize_stem(name).ok_or_else(|| AppError::Invalid("the name is empty".into()))?;
@@ -136,6 +133,17 @@ impl Library {
             )));
         }
         let current = fs::read(self.file_of(item.kind, &item.path)?)?;
+        // A sound or beat is compared with the name inside its data, not with the name shown: an item saved before
+        // 0.1.9 shows its file name but may hold no name of its own (public issue #7), and renaming it to the name
+        // shown is how that name gets written into it.
+        let unchanged = if item.kind == Kind::Projects {
+            name == item.name
+        } else {
+            name == inspect(item.kind, &current, "")?.name.trim()
+        };
+        if unchanged {
+            return Err(AppError::Invalid(format!("\"{name}\" is already its name")));
+        }
         let bytes = renamed_bytes(&item, &current, name)?;
         let facts = inspect(item.kind, &bytes, name)?;
         if item.kind != Kind::Projects {
