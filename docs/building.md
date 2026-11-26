@@ -66,7 +66,7 @@ They are not signed, so a host may ask you to approve them.
 | Windows | `tools/package_windows.ps1 -Installer` | portable zip and setup |
 
 - **macOS**: `Tempester-<version>-macos-<arch>.dmg` holds the app (checked by mounting it). The `.pkg` holds the app
-  and the plugins as options.
+  and the plugins as options. `<arch>` is the building Mac's (`arm64` or `x86_64`): the release builds both.
 - **Linux**: `tempester_<version>_<arch>.deb` (the app) and `tempester-plugins_<version>_<arch>.deb`. With
   `TEMPESTER_DISTRO=ubuntu24.04` (the system's own release, checked) the names end with `_ubuntu24.04`.
 - **Windows**: a portable zip (plugins in `plugins/`) and an NSIS setup with the plugins as options.
@@ -122,7 +122,7 @@ Remove the quarantine mark macOS puts on downloaded files. In Terminal:
 - the installer, before opening it:
 
   ```bash
-  xattr -d com.apple.quarantine ~/Downloads/Tempester-*-macos-arm64.pkg
+  xattr -d com.apple.quarantine ~/Downloads/Tempester-*-macos-*.pkg
   ```
 
 - the plugins, if a DAW refuses them:

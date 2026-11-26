@@ -8,6 +8,22 @@ never used). Details of each patch: [docs/firmware.md](docs/firmware.md).
 
 ### [Unreleased]
 
+### [0.1.8] - 2026-11-26
+
+#### Added
+- **Intel Macs** (issue #9): the release now has `macos-x86_64` packages (dmg and pkg) next to the `macos-arm64` ones,
+  built on GitHub's Intel macOS runner. macOS 11 or later. **Not tried on an Intel Mac**: the project has none; the
+  app was built for Intel and started under Rosetta on an Apple silicon Mac.
+- **The user manual explains the Sound tools** (Panel page: undo and redo, A / B, variations, MIDI learn; issue #8).
+
+#### Fixed
+- **Sound tools, Variation: after about ten clicks on Generate the sound went silent and the history stopped
+  growing** (issue #8). Each variation started from the last one, and Generate keeps the seed, so every click added
+  the same random steps again: every parameter ran the same way until it sat at a limit, and then nothing changed any
+  more. A variation now always starts from the sound before the variations (fetched by Sync, or as the last knob
+  move or A / B recall left it): Generate with one seed gives one variation, the dice tries another variation of the
+  same sound, and turning a knob makes the next variations start from there.
+
 ### [0.1.7] - 2026-11-21
 
 #### Added

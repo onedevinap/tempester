@@ -117,7 +117,9 @@ impl Machine {
                 amount,
                 seed,
             } => {
-                let target = vary(self.synced_values()?, group, amount, seed);
+                self.synced_values()?;
+                let origin = self.edit.history.before_variations();
+                let target = vary(&origin, group, amount, seed);
                 self.jump(&target, StepKind::Variation(seed))
             }
             EditCommand::LearnPorts => {

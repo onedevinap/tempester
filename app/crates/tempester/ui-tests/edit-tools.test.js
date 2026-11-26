@@ -119,7 +119,7 @@ function run(dir) {
     "store waits for a Sync",
   );
   assert.ok(
-    control(pop, "Vary the current sound with this seed and send it (undoable)")
+    control(pop, "Vary the sound as it was before the variations with this seed, and send it (undoable)")
       .disabled,
   );
   assert.ok(control(slot, "Undo (Cmd/Ctrl Z)").disabled);
@@ -207,10 +207,10 @@ function run(dir) {
   group.value = "mod";
   amount.value = "50";
   seed.value = "1234";
-  press(pop, "Vary the current sound with this seed and send it (undoable)");
+  press(pop, "Vary the sound as it was before the variations with this seed, and send it (undoable)");
   assert.strictEqual(last(), "edit_vary\tmod\t50\t1234");
   seed.value = "999999";
-  press(pop, "Vary the current sound with this seed and send it (undoable)");
+  press(pop, "Vary the sound as it was before the variations with this seed, and send it (undoable)");
   assert.strictEqual(
     last(),
     "edit_vary\tmod\t50\t99999",

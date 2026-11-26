@@ -152,6 +152,25 @@ impl History {
         self.undo.len()
     }
 
+    /// The sound before the run of variation steps that ends the history (the current sound when the last step is
+    /// not a variation). Variations start from it: varying the last variation again with the same seed would add the
+    /// same random steps once more, pushing every parameter the same way until all of them sit at a limit (public
+    /// issue #8: the sound went silent and the history stopped growing after about ten clicks).
+    pub fn before_variations(&self) -> Values {
+        let mut values = self.values;
+        let run = self
+            .undo
+            .iter()
+            .rev()
+            .take_while(|step| matches!(step.kind, StepKind::Variation(_)));
+        for step in run {
+            for &(index, before, _) in &step.changes {
+                values[usize::from(index)] = before;
+            }
+        }
+        values
+    }
+
     /// The label of the step the next undo would revert.
     pub fn last_label(&self) -> Option<String> {
         self.undo.back().map(|step| step.kind.label())
@@ -454,6 +473,30 @@ mod tests {
         assert!(history
             .jump(&defaults(), StepKind::Recall('B'), Instant::now())
             .is_empty());
+    }
+
+    #[test]
+    fn test_before_variations_when_variations_end_the_history_returns_the_sound_before_them() {
+        let start = Instant::now();
+        let mut history = History::new(&defaults());
+        history.knob(LP_FREQ, 40, start);
+        let before_run = *history.values();
+        let mut first = before_run;
+        first[0] = 50;
+        first[RESONANCE as usize] = 9;
+        history.jump(&first, StepKind::Variation(1), ms(start, 1000));
+        let mut second = first;
+        second[0] = 60;
+        second[72] = 99;
+        history.jump(&second, StepKind::Variation(2), ms(start, 2000));
+
+        assert_eq!(history.before_variations(), before_run);
+        history.undo();
+        assert_eq!(history.before_variations(), before_run, "after an undo");
+        // counter-proof: a knob step ends the run, the next variations start from the sound it made
+        history.knob(LP_FREQ, 41, ms(start, 3000));
+        assert_eq!(history.before_variations(), *history.values());
+        assert_ne!(history.before_variations(), before_run);
     }
 
     #[test]

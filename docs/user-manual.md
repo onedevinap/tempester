@@ -1,6 +1,6 @@
 # Tempester user manual
 
-This manual covers the Tempester app 0.1.7, the Tempester Control plugin, and how to install Tempester OS.
+This manual covers the Tempester app 0.1.8, the Tempester Control plugin, and how to install Tempester OS.
 
 What each firmware release changes: [firmware](firmware.md). The exact MIDI messages: [MIDI protocol](midi-protocol.md).
 Screenshots show the app with example data.
@@ -123,6 +123,39 @@ so and the controls are greyed.
 - The FX ribbons work over MIDI with Tempester 1.6.3.0 or later. Drag to touch, let go to release. A ribbon moved on
   the machine moves here ([MIDI protocol](midi-protocol.md#fx-ribbons)). Both views have them.
 - The Debug menu cannot be opened remotely, by design.
+
+### Sound tools
+
+The toolbar's **Undo** button and the **Sound tools** button next to it (redo, A / B, variations, MIDI learn). They
+start from the sound fetched by **Sync**. Sending a sound, a beat or a project from the Library replaces that sound
+on the machine, so the tools wait for a new Sync.
+
+What they change is sent as NRPN, like the knobs (Tempester 1.5.3.0 or later). It goes to the pad selected on the
+machine, in its memory only: nothing is saved to its flash until you save on the machine.
+
+- **Undo and Redo** (Cmd/Ctrl Z, Shift Cmd/Ctrl Z): one knob drag is one step. The history keeps the last 100 steps;
+  the chip says how many there are.
+- **A / B**: **Store A** and **Store B** keep the current sound. The **A/B** button of the toolbar then sends the other
+  one, so you can compare. Only the parameters that differ are sent.
+- **Variation**: moves a group of parameters by a random amount around the sound, then sends it. It is not a random
+  sound generator: it only moves the continuous parameters of the group, never a shape, a sample, a modulation source
+  or destination, or a switch.
+  - **Parameters to vary**: Pitch (oscillator frequencies, fine tunings, glides, the pitch envelope's amounts),
+    Envelopes (delay, attack, decay, sustain and release of the five envelopes), Filters (low-pass and high-pass),
+    Modulation (LFO rates and amounts, the auxiliary envelopes' amounts, the 8 modulation amounts), or all four.
+  - **How far**: each parameter moves by at most this share of its range, up or down. At 100 % any value of the range
+    can come out, so a long delay or attack or a closed filter can make the sound silent: undo, or take a smaller
+    amount.
+  - **Seed**: the random numbers come from it. **Generate** uses the seed shown; the dice takes a new seed, then
+    generates.
+  - Every variation starts from the sound **before** the variations: the one fetched by Sync, or as your last knob
+    move or A / B recall left it. Generating again tries another variation of that sound; it does not move further
+    from the last one. To build on a variation you like, turn a knob: the next variations start from there. The same
+    seed on the same sound always gives the same variation, so Generate twice with one seed changes nothing.
+  - Each variation is one step: Undo brings back the sound before it.
+- **MIDI learn** (Full view): choose your controller's input port, press **MIDI learn**, click a control, then move a
+  knob of the controller. That knob now moves the control as your hand would. The table is kept for the next start;
+  nothing is ever sent back to the controller.
 
 ## Library
 

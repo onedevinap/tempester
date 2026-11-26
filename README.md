@@ -88,13 +88,15 @@ Tempester fixes old bugs of the Tempest and opens it up over MIDI. It has three 
 
 You need a Tempest, a USB cable (or a MIDI interface) and a computer.
 
-1. **Install the app** (version 0.1.7). Download it from the
+1. **Install the app** (version 0.1.8). Download it from the
    [Releases](https://github.com/onedevinap/tempester/releases) page.
    - The packages are not signed, so your system blocks the first launch. How to get past it:
      [Installing a release package](docs/building.md#installing-a-release-package).
    - macOS blocks the app or says it « is damaged »? In Terminal:
      `xattr -dr com.apple.quarantine /Applications/Tempester.app`
      ([details](docs/building.md#macos-blocks-the-app-or-says-it-is-damaged)).
+   - On macOS, take `macos-arm64` for an Apple silicon Mac (M1 and later) and `macos-x86_64` for an Intel Mac
+     (macOS 11 or later). The Intel build is made by the release workflow and was not tried on an Intel Mac.
    - On Linux, take the two `.deb` files for your Ubuntu release (`_ubuntu24.04` or `_ubuntu26.04`).
    - You can also [build it from source](docs/building.md#building-and-running-the-app).
 2. **Prepare the Tempest.** It must run the complete official **OS 1.5.0.2**.

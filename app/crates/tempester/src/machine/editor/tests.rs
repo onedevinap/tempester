@@ -183,6 +183,67 @@ fn test_vary_when_the_same_seed_is_used_on_the_same_sound_sends_the_same_bytes_a
     }
 }
 
+fn vary_command(seed: u32) -> EditCommand {
+    EditCommand::Vary {
+        group: Group::All,
+        amount: 100,
+        seed,
+    }
+}
+
+#[test]
+fn test_vary_when_generated_again_returns_a_variation_of_the_sound_before_the_variations() {
+    let mut chained = synced("vary-chain");
+    for seed in [11, 12, 13] {
+        edit(&mut chained, vary_command(seed));
+    }
+    let mut direct = synced("vary-direct");
+    edit(&mut direct, vary_command(13));
+
+    assert_eq!(
+        chained.machine.edit.history.values(),
+        direct.machine.edit.history.values(),
+        "the third variation varies the synced sound, not the second variation"
+    );
+    assert_eq!(chained.machine.edit.history.depth(), 3);
+}
+
+#[test]
+fn test_vary_when_one_seed_is_generated_many_times_returns_one_sound_and_sends_nothing_more() {
+    // Public issue #8: each Generate added the seed's steps again, every parameter ran to a limit (the sound went
+    // silent) and after about ten clicks nothing changed any more.
+    let mut rig = synced("vary-repeat");
+    edit(&mut rig, vary_command(4242));
+    let once = *rig.machine.edit.history.values();
+    let from = rig.transport().sent().len();
+
+    for _ in 0..20 {
+        edit(&mut rig, vary_command(4242));
+    }
+
+    assert_eq!(rig.machine.edit.history.values(), &once);
+    assert!(sent_since(&rig, from).is_empty());
+    assert_eq!(rig.machine.edit.history.depth(), 1);
+}
+
+#[test]
+fn test_vary_after_a_knob_move_returns_a_variation_of_the_moved_sound() {
+    let mut rig = synced("vary-after-knob");
+    edit(&mut rig, vary_command(5));
+    rig.machine.handle(Command::Nrpn {
+        number: LP_FREQ,
+        value: 3,
+    });
+    let moved = *rig.machine.edit.history.values();
+
+    edit(&mut rig, vary_command(6));
+
+    assert_eq!(
+        rig.machine.edit.history.values(),
+        &crate::edit::variation::vary(&moved, Group::All, 100, 6)
+    );
+}
+
 #[test]
 fn test_a_sysex_send_when_a_sound_was_synced_returns_the_tools_locked_until_the_next_sync() {
     let mut rig = synced("edit-forget");

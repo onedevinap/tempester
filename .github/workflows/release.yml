@@ -1,6 +1,7 @@
 # Builds the packages and attaches them to a DRAFT GitHub release (tags v*): per system the app and the DAW plugin
-# Tempester Control (CLAP and VST3): macOS dmg (app only) and pkg (app and plugins), Linux deb for the app and a
-# separate deb for the plugins, built twice (Ubuntu 24.04 and 26.04: each deb depends on the library package names of
+# Tempester Control (CLAP and VST3): macOS dmg (app only) and pkg (app and plugins), built twice (Apple silicon on
+# macos-latest, Intel on macos-15-intel: package_mac.sh names each after `uname -m`, arm64 or x86_64), Linux deb for
+# the app and a separate deb for the plugins, built twice (Ubuntu 24.04 and 26.04: each deb depends on the library package names of
 # its release, and its file name ends with `_ubuntu<release>`), Windows portable zip (with plugins/) and setup exe (app
 # and plugins).
 # The draft release (last job) is created whenever the run's ref is a v* tag: a tag push, or a run by hand
@@ -28,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-26.04, macos-latest, windows-latest]
+        os: [ubuntu-24.04, ubuntu-26.04, macos-latest, macos-15-intel, windows-latest]
         # The Ubuntu release written in the deb file names (TEMPESTER_DISTRO, tools/package_linux.sh).
         include:
           - os: ubuntu-24.04
@@ -132,12 +133,13 @@ jobs:
           path: dist
           merge-multiple: true
 
-      # Exactly one file per pattern, and nothing else: 8 packages (macOS dmg and pkg, Linux app deb and plugins deb for
-      # Ubuntu 24.04 and for 26.04, Windows zip and setup exe).
+      # Exactly one file per pattern, and nothing else: 10 packages (macOS dmg and pkg for Apple silicon and for Intel,
+      # Linux app deb and plugins deb for Ubuntu 24.04 and for 26.04, Windows zip and setup exe).
       - name: Only the expected packages
         run: |
           ls -l dist
-          for pattern in 'Tempester-*-macos-*.dmg' 'Tempester-*-macos-*.pkg' \
+          for pattern in 'Tempester-*-macos-arm64.dmg' 'Tempester-*-macos-arm64.pkg' \
+            'Tempester-*-macos-x86_64.dmg' 'Tempester-*-macos-x86_64.pkg' \
             'tempester_*_*_ubuntu24.04.deb' 'tempester-plugins_*_*_ubuntu24.04.deb' \
             'tempester_*_*_ubuntu26.04.deb' 'tempester-plugins_*_*_ubuntu26.04.deb' \
             'Tempester-*-windows-x64.zip' 'Tempester-*-windows-x64-setup.exe'; do
@@ -145,7 +147,7 @@ jobs:
             [ "$found" -eq 1 ] || { echo "expected one $pattern, found $found"; exit 1; }
           done
           count=$(find dist -type f | wc -l)
-          [ "$count" -eq 8 ] || { echo "expected 8 packages, found $count"; exit 1; }
+          [ "$count" -eq 10 ] || { echo "expected 10 packages, found $count"; exit 1; }
 
       - name: Create the draft release
         env:
